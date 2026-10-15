@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* Dark mode is toggled by adding the "dark" class on <html> (see lib/theme.ts) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --color-app: var(--c-app);
+  --color-surface: var(--c-surface);
+  --color-surface2: var(--c-surface2);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+}
+
+:root {
+  --c-app: #f3f4ff;
+  --c-surface: #ffffff;
+  --c-surface2: #eceefc;
+  --c-ink: #1b1a45;
+  --c-muted: #5d6190;
+  --c-line: #dfe2f6;
+  color-scheme: light;
+}
+
+.dark {
+  --c-app: #0e0f21;
+  --c-surface: #181a33;
+  --c-surface2: #22254a;
+  --c-ink: #eef0ff;
+  --c-muted: #a3a9d6;
+  --c-line: #2d315c;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-app);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Element resets live in the base layer so Tailwind utilities (text-white, font-bold…) can override them */
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), var(--tg-content-safe-area-inset-bottom, 0px));
+}
+.safe-top {
+  padding-top: max(env(safe-area-inset-top), var(--tg-content-safe-area-inset-top, 0px));
+}
+
+/* Flashcard flip */
+.flip-scene {
+  perspective: 1000px;
+}
+.flip-card {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s ease;
+}
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-back {
+  transform: rotateY(180deg);
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.pop-in {
+  animation: pop-in 0.3s ease-out both;
+}
+
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.slide-up {
+  animation: slide-up 0.25s ease-out both;
+}
+
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.bounce-soft {
+  animation: bounce-soft 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hide scrollbars on horizontal chip rows */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

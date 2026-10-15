@@ -1,0 +1,65 @@
+import { useSyncExternalStore } from 'react';
+import type { PersistedState } from '../types';
+import { LocalRepository } from '../lib/repository';
+
+// A tiny external store (no extra dependency). State lives in memory and is written through a
+// "repository". Today the repository is browser localStorage; a Supabase repository can replace it
+// later without touching any screen (see src/lib/repository.ts and supabase/README.md).
+
+const repo = new LocalRepository();
+
+export function defaultState(): PersistedState {
+  return {
+    version: 1,
+    profile: null,
+    xp: 0,
+    vocab: {},
+    lessons: {},
+    quizHistory: [],
+    activity: {},
+    mistakes: [],
+    badges: {},
+    conversations: [],
+    writing: [],
+    speakingDone: {},
+    settings: { theme: 'auto', dailyWordGoal: 10, haptics: true, showTranslation: false },
+  };
+}
+
+function hydrate(): PersistedState {
+  const base = defaultState();
+  const saved = repo.loadSync();
+  if (!saved || saved.version !== 1) return base;
+  return { ...base, ...saved, settings: { ...base.settings, ...(saved.settings ?? {}) } };
+}
+
+let state: PersistedState = hydrate();
+const listeners = new Set<() => void>();
+
+export function getState(): PersistedState {
+  return state;
+}
+
+export function setState(fn: (s: PersistedState) => PersistedState): void {
+  state = fn(state);
+  repo.save(state);
+  listeners.forEach((l) => l());
+}
+
+export function resetState(): void {
+  state = defaultState();
+  repo.clear();
+  listeners.forEach((l) => l());
+}
+
+function subscribe(l: () => void) {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+
+/** Subscribes a component to the whole app state. Derive values with useMemo inside components. */
+export function useApp(): PersistedState {
+  return useSyncExternalStore(subscribe, getState, getState);
+}
