@@ -573,4 +573,772 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
       },
     ],
   },
+   {
+    id: "r11",
+    title: "My School Bag",
+    level: "Pre-A1",
+    text: `My name is Madina. I have a blue school bag. It is big. I have two books, three pens, and one pencil. My lunch is in my bag. I go to school with my friend. We like our school.`,
+    vocab: [
+      { en: "bag", uz: "sumka" },
+      { en: "blue", uz: "ko‘k" },
+      { en: "pencil", uz: "qalam" },
+      { en: "lunch", uz: "tushlik" },
+      { en: "friend", uz: "do‘st" }
+    ],
+    questions: [
+      {
+        id: "r11-q1",
+        q: "What color is Madina's bag?",
+        options: ["Red", "Blue", "Green", "Black"],
+        answer: 1,
+        explain: "Matnda “I have a blue school bag” deyilgan. Demak, sumkasi ko‘k."
+      },
+      {
+        id: "r11-q2",
+        q: "How many books does she have?",
+        options: ["One", "Three", "Two", "Four"],
+        answer: 2,
+        explain: "Madina sumkasida ikkita kitob borligini aytadi."
+      },
+      {
+        id: "r11-q3",
+        q: "Who goes to school with Madina?",
+        options: ["Her friend", "Her father", "Her teacher", "Her sister"],
+        answer: 0,
+        explain: "Matnda u maktabga do‘sti bilan borishi aytilgan."
+      }
+    ]
+  },
+  {
+    id: "r12",
+    title: "A Day at the Park",
+    level: "Pre-A1",
+    text: `It is Sunday. Omar goes to the park with his sister. The sun is bright. Omar plays with a ball. His sister reads a book under a tree. They eat apples and drink water. At five o'clock, they go home.`,
+    vocab: [
+      { en: "park", uz: "bog‘" },
+      { en: "bright", uz: "yorqin" },
+      { en: "ball", uz: "to‘p" },
+      { en: "under", uz: "ostida" },
+      { en: "home", uz: "uy" }
+    ],
+    questions: [
+      {
+        id: "r12-q1",
+        q: "What day is it?",
+        options: ["Monday", "Friday", "Sunday", "Tuesday"],
+        answer: 2,
+        explain: "Hikoya “It is Sunday” jumlasi bilan boshlanadi."
+      },
+      {
+        id: "r12-q2",
+        q: "What does Omar play with?",
+        options: ["A book", "A ball", "A toy car", "A kite"],
+        answer: 1,
+        explain: "Omar bog‘da to‘p bilan o‘ynaydi."
+      },
+      {
+        id: "r12-q3",
+        q: "What time do they go home?",
+        options: ["At three", "At four", "At six", "At five"],
+        answer: 3,
+        explain: "Matnda ular soat beshda uyga ketishi aytilgan."
+      }
+    ]
+  },
+  {
+    id: "r13",
+    title: "My Little Cat",
+    level: "Pre-A1",
+    text: `I have a little cat. Her name is Mimi. She is white and has green eyes. Mimi likes milk and fish. She sleeps on my bed. Every morning, she plays with a small ball. I love my cat.`,
+    vocab: [
+      { en: "little", uz: "kichkina" },
+      { en: "white", uz: "oq" },
+      { en: "eyes", uz: "ko‘zlar" },
+      { en: "sleeps", uz: "uxlaydi" },
+      { en: "fish", uz: "baliq" }
+    ],
+    questions: [
+      {
+        id: "r13-q1",
+        q: "What is the cat's name?",
+        options: ["Lola", "Mimi", "Bella", "Luna"],
+        answer: 1,
+        explain: "Mushukning ismi Mimi."
+      },
+      {
+        id: "r13-q2",
+        q: "What color is Mimi?",
+        options: ["Black", "Brown", "White", "Grey"],
+        answer: 2,
+        explain: "Matnda Mimi oq rangda ekani aytilgan."
+      },
+      {
+        id: "r13-q3",
+        q: "Where does Mimi sleep?",
+        options: ["On the bed", "In the garden", "Under the table", "In a box"],
+        answer: 0,
+        explain: "Mimi egasining karavotida uxlaydi."
+      }
+    ]
+  },
+
+  // ==================== A1 ====================
+  {
+    id: "r14",
+    title: "A Busy Morning",
+    level: "A1",
+    text: `Dilshod gets up at seven o'clock every morning. First, he washes his face and brushes his teeth. Then he eats eggs and bread for breakfast. He walks to school because it is near his home. His lessons start at eight thirty. After school, he usually plays football with his friends.`,
+    vocab: [
+      { en: "get up", uz: "o‘rindan turmoq" },
+      { en: "brush", uz: "tozalamoq" },
+      { en: "breakfast", uz: "nonushta" },
+      { en: "near", uz: "yaqin" },
+      { en: "usually", uz: "odatda" }
+    ],
+    questions: [
+      {
+        id: "r14-q1",
+        q: "What time does Dilshod get up?",
+        options: ["At six", "At seven", "At eight", "At nine"],
+        answer: 1,
+        explain: "Dilshod har kuni ertalab soat yettida turadi."
+      },
+      {
+        id: "r14-q2",
+        q: "Why does he walk to school?",
+        options: ["He has no shoes.", "He likes running.", "The school is near his home.", "His friends drive him."],
+        answer: 2,
+        explain: "Maktab uyiga yaqin bo‘lgani uchun u piyoda boradi."
+      },
+      {
+        id: "r14-q3",
+        q: "What does he do after school?",
+        options: ["He plays football.", "He cooks dinner.", "He watches a film.", "He goes shopping."],
+        answer: 0,
+        explain: "Darslardan keyin u odatda do‘stlari bilan futbol o‘ynaydi."
+      }
+    ]
+  },
+  {
+    id: "r15",
+    title: "Shopping with Mother",
+    level: "A1",
+    text: `On Saturday, Malika goes shopping with her mother. They visit a small supermarket near their house. Her mother buys rice, milk, tomatoes, and chicken. Malika chooses some apples and a chocolate bar. At the checkout, her mother pays 120,000 soums. They carry the bags home together.`,
+    vocab: [
+      { en: "supermarket", uz: "supermarket" },
+      { en: "choose", uz: "tanlamoq" },
+      { en: "checkout", uz: "kassa" },
+      { en: "pay", uz: "to‘lamoq" },
+      { en: "carry", uz: "ko‘tarib olib bormoq" }
+    ],
+    questions: [
+      {
+        id: "r15-q1",
+        q: "When does Malika go shopping?",
+        options: ["On Monday", "On Friday", "On Saturday", "On Sunday"],
+        answer: 2,
+        explain: "Malika onasi bilan shanba kuni xaridga boradi."
+      },
+      {
+        id: "r15-q2",
+        q: "What does Malika choose?",
+        options: ["Rice and milk", "Apples and chocolate", "Chicken and tomatoes", "Bread and cheese"],
+        answer: 1,
+        explain: "Malika olma va bir dona shokolad tanlaydi."
+      },
+      {
+        id: "r15-q3",
+        q: "How much does her mother pay?",
+        options: ["100,000 soums", "150,000 soums", "200,000 soums", "120,000 soums"],
+        answer: 3,
+        explain: "Kassada onasi 120 000 so‘m to‘laydi."
+      }
+    ]
+  },
+  {
+    id: "r16",
+    title: "A New Classmate",
+    level: "A1",
+    text: `A new student joins our class today. His name is Bekzod, and he comes from Samarkand. He is eleven years old. He likes drawing pictures and playing chess. During the break, I sit next to him and ask about his hobbies. We discover that we both enjoy reading adventure stories. I hope we become good friends.`,
+    vocab: [
+      { en: "classmate", uz: "sinfdosh" },
+      { en: "join", uz: "qo‘shilmoq" },
+      { en: "drawing", uz: "rasm chizish" },
+      { en: "hobby", uz: "sevimli mashg‘ulot" },
+      { en: "discover", uz: "aniqlamoq" }
+    ],
+    questions: [
+      {
+        id: "r16-q1",
+        q: "Where does Bekzod come from?",
+        options: ["Bukhara", "Tashkent", "Samarkand", "Khiva"],
+        answer: 2,
+        explain: "Bekzod Samarqanddan kelgan."
+      },
+      {
+        id: "r16-q2",
+        q: "Which game does Bekzod like?",
+        options: ["Chess", "Tennis", "Basketball", "Volleyball"],
+        answer: 0,
+        explain: "Matnda Bekzod shaxmat o‘ynashni yoqtirishi aytilgan."
+      },
+      {
+        id: "r16-q3",
+        q: "What do the two students both enjoy?",
+        options: ["Cooking", "Swimming", "Drawing maps", "Reading adventure stories"],
+        answer: 3,
+        explain: "Ikkala o‘quvchi ham sarguzasht hikoyalarini o‘qishni yoqtiradi."
+      }
+    ]
+  },
+
+  // ==================== A2 ====================
+  {
+    id: "r17",
+    title: "The First Train Journey",
+    level: "A2",
+    text: `Last summer, Jasur travelled by train from Tashkent to Bukhara with his uncle. It was his first long train journey. They arrived at the station early because they did not want to miss the train. During the trip, Jasur watched fields, villages, and distant mountains through the window. His uncle explained some interesting facts about the region. When they arrived, they visited the old city and tasted traditional Bukhara food. Jasur enjoyed the journey more than he had expected.`,
+    vocab: [
+      { en: "journey", uz: "sayohat, safar" },
+      { en: "arrive", uz: "yetib kelmoq" },
+      { en: "miss", uz: "o‘tkazib yubormoq" },
+      { en: "region", uz: "hudud" },
+      { en: "traditional", uz: "an’anaviy" }
+    ],
+    questions: [
+      {
+        id: "r17-q1",
+        q: "Why did Jasur and his uncle arrive early?",
+        options: ["They wanted breakfast.", "They did not want to miss the train.", "The station was far away.", "They needed to buy new clothes."],
+        answer: 1,
+        explain: "Ular poyezdni o‘tkazib yubormaslik uchun vokzalga erta kelishgan."
+      },
+      {
+        id: "r17-q2",
+        q: "What did Jasur see through the window?",
+        options: ["Only large cities", "The sea and beaches", "Fields, villages, and mountains", "Airports and factories"],
+        answer: 2,
+        explain: "Safar davomida u dalalar, qishloqlar va uzoqdagi tog‘larni kuzatgan."
+      },
+      {
+        id: "r17-q3",
+        q: "How did Jasur feel about the journey?",
+        options: ["He enjoyed it more than expected.", "He thought it was dangerous.", "He wanted to return immediately.", "He found it completely boring."],
+        answer: 0,
+        explain: "Jasur safardan kutganidan ham ko‘proq zavq olgan."
+      }
+    ]
+  },
+  {
+    id: "r18",
+    title: "Learning to Cook",
+    level: "A2",
+    text: `When Nodira was twelve, she decided to learn how to cook. At first, she could only make simple meals such as eggs and sandwiches. Her grandmother showed her how to prepare soup and rice. Nodira made mistakes sometimes, especially when she added too much salt. Instead of giving up, she wrote down each recipe and tried again. After several months, she could prepare dinner for the whole family. Now she wants to learn how to bake cakes.`,
+    vocab: [
+      { en: "decide", uz: "qaror qilmoq" },
+      { en: "prepare", uz: "tayyorlamoq" },
+      { en: "recipe", uz: "retsept" },
+      { en: "give up", uz: "taslim bo‘lmoq" },
+      { en: "bake", uz: "pechda pishirmoq" }
+    ],
+    questions: [
+      {
+        id: "r18-q1",
+        q: "Who taught Nodira to prepare soup and rice?",
+        options: ["Her mother", "Her teacher", "Her friend", "Her grandmother"],
+        answer: 3,
+        explain: "Nodiraga sho‘rva va guruch tayyorlashni buvisi o‘rgatgan."
+      },
+      {
+        id: "r18-q2",
+        q: "What mistake did Nodira sometimes make?",
+        options: ["She used too much salt.", "She forgot to buy plates.", "She cooked too early.", "She added too much sugar to everything."],
+        answer: 0,
+        explain: "U ba'zan ovqatga ortiqcha tuz solib yuborgan."
+      },
+      {
+        id: "r18-q3",
+        q: "What does Nodira want to learn next?",
+        options: ["How to grow vegetables", "How to bake cakes", "How to make furniture", "How to drive a car"],
+        answer: 1,
+        explain: "Endi Nodira tort pishirishni o‘rganmoqchi."
+      }
+    ]
+  },
+  {
+    id: "r19",
+    title: "A Cleaner Neighbourhood",
+    level: "A2",
+    text: `People in our neighbourhood were worried about rubbish in the streets. Plastic bottles and paper often collected near the playground. One Saturday, a group of teenagers organised a clean-up day. They invited neighbours, brought gloves and large bags, and separated plastic from other waste. A local shop gave them free water. By lunchtime, the streets looked much better. The group decided to organise another clean-up every month and put more rubbish bins near the park.`,
+    vocab: [
+      { en: "neighbourhood", uz: "mahalla" },
+      { en: "rubbish", uz: "axlat" },
+      { en: "organise", uz: "tashkil qilmoq" },
+      { en: "separate", uz: "ajratmoq" },
+      { en: "waste", uz: "chiqindi" }
+    ],
+    questions: [
+      {
+        id: "r19-q1",
+        q: "What problem did the neighbourhood have?",
+        options: ["Too many cars", "A broken playground", "Rubbish in the streets", "A lack of shops"],
+        answer: 2,
+        explain: "Mahalladagi asosiy muammo ko‘chalarda axlat to‘planishi edi."
+      },
+      {
+        id: "r19-q2",
+        q: "What did the teenagers do with the waste?",
+        options: ["They burned all of it.", "They left it near the playground.", "They took it into their homes.", "They separated plastic from other waste."],
+        answer: 3,
+        explain: "O‘smirlar plastik chiqindilarni boshqa chiqindilardan ajratishgan."
+      },
+      {
+        id: "r19-q3",
+        q: "What did the group plan to do next?",
+        options: ["Clean up every month", "Close the local shop", "Build a new school", "Stop using rubbish bins"],
+        answer: 0,
+        explain: "Ular har oy tozalash tadbirini tashkil etishga qaror qilishgan."
+      }
+    ]
+  },
+
+  // ==================== B1 ====================
+  {
+    id: "r20",
+    title: "The Value of Volunteering",
+    level: "B1",
+    text: `When Aziz finished his school exams, he expected to spend the summer playing video games and meeting friends. Instead, his older cousin persuaded him to volunteer at a community centre. At first, Aziz thought the work would be boring. He helped younger children with homework, organised sports activities, and prepared books for a small reading room. Gradually, he realised that the children were becoming more confident because someone was willing to listen to them. The experience also taught Aziz to communicate more patiently and take responsibility for his tasks. By the end of summer, he had decided to continue volunteering during the school year. He still enjoyed relaxing with friends, but he no longer believed that free time had to be spent only on entertainment.`,
+    vocab: [
+      { en: "volunteer", uz: "ko‘ngilli bo‘lib ishlamoq" },
+      { en: "persuade", uz: "ko‘ndirmoq" },
+      { en: "community", uz: "hamjamiyat" },
+      { en: "confident", uz: "o‘ziga ishongan" },
+      { en: "responsibility", uz: "mas'uliyat" }
+    ],
+    questions: [
+      {
+        id: "r20-q1",
+        q: "Why did Aziz first agree to volunteer?",
+        options: ["His school required it.", "His cousin persuaded him.", "He wanted to earn money.", "His friends were already there."],
+        answer: 1,
+        explain: "Aziz ko‘ngilli bo‘lib ishlashga qarindoshining ko‘ndiruvi bilan rozi bo‘lgan."
+      },
+      {
+        id: "r20-q2",
+        q: "What did Aziz notice about the children?",
+        options: ["They stopped doing homework.", "They wanted to leave the centre.", "They became more confident.", "They disliked sports activities."],
+        answer: 2,
+        explain: "Aziz bolalarning o‘ziga ishonchi oshayotganini sezgan."
+      },
+      {
+        id: "r20-q3",
+        q: "What is the main lesson Aziz learned?",
+        options: ["Free time should only be for entertainment.", "Volunteering is always easy.", "School exams are unimportant.", "Helping others can be personally valuable."],
+        answer: 3,
+        explain: "Tajriba Azizga boshqalarga yordam berish ham mazmunli ekanini ko‘rsatgan."
+      }
+    ]
+  },
+  {
+    id: "r21",
+    title: "Working from Home",
+    level: "B1",
+    text: `Several years ago, working from home was unusual in many companies. Today, video calls and online collaboration tools allow employees to complete many tasks without travelling to an office. Supporters say this arrangement saves commuting time and gives people more flexibility. However, working remotely can also create difficulties. Some employees feel isolated, while others struggle to separate their professional duties from family life. Managers may also find it harder to notice when a team member needs support. For these reasons, some organisations use a hybrid system in which employees work from home on certain days and meet colleagues in person on others. There is no single arrangement that suits everyone. The most effective approach often depends on the type of work, the employee's circumstances, and the quality of communication within the team.`,
+    vocab: [
+      { en: "arrangement", uz: "tashkiliy tartib" },
+      { en: "commuting", uz: "ishga qatnab yurish" },
+      { en: "flexibility", uz: "moslashuvchanlik" },
+      { en: "isolated", uz: "yakkalanib qolgan" },
+      { en: "hybrid", uz: "aralash" }
+    ],
+    questions: [
+      {
+        id: "r21-q1",
+        q: "What is one advantage of working from home?",
+        options: ["It removes every work problem.", "It saves commuting time.", "It guarantees promotion.", "It makes teamwork unnecessary."],
+        answer: 1,
+        explain: "Masofadan ishlash ishga qatnab yurishga ketadigan vaqtni tejaydi."
+      },
+      {
+        id: "r21-q2",
+        q: "Why do some organisations use a hybrid system?",
+        options: ["To prevent employees from using computers", "To make all employees work longer", "To combine remote work with in-person meetings", "To remove communication between colleagues"],
+        answer: 2,
+        explain: "Gibrid tizim uyda ishlash va yuzma-yuz uchrashuvlarni birlashtiradi."
+      },
+      {
+        id: "r21-q3",
+        q: "What does the writer suggest about working arrangements?",
+        options: ["One system is best for every employee.", "Remote work should be banned.", "Office work is always more productive.", "The best arrangement depends on several factors."],
+        answer: 3,
+        explain: "Eng samarali tartib ish turi, xodim sharoiti va muloqot sifatiga bog‘liq."
+      }
+    ]
+  },
+  {
+    id: "r22",
+    title: "Why Cities Need Trees",
+    level: "B1",
+    text: `Trees are sometimes treated as decorations in modern cities, but their role is much more important. Their leaves provide shade, making streets and public spaces more comfortable during hot weather. Trees can also absorb some air pollutants and provide habitats for birds and insects. In addition, green spaces give residents places to walk, exercise, or relax away from busy roads. However, planting trees requires careful planning. The wrong species may damage pavements, need too much water, or fail to survive local conditions. Young trees also need regular care before they become established. City planners therefore need to consider local climate, available space, and maintenance costs. A successful urban tree programme is not simply about planting as many trees as possible; it is about choosing suitable trees and helping them grow for many years.`,
+    vocab: [
+      { en: "decoration", uz: "bezak" },
+      { en: "shade", uz: "soya" },
+      { en: "pollutant", uz: "ifloslantiruvchi modda" },
+      { en: "habitat", uz: "yashash muhiti" },
+      { en: "maintenance", uz: "parvarish" }
+    ],
+    questions: [
+      {
+        id: "r22-q1",
+        q: "According to the passage, what is one benefit of city trees?",
+        options: ["They eliminate all traffic.", "They provide shade and improve public spaces.", "They make buildings unnecessary.", "They prevent every type of pollution."],
+        answer: 1,
+        explain: "Daraxtlar soya beradi va shahar jamoat joylarini qulayroq qiladi."
+      },
+      {
+        id: "r22-q2",
+        q: "Why must tree species be chosen carefully?",
+        options: ["All trees grow at the same speed.", "Trees cannot grow near roads.", "Some trees may not suit local conditions.", "Residents never want trees."],
+        answer: 2,
+        explain: "Ayrim daraxt turlari mahalliy iqlimga mos kelmasligi yoki yo‘laklarga zarar yetkazishi mumkin."
+      },
+      {
+        id: "r22-q3",
+        q: "What is the main idea of the passage?",
+        options: ["Cities should remove all old trees.", "Trees are only useful for decoration.", "Planting trees requires no planning.", "Urban trees need thoughtful selection and long-term care."],
+        answer: 3,
+        explain: "Matn shahar daraxtlarini to‘g‘ri tanlash va uzoq muddat parvarish qilish muhimligini tushuntiradi."
+      }
+    ]
+  },
+
+  // ==================== B2 ====================
+  {
+    id: "r23",
+    title: "The Attention Economy",
+    level: "B2",
+    text: `Many digital services appear to be free, yet users often pay for them in a less obvious way: with their attention. Social media platforms, video services, and news applications compete to keep people looking at their screens. Their recommendation systems analyse past behaviour to predict what a user is likely to click next. This can make online experiences convenient, but it may also encourage people to spend longer on a platform than they originally intended. The issue is not simply that technology distracts us; it is that many services are designed around measurable engagement, such as clicks and viewing time. These measurements do not always reflect whether users are learning, relaxing, or benefiting from what they see. Some critics argue that individuals should take more responsibility by setting limits, while others believe companies should provide clearer controls and more transparent design choices. A balanced response recognises that digital tools can be useful while questioning business models that reward attention regardless of its consequences.`,
+    vocab: [
+      { en: "attention", uz: "diqqat" },
+      { en: "recommendation", uz: "tavsiya" },
+      { en: "engagement", uz: "foydalanuvchi faolligi" },
+      { en: "transparent", uz: "shaffof" },
+      { en: "consequence", uz: "oqibat" }
+    ],
+    questions: [
+      {
+        id: "r23-q1",
+        q: "What does the phrase 'pay for them in a less obvious way' mean?",
+        options: ["Users always pay a monthly fee.", "Users may give up their time and attention.", "Users must buy new devices.", "Users work for the companies."],
+        answer: 1,
+        explain: "Xizmatlardan foydalanishning yashirin xarajati vaqt va diqqat bo‘lishi mumkin."
+      },
+      {
+        id: "r23-q2",
+        q: "Why might engagement measurements be misleading?",
+        options: ["They are never recorded.", "They only measure educational progress.", "They do not necessarily show whether users benefit.", "They prevent users from clicking links."],
+        answer: 2,
+        explain: "Ko‘rish vaqti yoki bosishlar foydalanuvchi haqiqatan foyda olganini doim ham ko‘rsatmaydi."
+      },
+      {
+        id: "r23-q3",
+        q: "What is the writer's overall position?",
+        options: ["All digital services should be closed.", "Users alone are responsible for every problem.", "Technology has no benefits.", "Digital tools are useful, but their design and incentives deserve scrutiny."],
+        answer: 3,
+        explain: "Muallif texnologiyaning foydasini tan oladi, biroq uning diqqatni jalb qilishga asoslangan biznes modellarini tanqidiy baholashni taklif qiladi."
+      }
+    ]
+  },
+  {
+    id: "r24",
+    title: "The Limits of Productivity",
+    level: "B2",
+    text: `Productivity advice often promises that a better schedule, a new application, or a stricter morning routine will transform a person's life. Such methods can certainly help people organise tasks, but they are not universal solutions. A schedule that works well for an office worker may be unsuitable for a parent caring for young children or someone whose work changes from day to day. Moreover, focusing exclusively on measurable output can make important but less visible activities seem unproductive. Thinking carefully, building relationships, and recovering from fatigue may not produce immediate results, yet they often support better decisions over time. There is also a risk that productivity techniques become another source of pressure: people may spend so much time optimising their routines that they neglect the work itself. A more sustainable approach begins by identifying meaningful goals, recognising personal constraints, and choosing a small number of habits that genuinely help. Efficiency matters, but it should serve a worthwhile purpose rather than become the purpose itself.`,
+    vocab: [
+      { en: "universal", uz: "hamma uchun mos" },
+      { en: "exclusively", uz: "faqatgina" },
+      { en: "measurable", uz: "o‘lchash mumkin bo‘lgan" },
+      { en: "fatigue", uz: "charchoq" },
+      { en: "sustainable", uz: "barqaror" }
+    ],
+    questions: [
+      {
+        id: "r24-q1",
+        q: "Why are productivity methods not universal solutions?",
+        options: ["They are always too expensive.", "People have different circumstances and responsibilities.", "They only work in the morning.", "They make every task more difficult."],
+        answer: 1,
+        explain: "Odamlarning sharoitlari va majburiyatlari turlicha bo‘lgani uchun bitta usul hammaga mos kelmaydi."
+      },
+      {
+        id: "r24-q2",
+        q: "What does the writer say about rest and relationships?",
+        options: ["They always waste time.", "They should be measured in money.", "They can support better decisions over time.", "They are less important than every task."],
+        answer: 2,
+        explain: "Dam olish va munosabatlarni rivojlantirish vaqt o‘tishi bilan yaxshiroq qarorlar qabul qilishga yordam beradi."
+      },
+      {
+        id: "r24-q3",
+        q: "What does the writer mean by saying efficiency should serve a purpose?",
+        options: ["People should avoid making plans.", "Every task must be completed immediately.", "The busiest people are always the most successful.", "Being efficient matters when it helps achieve meaningful goals."],
+        answer: 3,
+        explain: "Samaradorlik mazmunli natijalarga erishishga xizmat qilishi kerak."
+      }
+    ]
+  },
+  {
+    id: "r25",
+    title: "When Museums Go Digital",
+    level: "B2",
+    text: `Museums increasingly use digital technology to make collections accessible to people who cannot visit in person. High-resolution images, virtual tours, and online catalogues allow users to examine objects from different angles and explore material that may be stored away from public view. Such tools can be particularly valuable for students and researchers who live far from major cultural institutions. Nevertheless, a digital display cannot reproduce every aspect of seeing an object in person. Its size, texture, and relationship to surrounding objects may be difficult to communicate on a screen. There is also a question of access: reliable internet connections and suitable devices are not equally available to everyone. Rather than treating digital experiences as replacements for physical museums, many institutions view them as complementary ways of engaging audiences. The challenge is to design online resources that provide meaningful context, respect cultural sensitivities, and encourage deeper exploration instead of reducing complex objects to attractive images.`,
+    vocab: [
+      { en: "accessible", uz: "foydalanish mumkin bo‘lgan" },
+      { en: "catalogue", uz: "katalog" },
+      { en: "texture", uz: "sirt tuzilishi" },
+      { en: "complementary", uz: "bir-birini to‘ldiruvchi" },
+      { en: "sensitivity", uz: "nozik jihatlarni hisobga olish" }
+    ],
+    questions: [
+      {
+        id: "r25-q1",
+        q: "What is one benefit of online museum collections?",
+        options: ["They make every object physically available.", "They allow people far away to explore collections.", "They remove the need for historical research.", "They guarantee equal internet access."],
+        answer: 1,
+        explain: "Raqamli kolleksiyalar uzoqda yashaydigan odamlarga ham muzey materiallarini o‘rganish imkonini beradi."
+      },
+      {
+        id: "r25-q2",
+        q: "What may be difficult to communicate on a screen?",
+        options: ["The name of every museum", "The existence of online catalogues", "An object's physical size and texture", "The date when a website opens"],
+        answer: 2,
+        explain: "Ekranda buyumning haqiqiy hajmi va sirt tuzilishini to‘liq his qilish qiyin."
+      },
+      {
+        id: "r25-q3",
+        q: "How does the writer view digital museum experiences?",
+        options: ["They should completely replace museums.", "They have no educational value.", "They should only display attractive images.", "They can complement physical visits when thoughtfully designed."],
+        answer: 3,
+        explain: "Muallif raqamli tajribalarni an'anaviy muzeylarga qo‘shimcha vosita sifatida ko‘radi."
+      }
+    ]
+  },
+
+  // ==================== C1 ====================
+  {
+    id: "r26",
+    title: "The Hidden Cost of Convenience",
+    level: "C1",
+    text: `Modern life is frequently organised around convenience. Meals arrive at our doors, information appears instantly, and automated systems remove countless small obstacles from daily routines. Yet convenience is not a neutral improvement: it can reshape expectations, habits, and even our understanding of effort. When every delay is treated as a problem to be eliminated, people may become less willing to tolerate the uncertainty that accompanies learning, creativity, or meaningful relationships. Consider navigation applications. They are undeniably useful, but constant reliance on turn-by-turn instructions can reduce opportunities to develop an independent sense of direction. Similar tensions arise when automated services replace interactions that once required negotiation, patience, or mutual assistance. This does not mean that convenience should be rejected. Rather, it invites a more careful distinction between unnecessary friction and productive effort. The former consumes resources without adding value; the latter may cultivate competence, resilience, or social connection. A society that automates every inconvenience risks overlooking the less obvious benefits embedded in ordinary difficulties. The central question, therefore, is not whether a task can be made easier, but whether making it easier improves the experience or quietly removes something worth preserving.`,
+    vocab: [
+      { en: "neutral", uz: "betaraf" },
+      { en: "reliance", uz: "tayanish" },
+      { en: "undeniably", uz: "shubhasiz" },
+      { en: "resilience", uz: "qiyinchiliklardan tiklana olish" },
+      { en: "embedded", uz: "ichiga singdirilgan" }
+    ],
+    questions: [
+      {
+        id: "r26-q1",
+        q: "What is the central argument of the passage?",
+        options: ["Convenience should always be rejected.", "Automation inevitably destroys relationships.", "Convenience can remove both pointless obstacles and valuable experiences.", "Technology never improves daily life."],
+        answer: 2,
+        explain: "Qulaylik foydali bo‘lishi mumkin, ammo rivojlanishga yordam beradigan qiyinchiliklarni ham yo‘qotishi mumkin."
+      },
+      {
+        id: "r26-q2",
+        q: "Why does the writer mention navigation applications?",
+        options: ["To argue that maps are inaccurate", "To show how convenience may limit the development of independent skills", "To explain why travelling is unnecessary", "To suggest that all applications should be removed"],
+        answer: 1,
+        explain: "Navigatsiya misoli texnologik yordam mustaqil yo‘nalish topish ko‘nikmasini rivojlantirish imkonini kamaytirishi mumkinligini ko‘rsatadi."
+      },
+      {
+        id: "r26-q3",
+        q: "What distinction does the writer make between two types of difficulty?",
+        options: ["Old difficulties and new difficulties", "Physical difficulty and emotional difficulty", "Expensive difficulty and inexpensive difficulty", "Unnecessary friction and effort that builds useful abilities"],
+        answer: 3,
+        explain: "Muallif foydasiz to‘siqlarni qobiliyat va chidamlilikni rivojlantiradigan foydali sa'y-harakatlardan ajratadi."
+      }
+    ]
+  },
+  {
+    id: "r27",
+    title: "Rethinking Educational Assessment",
+    level: "C1",
+    text: `Examinations remain influential because they offer institutions a relatively standardised way to compare large numbers of learners. Their apparent precision, however, can conceal the complexity of the abilities they seek to measure. A timed test may reveal how effectively a student recalls information under pressure, yet provide limited evidence of their capacity to collaborate, investigate an unfamiliar problem, or revise an argument after receiving feedback. Conversely, projects and portfolios can capture a wider range of skills but introduce challenges of consistency, authorship, and assessment time. The debate is therefore not best understood as a choice between examinations and alternative methods. Each approach makes certain aspects of learning visible while leaving others less apparent. A more defensible system combines different forms of evidence and aligns them with clearly defined learning outcomes. It also recognises that assessment influences behaviour: if students are rewarded exclusively for reproducing facts, they are likely to prioritise memorisation. When evaluation values reasoning, reflection, and application, learners receive a stronger signal that these abilities matter. Ultimately, the quality of assessment depends not on whether a method appears objective, but on whether the conclusions drawn from it are justified and useful.`,
+    vocab: [
+      { en: "standardised", uz: "standartlashtirilgan" },
+      { en: "precision", uz: "aniqlik" },
+      { en: "portfolio", uz: "ishlar to‘plami" },
+      { en: "consistency", uz: "izchillik" },
+      { en: "justify", uz: "asoslab bermoq" }
+    ],
+    questions: [
+      {
+        id: "r27-q1",
+        q: "What limitation of timed examinations does the writer identify?",
+        options: ["They cannot assess any knowledge.", "They are always unfair.", "They may fail to reveal a wider range of abilities.", "They require no preparation."],
+        answer: 2,
+        explain: "Vaqt bilan cheklangan imtihonlar hamkorlik va murakkab muammolarni hal qilish kabi ko‘nikmalarni to‘liq ko‘rsatmasligi mumkin."
+      },
+      {
+        id: "r27-q2",
+        q: "Why does the writer discuss projects and portfolios?",
+        options: ["To show that they eliminate all assessment problems", "To demonstrate that alternative methods have both strengths and limitations", "To argue that examinations should be abolished immediately", "To suggest that students should grade themselves exclusively"],
+        answer: 1,
+        explain: "Loyihalar ko‘proq ko‘nikmalarni ko‘rsatadi, biroq ularni baholashda ham ayrim qiyinchiliklar mavjud."
+      },
+      {
+        id: "r27-q3",
+        q: "According to the passage, what determines the quality of assessment?",
+        options: ["How difficult the test appears", "How many students take it", "Whether it uses digital technology", "Whether its conclusions are justified and useful"],
+        answer: 3,
+        explain: "Baholash sifati uning xulosalari qanchalik asosli va foydali ekaniga bog‘liq."
+      }
+    ]
+  },
+  {
+    id: "r28",
+    title: "Cities and the Right to Public Space",
+    level: "C1",
+    text: `Public spaces are often described as places where citizens meet beyond the boundaries of home and work. Parks, libraries, squares, and pedestrian streets can support social interaction among people who might otherwise rarely encounter one another. Their value, however, depends on more than their physical existence. A square dominated by expensive cafés may technically be open to everyone while subtly discouraging those who cannot afford to spend money there. Similarly, security measures intended to protect visitors can make certain groups feel unwelcome if they are applied unevenly. Urban design therefore involves decisions about whose presence is anticipated, which activities are encouraged, and what forms of behaviour are considered acceptable. Commercial development can finance improvements and attract visitors, but it may also transform shared environments into spaces organised primarily for consumption. The challenge for city authorities is not to eliminate commercial activity or regulation, but to ensure that neither becomes a barrier to ordinary public use. Truly inclusive spaces allow people to sit, gather, observe, and participate without having to demonstrate their economic value. Their success should consequently be assessed not only through visitor numbers or revenue, but also through the diversity of people who feel entitled to use them.`,
+    vocab: [
+      { en: "boundaries", uz: "chegaralar" },
+      { en: "subtly", uz: "nozik tarzda" },
+      { en: "unevenly", uz: "notekis tarzda" },
+      { en: "consumption", uz: "iste'mol" },
+      { en: "inclusive", uz: "barchani qamrab oluvchi" }
+    ],
+    questions: [
+      {
+        id: "r28-q1",
+        q: "What does the example of expensive cafés illustrate?",
+        options: ["All cafés should be closed.", "Public spaces are always privately owned.", "A space can be technically open but socially exclusionary.", "Visitors prefer shopping to parks."],
+        answer: 2,
+        explain: "Qimmat kafelar joy hamma uchun ochiq bo‘lsa-da, ayrim odamlarni amalda chetlashtirishi mumkinligini ko‘rsatadi."
+      },
+      {
+        id: "r28-q2",
+        q: "What concern does the writer raise about commercial development?",
+        options: ["It always reduces city revenue.", "It can make shared spaces primarily about spending money.", "It prevents any visitor from entering a square.", "It removes the need for urban planning."],
+        answer: 1,
+        explain: "Tijoriy rivojlanish umumiy joylarni odamlar asosan pul sarflaydigan makonga aylantirishi mumkin."
+      },
+      {
+        id: "r28-q3",
+        q: "How should inclusive public spaces be evaluated?",
+        options: ["Only by the number of cafés", "Only by their construction costs", "By how much money visitors spend", "By whether diverse groups feel welcome and able to use them"],
+        answer: 3,
+        explain: "Jamoat joylarini turli guruhlar ulardan erkin va qulay foydalana olishiga qarab ham baholash kerak."
+      }
+    ]
+  },
+
+  // ==================== C2 ====================
+  {
+    id: "r29",
+    title: "The Paradox of Expertise",
+    level: "C2",
+    text: `Expertise is commonly associated with the ability to recognise patterns that remain invisible to the inexperienced. Years of practice allow specialists to distinguish meaningful signals from incidental variation, often making their judgements faster and more reliable. Yet the very frameworks that enable expert performance can also constrain it. When familiar categories become too deeply established, unusual evidence may be dismissed because it does not fit an accepted explanation. This is not simply a matter of arrogance; it can arise from the cognitive efficiency that expertise itself requires. No professional can reconsider every assumption from first principles each time a decision is made. The difficulty is therefore to preserve the advantages of accumulated knowledge without allowing it to become immune to challenge. In research, this may involve actively seeking disconfirming evidence. In medicine, it may mean reconsidering an initial diagnosis when new symptoms emerge. In organisations, it can require giving less experienced colleagues a genuine opportunity to question established procedures. Expertise is most valuable not when it eliminates uncertainty, but when it provides the discipline to navigate uncertainty while remaining responsive to evidence that could overturn an earlier conclusion.`,
+    vocab: [
+      { en: "incidental", uz: "tasodifiy" },
+      { en: "constrain", uz: "cheklamoq" },
+      { en: "framework", uz: "konseptual tizim" },
+      { en: "disconfirming", uz: "qarama-qarshi dalil keltiruvchi" },
+      { en: "responsive", uz: "moslashuvchan" }
+    ],
+    questions: [
+      {
+        id: "r29-q1",
+        q: "What is the paradox of expertise described in the passage?",
+        options: ["Experts never recognise patterns.", "Practice always makes decisions slower.", "The knowledge that improves judgement can also make experts resistant to unusual evidence.", "Inexperienced people are always more reliable."],
+        answer: 2,
+        explain: "Mutaxassislik to‘g‘ri naqshlarni tez aniqlashga yordam beradi, biroq noodatiy dalillarni rad etishga ham olib kelishi mumkin."
+      },
+      {
+        id: "r29-q2",
+        q: "Why does the writer reject arrogance as the only explanation?",
+        options: ["Experts never make mistakes.", "Established categories can influence judgement because they make thinking more efficient.", "Experts have no established frameworks.", "Unusual evidence is never important."],
+        answer: 1,
+        explain: "Muammo faqat kibrda emas; tanish fikrlash tizimlari samaradorlikni oshirishi bilan birga fikrlashni cheklashi ham mumkin."
+      },
+      {
+        id: "r29-q3",
+        q: "What does the final sentence suggest about genuine expertise?",
+        options: ["It guarantees certainty.", "It requires rejecting previous knowledge.", "It depends on following established procedures without question.", "It combines informed judgement with openness to contrary evidence."],
+        answer: 3,
+        explain: "Haqiqiy mutaxassislik bilimga asoslangan qaror va unga zid dalillarga ochiqlikni birlashtiradi."
+      }
+    ]
+  },
+  {
+    id: "r30",
+    title: "Memory, History, and Collective Identity",
+    level: "C2",
+    text: `Collective memory is often invoked as though a community possessed a single, stable account of its past. In practice, remembrance is selective, contested, and continually reconstructed. Public monuments, school curricula, family narratives, and commemorative ceremonies all contribute to the stories through which societies interpret their origins and obligations. These stories can sustain solidarity, particularly when they acknowledge experiences that were previously ignored. They can also simplify complex events into moral narratives that divide historical actors into unambiguous heroes and villains. The problem is not that communities remember selectively; no account can include every detail. Rather, difficulties arise when selection is mistaken for completeness or when one interpretation is protected from scrutiny because it has become central to group identity. Historical revision, in this sense, need not imply that facts are arbitrary or that all interpretations are equally defensible. It can instead represent an effort to incorporate neglected evidence, reconsider inherited assumptions, and distinguish what is documented from what has been mythologised. A mature relationship with the past requires neither unquestioning reverence nor reflexive rejection. It requires a willingness to acknowledge uncertainty, preserve inconvenient evidence, and recognise that a community's identity can evolve without losing its historical foundations.`,
+    vocab: [
+      { en: "collective", uz: "jamoaviy" },
+      { en: "contested", uz: "bahsli" },
+      { en: "commemorative", uz: "xotirlashga oid" },
+      { en: "scrutiny", uz: "sinchiklab tekshirish" },
+      { en: "mythologised", uz: "afsonalashtirilgan" }
+    ],
+    questions: [
+      {
+        id: "r30-q1",
+        q: "Why does the writer describe collective memory as reconstructed?",
+        options: ["Communities forget every historical event.", "Historical facts change every year.", "Societies continually select and reinterpret stories about their past.", "Monuments always provide complete accounts."],
+        answer: 2,
+        explain: "Jamoaviy xotira jamiyatning o‘tmish haqidagi hikoyalarni tanlashi va qayta talqin qilishi orqali shakllanadi."
+      },
+      {
+        id: "r30-q2",
+        q: "What distinction does the writer make about historical revision?",
+        options: ["It means all historical claims are equally valid.", "It can reconsider assumptions without treating facts as arbitrary.", "It requires rejecting every national tradition.", "It proves that historical evidence is useless."],
+        answer: 1,
+        explain: "Tarixni qayta ko‘rib chiqish faktlarni ahamiyatsiz deb bilish emas, balki dalillar va oldingi taxminlarni qayta baholashdir."
+      },
+      {
+        id: "r30-q3",
+        q: "What does a 'mature relationship with the past' involve?",
+        options: ["Accepting every traditional account without question", "Removing all controversial monuments", "Avoiding discussions of uncertainty", "Respecting historical foundations while remaining willing to reassess interpretations"],
+        answer: 3,
+        explain: "O‘tmishga yetuk munosabat ko‘r-ko‘rona qabul qilish yoki butunlay rad etish emas, balki dalillarga ochiq va tanqidiy qarashdir."
+      }
+    ]
+  },
+  {
+    id: "r31",
+    title: "Scientific Uncertainty and Public Trust",
+    level: "C2",
+    text: `Public discussions of science frequently reveal an uncomfortable tension between uncertainty and authority. Scientific findings are provisional in the sense that they remain open to revision when stronger evidence becomes available. Yet public institutions are often expected to deliver clear recommendations, sometimes before the available evidence permits definitive conclusions. If researchers emphasise uncertainty, audiences may interpret their caution as incompetence; if officials communicate with excessive confidence, later revisions may be taken as proof that the original advice was deceptive. Neither response reflects the logic of scientific inquiry particularly well. Uncertainty is not a uniform condition: evidence may be strong on one aspect of a problem and weak on another, while the practical consequences of waiting for further information may differ considerably. Responsible communication therefore requires more than attaching a general disclaimer to a statement. It involves explaining what is known, what remains unresolved, how confident researchers are, and which decisions are robust across several plausible scenarios. Institutions must also distinguish a legitimate change of view in response to new evidence from an attempt to conceal previous errors. Public trust is unlikely to depend on the appearance of infallibility. It is more plausibly sustained by transparent reasoning, consistent standards of evidence, and a willingness to explain why recommendations change as understanding develops.`,
+    vocab: [
+      { en: "provisional", uz: "yakuniy bo‘lmagan" },
+      { en: "definitive", uz: "qat'iy, yakuniy" },
+      { en: "incompetence", uz: "qobiliyatsizlik" },
+      { en: "disclaimer", uz: "mas'uliyatni cheklovchi izoh" },
+      { en: "infallibility", uz: "xato qilmaslik xususiyati" }
+    ],
+    questions: [
+      {
+        id: "r31-q1",
+        q: "What tension does the passage identify?",
+        options: ["Scientists refuse to collect evidence.", "The public never wants recommendations.", "Scientific knowledge can be uncertain while institutions are expected to give clear advice.", "Research findings are never revised."],
+        answer: 2,
+        explain: "Ilmiy xulosalar yangi dalillar asosida o‘zgarishi mumkin, ammo jamoatchilik muassasalardan aniq tavsiyalar kutadi."
+      },
+      {
+        id: "r31-q2",
+        q: "Why can excessive confidence damage public trust?",
+        options: ["It prevents researchers from publishing.", "Later changes may be interpreted as evidence that earlier advice was deceptive.", "It makes all evidence stronger.", "It guarantees that recommendations remain unchanged."],
+        answer: 1,
+        explain: "Haddan tashqari qat'iy bayonotlar keyinchalik o‘zgartirilsa, odamlar dastlabki tavsiyalar chalg‘ituvchi bo‘lgan deb o‘ylashlari mumkin."
+      },
+      {
+        id: "r31-q3",
+        q: "According to the writer, what best supports public trust in science?",
+        options: ["Pretending that uncertainty does not exist", "Never changing recommendations", "Using technical language without explanation", "Transparent reasoning and clear explanations for revised recommendations"],
+        answer: 3,
+        explain: "Ilm-fanga ishonch shaffof fikrlash va tavsiyalar nima sababdan o‘zgarishini tushuntirish orqali mustahkamlanadi."
+      }
+    ]
+  }
 ];
