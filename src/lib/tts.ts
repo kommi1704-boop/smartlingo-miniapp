@@ -3,6 +3,8 @@
 // on the phone/computer, so the app ranks the available English voices, lets the learner choose one,
 // and plays text sentence by sentence (more reliable and easier to follow than one long utterance).
 
+import { NEURAL_VOICES, getNeural, loadNeural, neuralFailed, neuralPrefetch, neuralSay, neuralStop, unlockAudio } from './neural';
+
 export function ttsAvailable(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 }
@@ -14,13 +16,17 @@ const PREF_KEY = 'smartlingo:tts';
 export interface TtsPrefs {
   voiceURI?: string; // undefined = automatic (best voice found)
   rate: number; // 0.5 .. 1.2
+  /** 'natural' = optional downloaded neural voice (see neural.ts); 'device' = the phone's own voice. */
+  engine: 'device' | 'natural';
+  /** Natural voice id (see NEURAL_VOICES). */
+  nVoice: string;
 }
 
 export const RATE_SLOW = 0.6;
 export const RATE_NORMAL = 0.8;
 export const RATE_FAST = 1;
 
-const DEFAULT_PREFS: TtsPrefs = { rate: RATE_NORMAL };
+const DEFAULT_PREFS: TtsPrefs = { rate: RATE_NORMAL, engine: 'device', nVoice: 'af_heart' };
 let prefs: TtsPrefs | null = null;
 const prefListeners = new Set<() => void>();
 
@@ -32,6 +38,8 @@ export function getPrefs(): TtsPrefs {
     prefs = {
       voiceURI: typeof parsed.voiceURI === 'string' ? parsed.voiceURI : undefined,
       rate: typeof parsed.rate === 'number' && parsed.rate >= 0.4 && parsed.rate <= 1.3 ? parsed.rate : DEFAULT_PREFS.rate,
+      engine: parsed.engine === 'natural' ? 'natural' : 'device',
+      nVoice: typeof parsed.nVoice === 'string' && NEURAL_VOICES.some((v) => v.id === parsed.nVoice) ? parsed.nVoice : DEFAULT_PREFS.nVoice,
     };
   } catch {
     prefs = { ...DEFAULT_PREFS };
@@ -98,10 +106,16 @@ function genderOf(name: string): 'f' | 'm' | '?' {
   return '?';
 }
 
+/** If the learner turned the natural voice on earlier, load it (from the browser cache) in the background. */
+export function warmNatural(): void {
+  if (getPrefs().engine === 'natural' && getNeural().status === 'idle') loadNeural().catch(() => undefined);
+}
+
 let voicesReady: Promise<SpeechSynthesisVoice[]> | null = null;
 
 /** Voices load asynchronously in most browsers; resolves with whatever the device offers (maybe empty). */
 export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
+  warmNatural();
   if (!ttsAvailable()) return Promise.resolve([]);
   if (voicesReady) return voicesReady;
   voicesReady = new Promise((resolve) => {
@@ -163,6 +177,7 @@ let session = 0; // bumping this cancels any running chain
 
 export function stopSpeaking(): void {
   session++;
+  neuralStop();
   if (!ttsAvailable()) return;
   try {
     window.speechSynthesis.cancel();
@@ -211,6 +226,19 @@ function utter(text: string, voice: VoiceChoice | undefined, rate: number, pitch
   }
 }
 
+/** True when the learner chose the natural voice and it has finished loading. */
+function naturalOn(): boolean {
+  return getPrefs().engine === 'natural' && getNeural().status === 'ready';
+}
+
+/** [first speaker, second speaker] natural voice ids; the second one is of the opposite gender. */
+function naturalPair(): [string, string] {
+  const id = getPrefs().nVoice;
+  const first = NEURAL_VOICES.find((v) => v.id === id) ?? NEURAL_VOICES[0];
+  const other = NEURAL_VOICES.find((v) => v.gender !== first.gender && v.id !== first.id) ?? NEURAL_VOICES[2];
+  return [first.id, other.id];
+}
+
 /** Speaks one short text (a word or sentence) with the learner's chosen voice and speed. */
 export function speak(text: string, opts: { rate?: number; onEnd?: () => void; onError?: () => void } = {}): boolean {
   if (!ttsAvailable()) return false;
@@ -219,11 +247,29 @@ export function speak(text: string, opts: { rate?: number; onEnd?: () => void; o
   const voice = primaryVoice();
   const rate = opts.rate ?? getPrefs().rate;
   const chunks = splitSentences(text);
+  const [nv] = naturalPair();
+  if (naturalOn()) unlockAudio();
   const step = (i: number) => {
     if (my !== session) return;
     if (i >= chunks.length) return opts.onEnd?.();
-    const ok = utter(chunks[i], voice, rate, 1, () => step(i + 1), () => opts.onError?.());
-    if (!ok) opts.onError?.();
+    const device = () => {
+      const ok = utter(chunks[i], voice, rate, 1, () => step(i + 1), () => opts.onError?.());
+      if (!ok) opts.onError?.();
+    };
+    if (naturalOn()) {
+      neuralPrefetch(chunks[i + 1], nv);
+      neuralSay(
+        chunks[i],
+        nv,
+        rate,
+        () => my === session,
+        () => step(i + 1),
+        (soft) => {
+          if (!soft) neuralFailed();
+          device();
+        },
+      );
+    } else device();
   };
   step(0);
   return true;
@@ -274,6 +320,8 @@ export function playLines(lines: DialogueLine[], opts: PlayOpts): boolean {
   lines.forEach((l, line) => splitSentences(l.text).forEach((text) => chunks.push({ text, line, role: l.role })));
   const start = Math.max(0, chunks.findIndex((c) => c.line >= (opts.startAt ?? 0)));
   let lastLine = -1;
+  const nv = naturalPair();
+  if (naturalOn()) unlockAudio();
 
   const step = (i: number) => {
     if (my !== session) return;
@@ -286,19 +334,31 @@ export function playLines(lines: DialogueLine[], opts: PlayOpts): boolean {
     const voice = c.role === 1 && v1 ? v1 : v0;
     const pitch = c.role === 1 && !v1 ? 1.12 : c.role === 0 && !v1 && lines.some((l) => l.role === 1) ? 0.96 : 1;
     const nextIsNewLine = !chunks[i + 1] || chunks[i + 1].line !== c.line;
-    const ok = utter(
-      c.text,
-      voice,
-      rate,
-      pitch,
-      () => {
-        if (my === session) setTimeout(() => step(i + 1), nextIsNewLine ? 420 : 120);
-      },
-      () => {
-        if (my === session) opts.onEnd();
-      },
-    );
-    if (!ok) opts.onEnd();
+    const next = () => {
+      if (my === session) setTimeout(() => step(i + 1), nextIsNewLine ? 420 : 120);
+    };
+    const fail = () => {
+      if (my === session) opts.onEnd();
+    };
+    const device = () => {
+      const ok = utter(c.text, voice, rate, pitch, next, fail);
+      if (!ok) opts.onEnd();
+    };
+    if (naturalOn()) {
+      const id = (c: Chunk) => (c.role === 1 ? nv[1] : nv[0]);
+      if (chunks[i + 1]) neuralPrefetch(chunks[i + 1].text, id(chunks[i + 1]));
+      neuralSay(
+        c.text,
+        id(c),
+        rate,
+        () => my === session,
+        next,
+        (soft) => {
+          if (!soft) neuralFailed();
+          device();
+        },
+      );
+    } else device();
   };
   step(start < 0 ? 0 : start);
   return true;

@@ -18,7 +18,7 @@ Progress is stored on the user's device (localStorage). Two optional serverless 
 | Vocabulary | 380 words (A1–B2; topics incl. technology, economics, arts, science, nature, travel, sport), flashcards, quiz, matching, Leitner spaced repetition (1/2/4/8/16-day boxes). |
 | Grammar | 34 lessons with exercises. |
 | Reading | 20 passages with questions. Select text to **highlight** it with a marker (4 colours, saved on the device); "Matnni tinglash" reads along line by line. |
-| Listening | 5 activities. Audio is **device text-to-speech** (Web Speech API), not recorded human audio. Pick a voice and speed (default is slower), two different voices read the two speakers when the device has them, and the transcript is highlightable. |
+| Listening | 5 activities. Audio is **device text-to-speech** (Web Speech API), not recorded human audio. Pick a voice and speed (default is slower), optionally switch on the free **natural voice** (Settings → Ovoz), two different voices read the two speakers when the device has them, and the transcript is highlightable. |
 | Speaking | 30 prompts + self-check list. **There is no pronunciation analysis.** |
 | Writing | 20 prompts + a **rule-based** checker (common mistakes only; it does not understand meaning). |
 | Tutor "Lingo" | **Demo mode** by default: keyword-based answers from the app's own word list and grammar lessons, clearly labelled "Demo". It is *not* AI. Live mode needs the server (section 6). |
@@ -141,6 +141,7 @@ Safety notes:
 - **Data is stored on the device only.** Clearing the browser/Telegram cache, or using another phone, starts fresh.
   A Supabase path is prepared — see `supabase/README.md`.
 - Listening audio is device TTS; voice quality depends on the phone. The app ranks voices and lets the learner choose one (Settings → Ovoz), but it cannot make a weak device voice sound human; installing an "Enhanced / Natural" English voice on the phone is the real fix.
+- **Natural voice (optional, beta):** uses the open-source Kokoro model (Apache-2.0), downloaded once (about 90 MB) from a CDN and run on the device with WebAssembly. It is English-only, may be slow on old phones, and falls back to the device voice on any error. It was tested here with a stand-in for the model (the real download is blocked in the build sandbox), so the first real run is on your phone. The code that loads it is in `src/lib/neural.ts`; if the CDN addresses there ever stop working, change `SOURCES`.
 - No pronunciation scoring, no speech recognition.
 - Placement level is an estimate from 21 questions, not an official CEFR result.
 - The demo tutor and writing checker are rule-based and miss many things.
