@@ -115,17 +115,41 @@ Put the printed `https://….trycloudflare.com` address into BotFather's menu-bu
 
 ## 6. (Optional) Live AI tutor
 
-Without any key the tutor runs in **Demo mode** and says so in the interface.
+Without any key the tutor runs in **Demo mode** and says so in the interface. Pick ONE provider (Groq is the easiest to set up):
 
-To enable live mode on Vercel add the environment variables:
+**Option A — Google Gemini (has a free tier)**
+
+1. Create a free key in Google AI Studio (https://aistudio.google.com) → "Get API key".
+2. In Vercel → Settings → Environment Variables add:
 
 | Name | Value |
 |---|---|
-| `ANTHROPIC_API_KEY` | key from https://console.anthropic.com (this is **paid per use**) |
-| `AI_MODEL` | optional, default `claude-haiku-5-5` |
+| `GEMINI_API_KEY` | your Google AI Studio key |
 | `TELEGRAM_BOT_TOKEN` | already set in step 4.3 — needed to verify that requests come from real Telegram users |
+| `GEMINI_MODEL` | optional, default `gemini-3.5-flash-lite` |
 
-Redeploy. The app asks `/api/tutor` whether live mode exists and switches the label automatically.
+3. Redeploy.
+
+Read this before using the free tier: according to Google's pricing page, on the **free tier your prompts and answers may be used to improve Google products**, and limits per minute/day depend on your project (see https://aistudio.google.com/rate-limit). The app tells children not to write personal data, but for a children's product you should decide whether that is acceptable. Paid Gemini and Claude do not use the data that way by default, but check each provider's current terms.
+
+**Option B — Groq (free plan, simpler sign-up, no Google Cloud project)**
+
+1. Create an account at https://console.groq.com and make a key at https://console.groq.com/keys.
+2. In Vercel add `GROQ_API_KEY` (and `TELEGRAM_BOT_TOKEN` as above), then Redeploy.
+3. Default model is `llama-3.3-70b-versatile`; change it with `GROQ_MODEL` (for example `llama-3.1-8b-instant` is smaller and faster). Limits depend on your account: see https://console.groq.com/settings/limits.
+4. Small open models write weaker Uzbek than the big commercial ones; if the Uzbek explanations look poor, try another model or provider. Check Groq's current data-use terms before putting children's messages through it.
+
+**Option C — Claude (paid per use)**
+
+| Name | Value |
+|---|---|
+| `ANTHROPIC_API_KEY` | key from https://console.anthropic.com |
+| `AI_MODEL` | optional, default `claude-haiku-5-5` |
+| `TELEGRAM_BOT_TOKEN` | as above |
+
+If several keys exist the order is Gemini, then Groq, then Claude; set `AI_PROVIDER=gemini|groq|anthropic` to force one.
+
+Redeploy. The app asks `/api/tutor` whether live mode exists and switches the label automatically. If the AI service is busy or returns an error, the tutor falls back to a demo answer for that message.
 
 Safety notes:
 - The key lives only on the server. It is never in the frontend bundle.

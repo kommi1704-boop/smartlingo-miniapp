@@ -2,7 +2,11 @@
 //  GET  /api/tutor  -> { live: boolean }   (is an AI key configured?)
 //  POST /api/tutor  -> { reply: string }   (needs valid Telegram initData)
 //
-// The AI key lives ONLY in server environment variables (ANTHROPIC_API_KEY). It never reaches the browser.
+// The AI key lives ONLY in server environment variables. It never reaches the browser.
+// Providers (first one that has a key wins; set AI_PROVIDER=anthropic|gemini to force one):
+//   GEMINI_API_KEY     -> Google Gemini (has a free tier; GEMINI_MODEL optional, default below)
+//   GROQ_API_KEY       -> Groq (has a free plan, simple sign-up; GROQ_MODEL optional)
+//   ANTHROPIC_API_KEY  -> Claude (paid per use; AI_MODEL optional)
 import crypto from 'node:crypto';
 
 interface Req {
@@ -73,19 +77,111 @@ Rules:
 - Stay on topic: English learning only. Politely refuse unsafe, adult or off-topic requests and steer back to English practice.
 - Never ask for or store personal data (address, phone, passwords). Never claim to be human.`;
 
+type Provider = { kind: 'gemini' | 'groq' | 'anthropic'; key: string };
+
+function pickProvider(): Provider | null {
+  const g = process.env.GEMINI_API_KEY?.trim();
+  const q = process.env.GROQ_API_KEY?.trim();
+  const a = process.env.ANTHROPIC_API_KEY?.trim();
+  const want = (process.env.AI_PROVIDER ?? '').toLowerCase();
+  if (want === 'anthropic' && a) return { kind: 'anthropic', key: a };
+  if (want === 'gemini' && g) return { kind: 'gemini', key: g };
+  if (want === 'groq' && q) return { kind: 'groq', key: q };
+  if (g) return { kind: 'gemini', key: g };
+  if (q) return { kind: 'groq', key: q };
+  if (a) return { kind: 'anthropic', key: a };
+  return null;
+}
+
+class UpstreamError extends Error {
+  constructor(public status: number) {
+    super(`upstream_${status}`);
+  }
+}
+
+type Msg = { role: 'user' | 'assistant'; content: string };
+
+const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+
+/** Google Gemini generateContent. The key goes in a header, never in the URL (URLs end up in logs). */
+async function askGemini(key: string, system: string, messages: Msg[]): Promise<string> {
+  // Gemini wants roles "user"/"model", a first "user" turn, and alternating turns.
+  const contents: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+  for (const m of messages) {
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    const last = contents[contents.length - 1];
+    if (!last && role === 'model') continue;
+    if (last && last.role === role) last.parts[0].text += `\n${m.content}`;
+    else contents.push({ role, parts: [{ text: m.content }] });
+  }
+  const model = (process.env.GEMINI_MODEL || GEMINI_DEFAULT_MODEL).replace(/[^A-Za-z0-9._-]/g, '');
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      // generous cap: newer Gemini models may count internal "thinking" tokens in this limit too
+      generationConfig: { maxOutputTokens: 1024 },
+    }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!r.ok) throw new UpstreamError(r.status);
+  const data = (await r.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .filter((p) => !p.thought && typeof p.text === 'string')
+    .map((p) => p.text as string)
+    .join('')
+    .trim();
+}
+
+const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+
+/** Groq (OpenAI-compatible chat completions). */
+async function askGroq(key: string, system: string, messages: Msg[]): Promise<string> {
+  const model = (process.env.GROQ_MODEL || GROQ_DEFAULT_MODEL).replace(/[^A-Za-z0-9._/-]/g, '');
+  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'system', content: system }, ...messages],
+      max_completion_tokens: 600,
+      temperature: 0.6,
+    }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!r.ok) throw new UpstreamError(r.status);
+  const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
+  return (data.choices?.[0]?.message?.content ?? '').trim();
+}
+
+async function askClaude(key: string, system: string, messages: Msg[]): Promise<string> {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: process.env.AI_MODEL || 'claude-haiku-5-5', max_tokens: 500, system, messages }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!r.ok) throw new UpstreamError(r.status);
+  const data = (await r.json()) as { content?: { type: string; text?: string }[] };
+  return (data.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join('\n').trim();
+}
+
 export default async function handler(req: Req, res: Res): Promise<void> {
   res.setHeader('Cache-Control', 'no-store');
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const provider = pickProvider();
 
   if (req.method === 'GET') {
-    res.status(200).json({ live: Boolean(apiKey) });
+    res.status(200).json({ live: Boolean(provider) });
     return;
   }
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'method_not_allowed' });
     return;
   }
-  if (!apiKey) {
+  if (!provider) {
     res.status(503).json({ error: 'not_configured' });
     return;
   }
@@ -124,28 +220,17 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const age = Math.min(99, Math.max(6, Number(body.age) || 12));
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: process.env.AI_MODEL || 'claude-haiku-5-5',
-        max_tokens: 500,
-        system: SYSTEM(level, name, age),
-        messages,
-      }),
-    });
-    if (!r.ok) {
-      res.status(502).json({ error: 'upstream_error' });
-      return;
-    }
-    const data = (await r.json()) as { content?: { type: string; text?: string }[] };
-    const reply = (data.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join('\n').trim();
+    const system = SYSTEM(level, name, age);
+    const ask = provider.kind === 'gemini' ? askGemini : provider.kind === 'groq' ? askGroq : askClaude;
+    const reply = await ask(provider.key, system, messages);
     if (!reply) {
       res.status(502).json({ error: 'empty_reply' });
       return;
     }
     res.status(200).json({ reply });
-  } catch {
-    res.status(502).json({ error: 'upstream_unreachable' });
+  } catch (e) {
+    if (e instanceof UpstreamError && e.status === 429) res.status(429).json({ error: 'upstream_busy' });
+    else if (e instanceof UpstreamError) res.status(502).json({ error: 'upstream_error' });
+    else res.status(502).json({ error: 'upstream_unreachable' });
   }
 }
