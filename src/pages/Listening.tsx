@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LISTENING } from '../data/listening';
 import { useApp } from '../store/store';
 import { navigate } from '../lib/router';
 import { ContentList, type ListItem } from '../components/ContentList';
 import { QuizRunner } from '../components/QuizRunner';
-import { Button, Card, Chip, Empty, LevelBadge, Notice, PageHeader, Pill } from '../components/ui';
-import { speakTranscript, stopSpeaking, ttsAvailable } from '../lib/tts';
+import { Button, Card, Empty, LevelBadge, Notice, PageHeader, Pill } from '../components/ui';
+import { parseTranscript, playLines, setPrefs, stopSpeaking, ttsAvailable } from '../lib/tts';
+import { Highlightable } from '../components/Highlightable';
+import { SpeedChips, VoicePicker, useVoices } from '../components/VoicePicker';
 
 export function ListeningList() {
   const s = useApp();
@@ -42,10 +44,14 @@ export function ListeningPage({ id }: { id: string }) {
   const s = useApp();
   const act = LISTENING.find((l) => l.id === id);
   const tts = ttsAvailable();
+  const { prefs } = useVoices();
   const [playing, setPlaying] = useState(false);
-  const [rate, setRate] = useState(0.9);
+  const [active, setActive] = useState(-1);
   const [showText, setShowText] = useState(!tts);
+  const [showVoice, setShowVoice] = useState(false);
   const [quiz, setQuiz] = useState(false);
+
+  const lines = useMemo(() => (act ? parseTranscript(act.transcript) : []), [act]);
 
   useEffect(() => () => stopSpeaking(), []);
 
@@ -54,14 +60,33 @@ export function ListeningPage({ id }: { id: string }) {
   const idx = LISTENING.findIndex((l) => l.id === id);
   const next = LISTENING[idx + 1];
 
-  function play() {
+  function play(from = 0, rate?: number) {
+    setPlaying(true);
+    setActive(from);
+    playLines(lines.map((l) => ({ text: l.speak, role: l.role })), {
+      startAt: from,
+      rate,
+      onLine: setActive,
+      onEnd: () => {
+        setPlaying(false);
+        setActive(-1);
+      },
+    });
+  }
+
+  function toggle() {
     if (playing) {
       stopSpeaking();
       setPlaying(false);
-      return;
+      setActive(-1);
+    } else {
+      play(0);
     }
-    setPlaying(true);
-    speakTranscript(act!.transcript, rate, () => setPlaying(false));
+  }
+
+  function changeSpeed(r: number) {
+    setPrefs({ rate: r });
+    if (playing) play(Math.max(0, active), r);
   }
 
   return (
@@ -76,14 +101,13 @@ export function ListeningPage({ id }: { id: string }) {
             <>
               <p className="text-xs text-muted">Qurilma ovozi (TTS) — yozib olingan audio emas</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <Button icon={playing ? 'stop' : 'play'} onClick={play}>{playing ? 'To‘xtatish' : 'Tinglash'}</Button>
-                <div className="flex items-center gap-1.5 text-xs text-muted">
-                  Tezlik:
-                  {[0.7, 0.9, 1.1].map((r) => (
-                    <Chip key={r} active={rate === r} onClick={() => { stopSpeaking(); setPlaying(false); setRate(r); }}>{r === 0.7 ? 'Sekin' : r === 0.9 ? 'Oddiy' : 'Tez'}</Chip>
-                  ))}
-                </div>
+                <Button icon={playing ? 'stop' : 'play'} onClick={toggle}>{playing ? 'To‘xtatish' : 'Tinglash'}</Button>
+                <SpeedChips rate={prefs.rate} onChange={changeSpeed} />
               </div>
+              <button type="button" className="mt-2.5 text-xs font-semibold text-indigo-600 underline dark:text-indigo-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
+                {showVoice ? 'Ovoz sozlamalarini yopish' : 'Ovozni almashtirish / ovoz tushunarsiz bo‘lsa'}
+              </button>
+              {showVoice && <div className="slide-up mt-2 border-t border-line pt-3"><VoicePicker /></div>}
             </>
           ) : (
             <p className="text-sm">🔇 Bu qurilmada ovoz mavjud emas. Mashq transkript asosida bajariladi.</p>
@@ -95,8 +119,14 @@ export function ListeningPage({ id }: { id: string }) {
             {showText ? 'Transkriptni yashirish' : 'Transkriptni ko‘rsatish'}
           </button>
           {showText && (
-            <div className="slide-up mt-2 space-y-1.5 rounded-2xl border border-line p-3.5 text-[15px] leading-relaxed">
-              {act.transcript.split('\n').filter(Boolean).map((line, i) => <p key={i}>{line}</p>)}
+            <div className="slide-up mt-2 rounded-2xl border border-line p-3 text-[15px] leading-relaxed">
+              <Highlightable
+                storeKey={`listening:${act.id}`}
+                paragraphs={lines.map((l) => l.display)}
+                activeIndex={active}
+                onPlayLine={tts ? (i) => play(i) : undefined}
+                className="space-y-1.5"
+              />
             </div>
           )}
         </div>
@@ -105,7 +135,7 @@ export function ListeningPage({ id }: { id: string }) {
 
       <div className="mt-4">
         {!quiz ? (
-          <Button size="lg" full icon="play" onClick={() => { stopSpeaking(); setPlaying(false); setQuiz(true); }}>{res ? 'Savollarni qayta yechish' : 'Savollarga o‘tish'}</Button>
+          <Button size="lg" full icon="play" onClick={() => { stopSpeaking(); setPlaying(false); setActive(-1); setQuiz(true); }}>{res ? 'Savollarni qayta yechish' : 'Savollarga o‘tish'}</Button>
         ) : (
           <>
             <QuizRunner

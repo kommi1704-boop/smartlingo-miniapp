@@ -1,6 +1,7 @@
 import type { WritingPrompt } from '../types';
+import { WRITING_MORE } from './writing-more';
 
-export const WRITING: WritingPrompt[] = [
+const WRITING_BASE: WritingPrompt[] = [
   {
     id: "w01",
     level: "A1",
@@ -82,3 +83,5 @@ export const WRITING: WritingPrompt[] = [
     keywords: ["inspire", "admire", "determination", "manage to", "whenever", "thanks to", "role model", "respected"],
   },
 ];
+
+export const WRITING: WritingPrompt[] = [...WRITING_BASE, ...WRITING_MORE];

@@ -1,16 +1,20 @@
-import { speak, ttsAvailable } from '../lib/tts';
+import { useEffect } from 'react';
+import { loadVoices, speak, ttsAvailable } from '../lib/tts';
 import { Icon } from './Icon';
 import { cx } from '../lib/utils';
 
-/** Reads English text aloud with the device voice. Hidden when the device has no speech synthesis. */
-export function SpeakButton({ text, className, label = 'Talaffuzni tinglash' }: { text: string; className?: string; label?: string }) {
+/** Reads English text aloud with the device voice (the voice/speed are chosen in Settings). Hidden when the device has no speech synthesis. */
+export function SpeakButton({ text, className, label = 'Talaffuzni tinglash', rate }: { text: string; className?: string; label?: string; rate?: number }) {
+  useEffect(() => {
+    void loadVoices();
+  }, []);
   if (!ttsAvailable()) return null;
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        speak(text, { rate: 0.85 });
+        speak(text, rate ? { rate } : {});
       }}
       aria-label={label}
       title={label}

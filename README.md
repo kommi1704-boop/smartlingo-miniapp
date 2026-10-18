@@ -15,14 +15,15 @@ Progress is stored on the user's device (localStorage). Two optional serverless 
 |---|---|
 | Placement test (Pre-A1 → C2) | 21 questions, 3 per level, adaptive stop. Result is labelled **"estimate, not an official CEFR certificate"**. |
 | Roadmap + daily plan | Generated from level, goal, and minutes/day. Plan updates from what you finished today. |
-| Vocabulary | 130 words, flashcards, quiz, matching, Leitner spaced repetition (1/2/4/8/16-day boxes). |
-| Grammar | 14 lessons with exercises. |
-| Reading | 10 passages with questions. |
-| Listening | 5 activities. Audio is **device text-to-speech** (Web Speech API), not recorded human audio. A transcript is always available. |
-| Speaking | Prompts + self-check list. **There is no pronunciation analysis.** |
-| Writing | 8 prompts + a **rule-based** checker (common mistakes only; it does not understand meaning). |
+| Vocabulary | 380 words (A1–B2; topics incl. technology, economics, arts, science, nature, travel, sport), flashcards, quiz, matching, Leitner spaced repetition (1/2/4/8/16-day boxes). |
+| Grammar | 34 lessons with exercises. |
+| Reading | 20 passages with questions. Select text to **highlight** it with a marker (4 colours, saved on the device); "Matnni tinglash" reads along line by line. |
+| Listening | 5 activities. Audio is **device text-to-speech** (Web Speech API), not recorded human audio. Pick a voice and speed (default is slower), two different voices read the two speakers when the device has them, and the transcript is highlightable. |
+| Speaking | 30 prompts + self-check list. **There is no pronunciation analysis.** |
+| Writing | 20 prompts + a **rule-based** checker (common mistakes only; it does not understand meaning). |
 | Tutor "Lingo" | **Demo mode** by default: keyword-based answers from the app's own word list and grammar lessons, clearly labelled "Demo". It is *not* AI. Live mode needs the server (section 6). |
-| Resources | 35 entries; URLs were checked, and 2 entries intentionally have no link. |
+| Resources | 51 entries (British Council, Cambridge English, VOA, TED-Ed, NASA Space Place, National Geographic Kids, …). Every new link was opened while writing the list and the description only says what the page said; 2 older entries intentionally have no link. Sites can change, so check before relying on one. |
+| Look & feel | "Lingo" the mascot (original SVG, moods), confetti and XP pop-ups, optional sound effects (Settings → Sound). |
 | Progress | XP, streak, badges, mistake notebook, charts. |
 | Dark mode | Settings → follows Telegram theme or manual. |
 
@@ -139,19 +140,19 @@ Safety notes:
 
 - **Data is stored on the device only.** Clearing the browser/Telegram cache, or using another phone, starts fresh.
   A Supabase path is prepared — see `supabase/README.md`.
-- Listening audio is device TTS; voice quality depends on the phone.
+- Listening audio is device TTS; voice quality depends on the phone. The app ranks voices and lets the learner choose one (Settings → Ovoz), but it cannot make a weak device voice sound human; installing an "Enhanced / Natural" English voice on the phone is the real fix.
 - No pronunciation scoring, no speech recognition.
 - Placement level is an estimate from 21 questions, not an official CEFR result.
 - The demo tutor and writing checker are rule-based and miss many things.
-- The in-app word list (130) and lessons are a starter set; extend them in `src/data/`.
+- The in-app word list (380) and lessons are a starter set; extend them in `src/data/`. Most of the added vocabulary, passages, prompts and grammar lessons were written for this app (not copied from the sites in Resources). Uzbek translations and IPA were not reviewed by a human, so please have a teacher skim them.
 
 ## 8. Testing status (please read)
 
 The package registry was blocked in the environment where this project was written, so
-`npm install`, the real `vite build`, and `tsc` were **not run there**. Instead the code was bundled with
+`npm install` and the real `vite build` were **not run there** (they were later run on the owner's machine for the first version; the latest additions have not been through that yet). Only the data files were type-checked with `tsc --strict`. Instead the code was bundled with
 esbuild + Tailwind and exercised in a real headless Chromium: landing, onboarding, placement test,
-all 19 screens, flashcards/quiz/matching, grammar quiz, tutor demo, writing feedback, dark mode, and
-persistence after reload all passed (~35 checks, no runtime errors).
+all 19 screens, flashcards/quiz/matching, grammar quiz, tutor demo, writing feedback, dark mode,
+persistence after reload, the highlighter, voice picker, mascot and sounds all passed (35 + 30 checks, no runtime errors).
 Because the real type-check has not run, `npm run typecheck` may report a few small type nits;
 `npm run build` does not depend on it. If `npm install` or the build shows an error, send it to me and I'll fix it.
 

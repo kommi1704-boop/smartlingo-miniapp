@@ -22,7 +22,8 @@ export function defaultState(): PersistedState {
     conversations: [],
     writing: [],
     speakingDone: {},
-    settings: { theme: 'auto', dailyWordGoal: 10, haptics: true, showTranslation: false },
+    highlights: {},
+    settings: { theme: 'auto', dailyWordGoal: 10, haptics: true, sound: true, showTranslation: false },
   };
 }
 

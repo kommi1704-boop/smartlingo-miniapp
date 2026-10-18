@@ -54,7 +54,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const inTabs = TABS.some((t) => t.path !== '/more' && isActive(path, t.path));
 
   return (
-    <div className="mx-auto flex h-dvh max-w-[1200px] bg-app md:gap-0">
+    <div className="app-bg mx-auto flex h-dvh max-w-[1200px] md:gap-0">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface p-4 md:flex">
         <A to="/" className="mb-5 flex items-center gap-2.5 px-2">

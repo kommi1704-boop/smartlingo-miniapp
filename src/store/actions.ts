@@ -1,8 +1,9 @@
 import type {
-  ChatMessage, ContentKind, Conversation, DayActivity, Mistake, PersistedState, Profile, Quiz, Settings,
+  ChatMessage, ContentKind, Conversation, DayActivity, HlColor, Mistake, PersistedState, Profile, Quiz, Settings,
 } from '../types';
+import { addRange, subtractRange, type HlSeg } from '../lib/highlights';
 import { getState, setState, resetState } from './store';
-import { celebrate, toast } from './ui';
+import { celebrate, showXp, toast } from './ui';
 import { today } from '../lib/dates';
 import { applyReview, markLearnedProgress, markReviewProgress } from '../lib/srs';
 import { BADGES, newBadges, xpLevel } from '../lib/gamification';
@@ -37,6 +38,7 @@ function afterChange(beforeXp: number): void {
 export function record(c: Counters): void {
   const before = getState().xp;
   setState((s) => bump(s, c));
+  if ((c.xp ?? 0) > 0) showXp(c.xp ?? 0);
   afterChange(before);
 }
 
@@ -246,3 +248,37 @@ export function resetAll(): void {
 }
 
 export { BADGES, haptic };
+
+// ---------- Text highlights ----------
+
+const hid = () => uid('hl');
+
+/** Highlights the given segments (replacing whatever they overlap). key = e.g. "reading:r01". */
+export function addHighlights(key: string, segs: HlSeg[], color: HlColor): void {
+  setState((s) => {
+    let list = s.highlights?.[key] ?? [];
+    for (const g of segs) list = addRange(list, g, color, hid);
+    return { ...s, highlights: { ...(s.highlights ?? {}), [key]: list } };
+  });
+}
+
+/** Removes highlighting from the given segments. */
+export function eraseHighlights(key: string, segs: HlSeg[]): void {
+  setState((s) => {
+    let list = s.highlights?.[key] ?? [];
+    for (const g of segs) list = subtractRange(list, g.p, g.s, g.e, hid);
+    return { ...s, highlights: { ...(s.highlights ?? {}), [key]: list } };
+  });
+}
+
+export function removeHighlight(key: string, id: string): void {
+  setState((s) => ({ ...s, highlights: { ...(s.highlights ?? {}), [key]: (s.highlights?.[key] ?? []).filter((h) => h.id !== id) } }));
+}
+
+export function clearHighlights(key: string): void {
+  setState((s) => {
+    const next = { ...(s.highlights ?? {}) };
+    delete next[key];
+    return { ...s, highlights: next };
+  });
+}

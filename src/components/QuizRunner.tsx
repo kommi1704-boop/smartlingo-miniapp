@@ -4,6 +4,8 @@ import { finishQuiz, type QuizItemResult, type QuizOutcome } from '../store/acti
 import { Button, Card, ProgressBar, ProgressRing } from './ui';
 import { Icon } from './Icon';
 import { haptic } from '../lib/telegram';
+import { playSfx } from '../lib/sfx';
+import { Confetti, Mascot, type Mood } from './Mascot';
 import { cx } from '../lib/utils';
 
 interface Props {
@@ -32,6 +34,7 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
     setPicked(i);
     const ok = i === q.answer;
     haptic(ok ? 'success' : 'error');
+    playSfx(ok ? 'correct' : 'wrong');
     onAnswer?.(q, ok);
     setItems((prev) => [...prev, { quiz: q, picked: i }]);
   }
@@ -57,9 +60,12 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
     const ratio = outcome.total ? outcome.score / outcome.total : 0;
     const msg =
       ratio === 1 ? 'Mukammal! Barcha javoblar to‘g‘ri 🎉' : ratio >= 0.8 ? 'Juda yaxshi natija! 👏' : ratio >= 0.6 ? 'Yaxshi! Dars bajarildi ✅' : 'Hech qisi yo‘q — xatolar eng yaxshi ustoz. Qayta urinib ko‘ring 💪';
+    const mood: Mood = ratio === 1 ? 'cheer' : ratio >= 0.6 ? 'happy' : 'think';
     return (
-      <Card className="pop-in text-center">
-        <div className="flex justify-center">
+      <Card className="pop-in relative text-center">
+        {ratio >= 0.8 && <Confetti count={30} />}
+        <div className="flex justify-center"><Mascot mood={mood} size={92} /></div>
+        <div className="mt-1 flex justify-center">
           <ProgressRing value={ratio * 100} size={110} stroke={11}>
             <div>
               <div className="text-2xl font-extrabold">{outcome.score}/{outcome.total}</div>
@@ -105,8 +111,8 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
                 className={cx(
                   'flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-[15px] font-medium transition',
                   !show && 'border-line bg-surface hover:border-indigo-400 hover:bg-surface2',
-                  show && isCorrect && 'border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
-                  show && isPicked && !isCorrect && 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
+                  show && isCorrect && 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
+                  show && isPicked && !isCorrect && 'shake-x border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
                   show && !isCorrect && !isPicked && 'border-line opacity-60',
                 )}
               >

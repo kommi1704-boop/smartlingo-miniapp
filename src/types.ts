@@ -206,7 +206,19 @@ export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   dailyWordGoal: number;
   haptics: boolean;
+  sound: boolean; // short feedback sounds (correct / wrong / level-up)
   showTranslation: boolean; // flashcards: show Uzbek by default
+}
+
+export type HlColor = 'yellow' | 'green' | 'pink' | 'blue';
+
+/** A learner's text highlight: characters [s, e) of paragraph/line number p of some text. */
+export interface Highlight {
+  id: string;
+  p: number;
+  s: number;
+  e: number;
+  c: HlColor;
 }
 
 export interface PersistedState {
@@ -222,5 +234,6 @@ export interface PersistedState {
   conversations: Conversation[];
   writing: WritingSubmission[];
   speakingDone: Record<string, string[]>; // promptId -> dates completed
+  highlights: Record<string, Highlight[]>; // key: "reading:r01", "listening:l01", "grammar:g02" ...
   settings: Settings;
 }

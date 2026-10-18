@@ -2,6 +2,7 @@ import { navigate } from '../lib/router';
 import { useApp } from '../store/store';
 import { Button, Card, LevelBadge } from '../components/ui';
 import { Icon, type IconName } from '../components/Icon';
+import { Mascot, Sparkles } from '../components/Mascot';
 import { LEVELS } from '../types';
 import { LEVEL_DESC } from '../data/options';
 import { VOCAB } from '../data/vocab';
@@ -58,9 +59,13 @@ export function Landing() {
         )}
       </header>
 
-      <section className="mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-500/25 sm:p-9">
-        <p className="inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">8–17 yoshli o‘zbek o‘quvchilari uchun</p>
-        <h1 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">Ingliz tilini o‘rganishning shaxsiy yo‘ldoshi</h1>
+      <section className="relative mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-500/25 sm:p-9">
+        <Sparkles />
+        <div className="relative z-10 mb-2 flex justify-center sm:absolute sm:right-8 sm:top-8 sm:mb-0">
+          <div className="rounded-[2rem] bg-white/15 p-3"><Mascot mood="cheer" size={118} /></div>
+        </div>
+        <p className="relative inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">8–17 yoshli o‘zbek o‘quvchilari uchun</p>
+        <h1 className="relative mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:max-w-[62%] sm:text-4xl">Ingliz tilini o‘rganishning shaxsiy yo‘ldoshi</h1>
         <p className="mt-3 max-w-xl text-[15px] text-indigo-100">
           Your personal English-learning companion. Darajangizni aniqlang, shaxsiy reja oling va har kuni kichik qadamlar bilan oldinga yuring.
         </p>

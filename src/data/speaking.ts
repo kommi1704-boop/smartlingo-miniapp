@@ -1,6 +1,7 @@
 import type { SpeakingPrompt } from "../types";
+import { SPEAKING_MORE } from './speaking-more';
 
-export const SPEAKING: SpeakingPrompt[] = [
+const SPEAKING_BASE: SpeakingPrompt[] = [
   {
     id: "s01",
     kind: "conversation",
@@ -233,3 +234,5 @@ export const SPEAKING_CHECKLIST: string[] = [
   "Men fikrimga sabab yoki misol qo‘shdim.",
   "Men to‘g‘ri zamondan foydalandim.",
 ];
+
+export const SPEAKING: SpeakingPrompt[] = [...SPEAKING_BASE, ...SPEAKING_MORE];

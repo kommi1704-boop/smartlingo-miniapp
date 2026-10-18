@@ -6,6 +6,7 @@ import { navigate } from '../lib/router';
 import { ContentList, type ListItem } from '../components/ContentList';
 import { Button, Card, Empty, LevelBadge, Notice, PageHeader, Pill, Section, Tabs } from '../components/ui';
 import { SpeakButton } from '../components/SpeakButton';
+import { Highlightable } from '../components/Highlightable';
 import { toast } from '../store/ui';
 import { cx } from '../lib/utils';
 
@@ -107,7 +108,7 @@ export function SpeakingPage({ id }: { id: string }) {
         {showSample ? (
           <Card className="slide-up">
             <div className="flex items-start gap-3">
-              <p className="flex-1 whitespace-pre-line leading-relaxed">{p.sample}</p>
+              <div className="min-w-0 flex-1"><Highlightable storeKey={`speaking:${p.id}`} paragraphs={p.sample.split(/\n+/)} className="space-y-2 leading-relaxed" showHint={false} /></div>
               <SpeakButton text={p.sample} />
             </div>
           </Card>

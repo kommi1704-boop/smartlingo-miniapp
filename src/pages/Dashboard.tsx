@@ -1,3 +1,4 @@
+import { Mascot, Sparkles } from '../components/Mascot';
 import { useMemo } from 'react';
 import { A, navigate } from '../lib/router';
 import { useApp } from '../store/store';
@@ -30,13 +31,17 @@ export function Dashboard() {
   return (
     <div>
       {/* Welcome */}
-      <section className="rounded-[1.75rem] bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-500/25">
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-500/25">
+        <Sparkles />
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="rounded-3xl bg-white/15 p-1.5"><Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={62} /></div>
+            <div className="min-w-0">
             <h1 className="text-2xl font-extrabold leading-tight">Salom, {p.name}! 👋</h1>
             <p className="mt-1 text-sm text-indigo-100">
               {sum.allDone ? 'Bugungi reja to‘liq bajarildi. Barakalla!' : streak > 0 ? `${streak} kunlik seriya — davom eting!` : 'Bugun birinchi qadamni qo‘ying.'}
             </p>
+            </div>
           </div>
           <div className="shrink-0 text-right">
             <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-extrabold">{p.estimatedLevel}</span>

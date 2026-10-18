@@ -5,6 +5,7 @@ import { submitWriting } from '../store/actions';
 import { navigate } from '../lib/router';
 import { checkText, improvementTips, type CheckResult, type Issue } from '../lib/writingCheck';
 import { ContentList, type ListItem } from '../components/ContentList';
+import { Highlightable } from '../components/Highlightable';
 import { Button, Card, Empty, LevelBadge, Notice, PageHeader, Pill, ProgressBar, Section } from '../components/ui';
 import { prettyDateTime } from '../lib/dates';
 import { toast } from '../store/ui';
@@ -164,7 +165,7 @@ export function WritingPage({ id }: { id: string }) {
 
       <Section title="📝 Namunaviy javob">
         {showSample ? (
-          <Card className="slide-up"><p className="whitespace-pre-line leading-relaxed">{prompt.sample}</p></Card>
+          <Card className="slide-up"><Highlightable storeKey={`writing:${prompt.id}`} paragraphs={prompt.sample.split(/\n+/)} className="space-y-2 leading-relaxed" showHint={false} /></Card>
         ) : (
           <Button variant="secondary" icon="eye" full onClick={() => setShowSample(true)}>Namunani ko‘rsatish</Button>
         )}

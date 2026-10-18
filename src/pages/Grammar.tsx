@@ -7,6 +7,7 @@ import { QuizRunner } from '../components/QuizRunner';
 import { Button, Card, Empty, LevelBadge, PageHeader, Pill, Section } from '../components/ui';
 import { SpeakButton } from '../components/SpeakButton';
 import { Icon } from '../components/Icon';
+import { Highlightable } from '../components/Highlightable';
 
 export function GrammarList() {
   const s = useApp();
@@ -52,8 +53,8 @@ export function GrammarLessonPage({ id }: { id: string }) {
           </Card>
 
           <Section title="📘 Tushuntirish">
-            <Card className="space-y-3 text-[15px] leading-relaxed">
-              {lesson.explanationUz.map((p, i) => <p key={i}>{p}</p>)}
+            <Card>
+              <Highlightable storeKey={`grammar:${lesson.id}`} paragraphs={lesson.explanationUz} className="space-y-3 text-[15px] leading-relaxed" />
             </Card>
           </Section>
 

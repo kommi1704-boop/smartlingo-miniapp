@@ -3,6 +3,7 @@ import type { Level } from '../types';
 import { cx, LEVEL_STYLE } from '../lib/utils';
 import { Icon, type IconName } from './Icon';
 import { goBack } from '../lib/router';
+import { Mascot } from './Mascot';
 
 // ---------- Button ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -180,7 +181,8 @@ export function PageHeader({ title, subtitle, back, right, emoji }: { title: str
 export function Empty({ emoji = '🌤️', title, text, action }: { emoji?: string; title: string; text?: string; action?: ReactNode }) {
   return (
     <div className="rounded-3xl border border-dashed border-line p-8 text-center">
-      <div className="text-4xl">{emoji}</div>
+      <div className="flex justify-center"><Mascot mood="think" size={84} /></div>
+      <div className="mt-1 text-3xl">{emoji}</div>
       <p className="mt-2 font-bold">{title}</p>
       {text && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{text}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}

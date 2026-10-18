@@ -1,11 +1,13 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { READING } from '../data/reading';
 import { useApp } from '../store/store';
 import { navigate } from '../lib/router';
 import { ContentList, type ListItem } from '../components/ContentList';
 import { QuizRunner } from '../components/QuizRunner';
 import { Button, Card, Empty, LevelBadge, PageHeader, Pill, Section } from '../components/ui';
-import { SpeakButton } from '../components/SpeakButton';
+import { Highlightable } from '../components/Highlightable';
+import { VoicePicker, SpeedChips, useVoices } from '../components/VoicePicker';
+import { playLines, setPrefs, stopSpeaking, ttsAvailable } from '../lib/tts';
 import { wordCount } from '../lib/utils';
 
 export function ReadingList() {
@@ -31,22 +33,46 @@ export function ReadingList() {
   );
 }
 
-function escapeRe(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 export function ReadingPage({ id }: { id: string }) {
   const s = useApp();
   const passage = READING.find((r) => r.id === id);
   const [quiz, setQuiz] = useState(false);
   const [active, setActive] = useState<{ en: string; uz: string } | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [line, setLine] = useState(-1);
+  const [showVoice, setShowVoice] = useState(false);
+  const { prefs } = useVoices();
+  const tts = ttsAvailable();
 
-  const parts = useMemo(() => {
-    if (!passage) return [] as string[][];
-    const terms = passage.vocab.map((v) => v.en).sort((a, b) => b.length - a.length);
-    const re = terms.length ? new RegExp(`\\b(${terms.map(escapeRe).join('|')})\\b`, 'gi') : null;
-    return passage.text.split(/\n\n+/).map((para) => (re ? para.split(re) : [para]));
-  }, [passage]);
+  const paras = useMemo(() => (passage ? passage.text.split(/\n\n+/) : []), [passage]);
+  const terms = useMemo(() => (passage ? passage.vocab.map((v) => v.en) : []), [passage]);
+
+  useEffect(() => () => stopSpeaking(), []);
+  useEffect(() => {
+    stopSpeaking();
+    setPlaying(false);
+    setLine(-1);
+  }, [id]);
+
+  function play(from = 0) {
+    setPlaying(true);
+    setLine(from);
+    playLines(paras.map((t) => ({ text: t, role: 0 as const })), {
+      startAt: from,
+      onLine: setLine,
+      onEnd: () => {
+        setPlaying(false);
+        setLine(-1);
+      },
+    });
+  }
+  function togglePlay() {
+    if (playing) {
+      stopSpeaking();
+      setPlaying(false);
+      setLine(-1);
+    } else play(0);
+  }
 
   if (!passage) return <Empty emoji="🤔" title="Matn topilmadi" action={<Button onClick={() => navigate('/reading')}>Matnlar ro‘yxati</Button>} />;
   const res = s.lessons[`reading:${passage.id}`];
@@ -65,24 +91,30 @@ export function ReadingPage({ id }: { id: string }) {
             <button type="button" onClick={() => setActive(null)} className="text-xs font-semibold text-muted underline">Yopish</button>
           </div>
         )}
-        <div className="space-y-3 text-[16px] leading-relaxed">
-          {parts.map((chunks, i) => (
-            <p key={i}>
-              {chunks.map((c, j) => {
-                const v = j % 2 === 1 ? lookup(c) : undefined;
-                return v ? (
-                  <button key={j} type="button" onClick={() => setActive(v)} className="rounded-md border-b-2 border-dotted border-indigo-400 bg-indigo-50 px-0.5 font-medium text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200">{c}</button>
-                ) : (
-                  <Fragment key={j}>{c}</Fragment>
-                );
-              })}
-            </p>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted">
-          <SpeakButton text={passage.text.replace(/\n\n+/g, '. ')} label="Matnni o‘qib berish (qurilma ovozi)" />
-          <span>Ostiga chizilgan so‘zni bosing — ma’nosi chiqadi.</span>
-        </div>
+        <Highlightable
+          storeKey={`reading:${passage.id}`}
+          paragraphs={paras}
+          terms={terms}
+          onTerm={(t) => {
+            const v = lookup(t);
+            if (v) setActive(v);
+          }}
+          activeIndex={line}
+          className="space-y-3 text-[16px] leading-relaxed"
+        />
+        {tts && (
+          <div className="mt-4 rounded-2xl bg-surface2 p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" icon={playing ? 'stop' : 'volume'} onClick={togglePlay}>{playing ? 'To‘xtatish' : 'Matnni tinglash'}</Button>
+              <SpeedChips rate={prefs.rate} onChange={(r) => { setPrefs({ rate: r }); if (playing) play(Math.max(0, line)); }} />
+            </div>
+            <button type="button" className="mt-2 text-xs font-semibold text-indigo-600 underline dark:text-indigo-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
+              {showVoice ? 'Ovoz sozlamalarini yopish' : 'Ovozni almashtirish'}
+            </button>
+            {showVoice && <div className="slide-up mt-2 border-t border-line pt-3"><VoicePicker compact /></div>}
+            <p className="mt-2 text-xs text-muted">Qurilma ovozi (TTS) o‘qiydi, yozib olingan audio emas. Ostiga chizilgan so‘zni bosing — ma’nosi chiqadi.</p>
+          </div>
+        )}
       </Card>
 
       {!quiz && (

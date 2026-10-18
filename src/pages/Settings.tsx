@@ -6,6 +6,7 @@ import { navigate } from '../lib/router';
 import { tutorIsLive } from '../lib/api';
 import { isTelegram, shareToTelegram } from '../lib/telegram';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
+import { VoicePicker } from '../components/VoicePicker';
 import { MINUTES } from '../data/options';
 import { toast } from '../store/ui';
 import { cx } from '../lib/utils';
@@ -114,6 +115,15 @@ export function Settings() {
           <Row title="Tebranish (haptik)" hint="Javob to‘g‘ri/noto‘g‘ri bo‘lganda (Telegram ichida)">
             <Switch checked={s.settings.haptics} onChange={(v) => updateSettings({ haptics: v })} label="Haptik signal" />
           </Row>
+          <Row title="Qisqa ovozli signallar" hint="To‘g‘ri/noto‘g‘ri javob va yangi daraja uchun">
+            <Switch checked={s.settings.sound} onChange={(v) => updateSettings({ sound: v })} label="Ovozli signallar" />
+          </Row>
+        </Card>
+      </Section>
+
+      <Section title="Inglizcha o‘qish ovozi">
+        <Card>
+          <VoicePicker />
         </Card>
       </Section>
 

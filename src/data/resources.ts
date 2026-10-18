@@ -1,8 +1,9 @@
 import type { Resource } from '../types';
+import { RESOURCES_MORE } from './resources-more';
 
 // Faqat tekshirilgan (ochilishi tasdiqlangan) havolalar `url` bilan berilgan.
 // Tekshirib bo‘lmagan resurslarda `url` ataylab qoldirilgan.
-export const RESOURCES: Resource[] = [
+const RESOURCES_BASE: Resource[] = [
   // ---------- YouTube ----------
   {
     id: "res01",
@@ -293,3 +294,5 @@ export const RESOURCES: Resource[] = [
     url: "https://standardebooks.org/",
   },
 ];
+
+export const RESOURCES: Resource[] = [...RESOURCES_BASE, ...RESOURCES_MORE];

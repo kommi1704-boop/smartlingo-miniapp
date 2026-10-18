@@ -1,3 +1,4 @@
+import { Mascot } from '../components/Mascot';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { A } from '../lib/router';
 import { getState, useApp } from '../store/store';
@@ -90,7 +91,7 @@ export function Tutor() {
   return (
     <div className="flex h-full min-h-[28rem] flex-col">
       <header className="mb-3 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-2xl shadow">🤖</div>
+        <Mascot size={52} mood={busy ? 'think' : 'happy'} title="Lingo" />
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-extrabold leading-tight">Lingo</h1>
           <div className="flex items-center gap-1.5">
@@ -116,7 +117,7 @@ export function Tutor() {
           <Bubble key={m.id} role={m.role} demo={m.demo} link={m.link}>{m.text}</Bubble>
         ))}
         {busy && (
-          <div className="flex gap-1.5 px-2 py-1" aria-label="Lingo yozmoqda">
+          <div className="flex gap-1.5 px-10 py-1" aria-label="Lingo yozmoqda">
             {[0, 1, 2].map((i) => <span key={i} className="bounce-soft h-2 w-2 rounded-full bg-indigo-400" style={{ animationDelay: `${i * 0.15}s` }} />)}
           </div>
         )}
@@ -196,8 +197,9 @@ export function Tutor() {
 function Bubble({ role, children, demo, link }: { role: 'user' | 'assistant'; children: ReactNode; demo?: boolean; link?: { label: string; route: string } }) {
   const mine = role === 'user';
   return (
-    <div className={cx('flex', mine ? 'justify-end' : 'justify-start')}>
-      <div className={cx('max-w-[88%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white' : 'rounded-bl-lg bg-surface2')}>
+    <div className={cx('flex items-end gap-1.5', mine ? 'justify-end' : 'justify-start')}>
+      {!mine && <Mascot size={30} animate={false} className="mb-1" />}
+      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white' : 'rounded-bl-lg bg-surface2')}>
         <p className="whitespace-pre-line">{children}</p>
         {link && (
           <A to={link.route} className="mt-2 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">

@@ -152,3 +152,173 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ---------- Mascot & fun effects ---------- */
+@keyframes mascot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.mascot-float {
+  animation: mascot-float 3.2s ease-in-out infinite;
+}
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+.mascot-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 4.6s infinite;
+}
+@keyframes mascot-wave {
+  0% {
+    transform: rotate(-10deg);
+  }
+  100% {
+    transform: rotate(12deg);
+  }
+}
+.mascot-wave {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: mascot-wave 0.55s ease-in-out infinite alternate;
+}
+.mascot-wave-b {
+  animation-direction: alternate-reverse;
+}
+@keyframes mascot-twinkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.18) rotate(12deg);
+  }
+}
+.mascot-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-twinkle 2.4s ease-in-out infinite;
+}
+
+@keyframes sparkle-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-8px) scale(1.2);
+    opacity: 0.9;
+  }
+}
+.sparkle-float {
+  animation: sparkle-float 3.4s ease-in-out infinite;
+}
+
+@keyframes confetti-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--cx), calc(var(--cy) + 140px)) rotate(var(--cr));
+    opacity: 0;
+  }
+}
+.confetti-piece {
+  animation: confetti-burst 1.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes shake-x {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+.shake-x {
+  animation: shake-x 0.4s ease-in-out;
+}
+
+@keyframes correct-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.correct-pop {
+  animation: correct-pop 0.35s ease-out;
+}
+
+@keyframes xp-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.95);
+  }
+}
+.xp-pop {
+  animation: xp-pop 1.8s ease-out both;
+}
+
+/* soft playful backdrop behind the whole app */
+.app-bg {
+  background-color: var(--c-app);
+  background-image:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, #8b5cf6 10%, transparent) 0, transparent 38%),
+    radial-gradient(circle at 92% 30%, color-mix(in srgb, #38bdf8 9%, transparent) 0, transparent 34%),
+    radial-gradient(circle at 20% 96%, color-mix(in srgb, #f472b6 8%, transparent) 0, transparent 36%);
+  background-attachment: fixed;
+}
+
+/* floating highlight toolbar sits above the mobile tab bar */
+.hl-bar {
+  bottom: calc(env(safe-area-inset-bottom) + 4.6rem);
+}
+@media (min-width: 768px) {
+  .hl-bar {
+    bottom: 1.5rem;
+  }
+}

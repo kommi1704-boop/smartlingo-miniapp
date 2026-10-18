@@ -14,12 +14,18 @@ export interface Celebration {
   text: string;
 }
 
+export interface XpPop {
+  id: number;
+  amount: number;
+}
+
 interface UIState {
   toasts: Toast[];
   celebrations: Celebration[];
+  xpPop: XpPop | null;
 }
 
-let ui: UIState = { toasts: [], celebrations: [] };
+let ui: UIState = { toasts: [], celebrations: [], xpPop: null };
 const listeners = new Set<() => void>();
 let nextId = 1;
 
@@ -32,6 +38,16 @@ export function toast(text: string, kind: Toast['kind'] = 'info', ms = 2600): vo
   const id = nextId++;
   emit({ ...ui, toasts: [...ui.toasts, { id, text, kind }] });
   setTimeout(() => emit({ ...ui, toasts: ui.toasts.filter((t) => t.id !== id) }), ms);
+}
+
+/** Shows a small floating "+N XP" bubble for a moment. */
+export function showXp(amount: number): void {
+  if (amount <= 0) return;
+  const id = nextId++;
+  emit({ ...ui, xpPop: { id, amount } });
+  setTimeout(() => {
+    if (ui.xpPop?.id === id) emit({ ...ui, xpPop: null });
+  }, 1800);
 }
 
 export function celebrate(c: Celebration): void {
