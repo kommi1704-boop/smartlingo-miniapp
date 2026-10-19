@@ -56,7 +56,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="app-bg mx-auto flex h-dvh max-w-[1200px] md:gap-0">
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface p-4 md:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface/80 p-4 backdrop-blur-md md:flex">
         <A to="/" className="mb-5 flex items-center gap-2.5 px-2">
           <img src="./favicon.svg" alt="" className="h-9 w-9" />
           <div>
@@ -92,7 +92,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <div className="safe-top shrink-0 border-b border-line bg-surface md:hidden">
+        <div className="safe-top shrink-0 border-b border-line bg-surface/80 backdrop-blur-md md:hidden">
           <div className="flex items-center justify-between px-4 py-2.5">
             <A to="/" className="flex items-center gap-2">
               <img src="./favicon.svg" alt="" className="h-7 w-7" />
@@ -110,7 +110,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </main>
 
         {/* Mobile bottom nav */}
-        <nav className="safe-bottom shrink-0 border-t border-line bg-surface md:hidden" aria-label="Pastki menyu">
+        <nav className="safe-bottom shrink-0 border-t border-line bg-surface/80 backdrop-blur-md md:hidden" aria-label="Pastki menyu">
           <ul className="flex">
             {TABS.map((t) => {
               const active = t.path === '/more' ? !inTabs : isActive(path, t.path);

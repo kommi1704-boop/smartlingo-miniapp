@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { A } from '../lib/router';
 import { getState, useApp } from '../store/store';
 import { appendMessage, deleteConversation, newConversation, recordTutorMessage } from '../store/actions';
-import { askLiveTutor, tutorIsLive } from '../lib/api';
+import { askLiveTutor, tutorIsLive, tutorErrorHint } from '../lib/api';
 import { demoReply, SUGGESTIONS } from '../lib/tutorDemo';
 import { Button, Modal, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -65,8 +65,8 @@ export function Tutor() {
         const history = current.messages.slice(-10).map((m) => ({ role: m.role, text: m.text }));
         const reply = await askLiveTutor({ messages: history, level: p.estimatedLevel, name: p.name, age: p.age });
         appendMessage(id, { role: 'assistant', text: reply });
-      } catch {
-        toast('Jonli AI hozir javob bermadi — demo javob ko‘rsatildi', 'warn');
+      } catch (e) {
+        toast(`Jonli AI javob bermadi (${tutorErrorHint(e instanceof Error ? e.message : 'unknown')}). Demo javob ko‘rsatildi`, 'warn', 6000);
         const d = demoReply(text, { level: p.estimatedLevel, name: p.name });
         appendMessage(id, { role: 'assistant', text: d.text, link: d.link, demo: true });
       } finally {
@@ -106,6 +106,12 @@ export function Tutor() {
       {live === false && (
         <p className="mb-2 rounded-2xl border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100">
           <b>Demo rejim:</b> Lingo hozir jonli sun’iy intellekt emas — tayyor javoblar, so‘z/grammatika bazasi va oddiy qoidalar bilan ishlaydi.
+        </p>
+      )}
+
+      {live === true && (
+        <p className="mb-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-400/30 dark:bg-indigo-500/10 dark:text-indigo-100">
+          <b>Jonli AI:</b> yozganlaringiz sun’iy intellekt xizmatiga yuboriladi. Ism-familiya, telefon raqam, manzil yoki parol yozmang.
         </p>
       )}
 

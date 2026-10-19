@@ -38,7 +38,7 @@ export async function askLiveTutor(req: TutorRequest): Promise<string> {
     let msg = `HTTP ${r.status}`;
     try {
       const j = await r.json();
-      if (j?.error) msg = j.error;
+      if (j?.error) msg = j.status ? `${j.error}_${j.status}` : String(j.error);
     } catch {
       /* ignore */
     }
@@ -47,4 +47,19 @@ export async function askLiveTutor(req: TutorRequest): Promise<string> {
   const j = await r.json();
   if (typeof j?.reply !== 'string') throw new Error('bad_response');
   return j.reply;
+}
+
+/** Short Uzbek explanation of why the live tutor failed (shown in the toast, so the cause is visible). */
+export function tutorErrorHint(msg: string): string {
+  if (msg === 'unauthorized') return 'Telegram ichidan oching: brauzerda jonli AI ishlamaydi';
+  if (msg.startsWith('server_misconfigured')) return 'serverda TELEGRAM_BOT_TOKEN yo‘q';
+  if (msg === 'not_configured') return 'serverda AI kaliti yo‘q';
+  if (msg === 'upstream_error_401' || msg === 'upstream_error_403') return 'AI kaliti noto‘g‘ri yoki bu hududga ruxsat yo‘q';
+  if (msg === 'upstream_error_404') return 'AI modeli topilmadi';
+  if (msg.startsWith('upstream_error_4')) return `AI so‘rovni rad etdi (${msg.replace('upstream_error_', '')})`;
+  if (msg.startsWith('upstream_error')) return 'AI xizmatida nosozlik';
+  if (msg === 'upstream_busy' || msg === 'too_many_requests') return 'AI band yoki limit tugadi';
+  if (msg === 'empty_reply') return 'AI bo‘sh javob qaytardi';
+  if (msg === 'upstream_unreachable') return 'AI xizmatiga ulanib bo‘lmadi';
+  return `xato: ${msg}`;
 }
