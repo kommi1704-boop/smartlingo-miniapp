@@ -1340,10 +1340,7 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "Ilm-fanga ishonch shaffof fikrlash va tavsiyalar nima sababdan o‘zgarishini tushuntirish orqali mustahkamlanadi."
       }
     ]
-  }
-  
-];
-[
+  },
   {
     id: "r32",
     title: "The Hidden Life of Coral Reefs",
@@ -1378,7 +1375,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "Bleaching occurs when stressed corals expel microscopic algae; the passage notes that they are not necessarily dead."
       },
     ],
-    source: "https://www.noaa.gov/education/resource-collections/marine-life/coral-reef-ecosystems"
   },
   {
     id: "r33",
@@ -1414,7 +1410,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence identifies the need to support global communication while respecting linguistic diversity."
       },
     ],
-    source: "https://www.unesco.org/en/languages-education"
   },
   {
     id: "r34",
@@ -1450,7 +1445,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage explicitly distinguishes a potentially suitable environment from proof of life."
       },
     ],
-    source: "https://www.nasa.gov/science-research/planetary-science/astrobiology/nasa-some-icy-exoplanets-may-have-habitable-oceans-and-geysers/"
   },
   {
     id: "r35",
@@ -1486,7 +1480,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage links public support with recognising local experience and community involvement."
       },
     ],
-    source: "https://www.unesco.org/en/biodiversity/culture"
   },
   {
     id: "r36",
@@ -1522,7 +1515,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage warns that local conditions influence growth, so evidence must be compared."
       },
     ],
-    source: "https://www.ncei.noaa.gov/news/how-can-corals-teach-us-about-climate"
   },
   {
     id: "r37",
@@ -1558,7 +1550,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence presents young people as participants in heritage protection."
       },
     ],
-    source: "https://whc.unesco.org/en/wheducation/"
   },
   {
     id: "r38",
@@ -1594,7 +1585,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence recommends reducing pollution and ocean-warming pressures."
       },
     ],
-    source: "https://oceanservice.noaa.gov/education/tutorial_corals/coral08_climatechange.html"
   },
   {
     id: "r39",
@@ -1630,7 +1620,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The text says people can maintain a local language while learning others."
       },
     ],
-    source: "https://www.unesco.org/en/indigenous-peoples"
   },
   {
     id: "r40",
@@ -1666,7 +1655,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence says protecting remaining wetlands is often more effective."
       },
     ],
-    source: "https://www.epa.gov/wetlands"
   },
   {
     id: "r41",
@@ -1702,7 +1690,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "Consistent routines are listed as a way to protect sleep."
       },
     ],
-    source: "https://www.cdc.gov/sleep/about/index.html"
   },
   {
     id: "r42",
@@ -1738,7 +1725,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence lists survival, beneficiaries and long-term funding."
       },
     ],
-    source: "https://www.epa.gov/heatislands/using-trees-and-vegetation-reduce-heat-islands"
   },
   {
     id: "r43",
@@ -1774,7 +1760,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence identifies transparent methods and explaining data use as helpful."
       },
     ],
-    source: "https://www.nationalgeographic.org/education/citizen-science-projects/"
   },
   {
     id: "r44",
@@ -1810,7 +1795,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage lists these practical factors as influences on adoption."
       },
     ],
-    source: "https://www.uspto.gov/learning-and-resources"
   },
   {
     id: "r45",
@@ -1846,7 +1830,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage notes that some communities left few written records."
       },
     ],
-    source: "https://www.si.edu/spotlight/archaeology"
   },
   {
     id: "r46",
@@ -1882,7 +1865,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage links pollinators to wild plants, crops and food systems."
       },
     ],
-    source: "https://www.fao.org/pollination/en/"
   },
   {
     id: "r47",
@@ -1918,7 +1900,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence identifies both reduction and better systems as important."
       },
     ],
-    source: "https://www.unep.org/plastic-pollution"
   },
   {
     id: "r48",
@@ -1954,7 +1935,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "Researchers combine both sources to improve the reliability of environmental understanding."
       },
     ],
-    source: "https://earthobservatory.nasa.gov/"
   },
   {
     id: "r49",
@@ -1990,7 +1970,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence lists aiming, dimming and reducing glare as options."
       },
     ],
-    source: "https://www.darksky.org/light-pollution/"
   },
   {
     id: "r50",
@@ -2026,7 +2005,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "Because rivers are dynamic, planning should consider changing channels."
       },
     ],
-    source: "https://www.usgs.gov/special-topics/water-science-school"
   },
   {
     id: "r51",
@@ -2062,7 +2040,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The text emphasises shared resources and a place to learn without making a purchase."
       },
     ],
-    source: "https://www.ala.org/aboutala"
   },
   {
     id: "r52",
@@ -2098,7 +2075,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage recommends gathering information and being willing to revise a judgement."
       },
     ],
-    source: "https://www.apa.org/topics/personality"
   },
   {
     id: "r53",
@@ -2134,7 +2110,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The passage says climate and land use can alter timing or safety."
       },
     ],
-    source: "https://www.nationalgeographic.com/animals"
   },
   {
     id: "r54",
@@ -2170,7 +2145,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence states that access must be balanced against the collection's survival."
       },
     ],
-    source: "https://www.si.edu/museums"
   },
   {
     id: "r55",
@@ -2206,7 +2180,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence lists agriculture, water management and ecosystems."
       },
     ],
-    source: "https://www.fao.org/soils-portal/en/"
   },
   {
     id: "r56",
@@ -2242,7 +2215,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence explains that the transition involves managing the whole electricity system."
       },
     ],
-    source: "https://www.iea.org/topics/renewables"
   },
   {
     id: "r57",
@@ -2278,7 +2250,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence lists evidence about safety, effectiveness, age and disease risk."
       },
     ],
-    source: "https://www.who.int/health-topics/vaccines-and-immunization"
   },
   {
     id: "r58",
@@ -2314,7 +2285,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence defines water security through amount, quality and reliability."
       },
     ],
-    source: "https://www.who.int/news-room/fact-sheets/detail/drinking-water"
   },
   {
     id: "r59",
@@ -2350,7 +2320,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence names junction design, signal adjustment and alternative travel options."
       },
     ],
-    source: "https://www.fhwa.dot.gov/traffic/"
   },
   {
     id: "r60",
@@ -2386,7 +2355,6 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence identifies several connected actors and systems."
       },
     ],
-    source: "https://www.europarl.europa.eu/topics/en/article/20220331STO26410/right-to-repair"
   },
   {
     id: "r61",
@@ -2422,7 +2390,5 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         explain: "The final sentence says museums shape public understanding of the past."
       },
     ],
-    source: "https://www.museumsassociation.org/campaigns/decolonising-museums/"
   },
 ];
-
