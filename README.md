@@ -24,6 +24,7 @@ Progress is stored on the user's device (localStorage). Two optional serverless 
 | Tutor "Lingo" | **Demo mode** by default: keyword-based answers from the app's own word list and grammar lessons, clearly labelled "Demo". It is *not* AI. Live mode needs the server (section 6). |
 | Resources | 51 entries (British Council, Cambridge English, VOA, TED-Ed, NASA Space Place, National Geographic Kids, …). Every new link was opened while writing the list and the description only says what the page said; 2 older entries intentionally have no link. Sites can change, so check before relying on one. |
 | Look & feel | "Lingo" the mascot (original SVG, moods), confetti and XP pop-ups, optional sound effects (Settings → Sound). Light mode: pastel sky with a soft sun and English-class doodles; dark mode: the same doodles glowing under a starry sky. All pure CSS/SVG in `src/index.css` ("Page backdrop"), no image files. |
+| Games | 5 vocabulary games built from the app's own word list and matched to the student's level: memory cards, word runner, letter scramble, 60-second word blitz, listen & pick (device voice). Stars (0–3) and personal bests, a daily challenge (same words all day, +15 XP once), game badges, and missed words can be sent to spaced repetition. Game XP is capped at 60/day so games add to lessons instead of replacing them. Code: `src/pages/Games.tsx`, `src/components/games/`, `src/lib/games.ts`. |
 | Progress | XP, streak, badges, mistake notebook, charts. |
 | Dark mode | Settings → follows Telegram theme or manual. |
 
