@@ -24,6 +24,7 @@ export function defaultState(): PersistedState {
     speakingDone: {},
     highlights: {},
     settings: { theme: 'auto', dailyWordGoal: 10, haptics: true, sound: true, showTranslation: false },
+    games: { best: {}, plays: 0, daily: { date: '', done: false }, dailyCount: 0, xpToday: { date: '', xp: 0 } },
   };
 }
 
@@ -31,7 +32,7 @@ function hydrate(): PersistedState {
   const base = defaultState();
   const saved = repo.loadSync();
   if (!saved || saved.version !== 1) return base;
-  return { ...base, ...saved, settings: { ...base.settings, ...(saved.settings ?? {}) } };
+  return { ...base, ...saved, settings: { ...base.settings, ...(saved.settings ?? {}) }, games: { ...base.games, ...(saved.games ?? {}) } };
 }
 
 let state: PersistedState = hydrate();

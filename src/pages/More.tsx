@@ -4,6 +4,7 @@ import { PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 
 const HINT: Record<string, string> = {
+  '/games': '5 ta o‘yin, yulduzlar va kunlik challenge',
   '/roadmap': 'Bosqichma-bosqich reja',
   '/grammar': '14 ta dars va testlar',
   '/reading': '10 ta matn',

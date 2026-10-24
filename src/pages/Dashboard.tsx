@@ -11,6 +11,7 @@ import { BarChart } from '../components/BarChart';
 import { NAV_ALL } from '../components/Shell';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
+import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
 
 export function Dashboard() {
   const s = useApp();
@@ -60,6 +61,19 @@ export function Dashboard() {
       </section>
 
       {/* Today's plan */}
+      <A
+        to="/games/daily"
+        className="mt-4 flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 shadow-sm transition hover:border-indigo-300"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-pink-500 text-2xl">{gameInfo(dailyGameId())?.emoji ?? '🎮'}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-bold uppercase tracking-wide text-muted">📅 Kunlik o‘yin</span>
+          <span className="block font-extrabold">{gameInfo(dailyGameId())?.title}</span>
+          <span className="block text-xs text-muted">{s.games.daily.date === t && s.games.daily.done ? 'Bugun bajarildi ✓' : `Hozir o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</span>
+        </span>
+        <Icon name="right" className="h-4 w-4 text-muted" />
+      </A>
+
       <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Hammasi →</A>}>
         <Card>
           <div className="flex items-center gap-4">

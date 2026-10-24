@@ -18,6 +18,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/plan', label: 'Kunlik reja', icon: 'calendar' },
   { path: '/tutor', label: 'Lingo (AI)', icon: 'chat' },
   { path: '/vocab', label: 'So‘zlar', icon: 'cards' },
+  { path: '/games', label: 'O‘yinlar', icon: 'game' },
   { path: '/grammar', label: 'Grammatika', icon: 'bulb' },
   { path: '/reading', label: 'O‘qish', icon: 'book' },
   { path: '/listening', label: 'Tinglash', icon: 'headphones' },

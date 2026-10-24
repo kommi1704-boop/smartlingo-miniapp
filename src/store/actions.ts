@@ -10,6 +10,7 @@ import { BADGES, newBadges, xpLevel } from '../lib/gamification';
 import { emptyDay } from '../lib/plan';
 import { uid } from '../lib/utils';
 import { haptic, setHapticsEnabled } from '../lib/telegram';
+import { DAILY_BONUS_XP, GAME_XP_CAP, xpForResult, type GameResult } from '../lib/games';
 
 type Counters = Partial<Record<keyof DayActivity, number>>;
 
@@ -82,6 +83,16 @@ export function markLearned(id: string): void {
 export function markForReview(id: string): void {
   setState((s) => ({ ...s, vocab: { ...s.vocab, [id]: markReviewProgress(s.vocab[id]) } }));
   toast('So‘z takrorlash ro‘yxatiga qo‘shildi');
+}
+
+export function markManyForReview(ids: string[]): void {
+  if (!ids.length) return;
+  setState((s) => {
+    const vocab = { ...s.vocab };
+    for (const id of ids) vocab[id] = markReviewProgress(vocab[id]);
+    return { ...s, vocab };
+  });
+  toast(`${ids.length} ta so‘z takrorlash ro‘yxatiga qo‘shildi`, 'success');
 }
 
 // ---------- Quizzes ----------
@@ -171,6 +182,43 @@ export function recordMatching(errors: number, title: string, pairs: number): nu
   }));
   record({ xp, quizzes: 1 });
   return xp;
+}
+
+export interface GameOutcome {
+  xp: number;
+  dailyBonus: number;
+  record: boolean;
+  capped: boolean;
+  bestStars: number;
+}
+
+/** Saves a finished game: personal best, stars, XP (capped per day so games never replace lessons) and the daily challenge. */
+export function finishGame(r: GameResult, daily: boolean): GameOutcome {
+  const t = today();
+  const st = getState().games;
+  const prev = st.best[r.game] ?? { score: 0, stars: 0, plays: 0 };
+  const isRecord = r.score > prev.score && prev.plays > 0;
+  const usedToday = st.xpToday.date === t ? st.xpToday.xp : 0;
+  const want = xpForResult(r);
+  const xp = Math.max(0, Math.min(want, GAME_XP_CAP - usedToday));
+  const capped = xp < want;
+  const dailyBonus = daily && r.stars >= 1 && !(st.daily.date === t && st.daily.done) ? DAILY_BONUS_XP : 0;
+  setState((s) => ({
+    ...s,
+    games: {
+      ...s.games,
+      plays: s.games.plays + 1,
+      best: {
+        ...s.games.best,
+        [r.game]: { score: Math.max(prev.score, r.score), stars: Math.max(prev.stars, r.stars), plays: prev.plays + 1 },
+      },
+      xpToday: { date: t, xp: usedToday + xp },
+      daily: dailyBonus ? { date: t, done: true } : s.games.daily,
+      dailyCount: s.games.dailyCount + (dailyBonus ? 1 : 0),
+    },
+  }));
+  record({ xp: xp + dailyBonus });
+  return { xp, dailyBonus, record: isRecord, capped, bestStars: Math.max(prev.stars, r.stars) };
 }
 
 export function toggleMistake(id: string): void {

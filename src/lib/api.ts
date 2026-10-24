@@ -38,7 +38,10 @@ export async function askLiveTutor(req: TutorRequest): Promise<string> {
     let msg = `HTTP ${r.status}`;
     try {
       const j = await r.json();
-      if (j?.error) msg = j.status ? `${j.error}_${j.status}` : String(j.error);
+      if (j?.error) {
+        msg = j.status ? `${j.error}_${j.status}` : String(j.error);
+        if (typeof j.detail === 'string' && j.detail) msg += `|${j.detail}`;
+      }
     } catch {
       /* ignore */
     }
@@ -50,7 +53,14 @@ export async function askLiveTutor(req: TutorRequest): Promise<string> {
 }
 
 /** Short Uzbek explanation of why the live tutor failed (shown in the toast, so the cause is visible). */
-export function tutorErrorHint(msg: string): string {
+export function tutorErrorHint(full: string): string {
+  const [msg, ...rest] = full.split('|');
+  const detail = rest.join('|').trim();
+  const hint = baseHint(msg);
+  return detail ? `${hint}: ${detail}` : hint;
+}
+
+function baseHint(msg: string): string {
   if (msg === 'unauthorized') return 'Telegram ichidan oching: brauzerda jonli AI ishlamaydi';
   if (msg.startsWith('server_misconfigured')) return 'serverda TELEGRAM_BOT_TOKEN yo‘q';
   if (msg === 'not_configured') return 'serverda AI kaliti yo‘q';

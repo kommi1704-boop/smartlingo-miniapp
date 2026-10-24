@@ -142,6 +142,20 @@ export interface DayActivity {
   quizzes: number;
 }
 
+export interface GameBest {
+  score: number;
+  stars: number; // 0..3 (best ever)
+  plays: number;
+}
+
+export interface GamesState {
+  best: Record<string, GameBest>; // key: game id
+  plays: number;
+  daily: { date: string; done: boolean };
+  dailyCount: number; // how many daily challenges were completed in total
+  xpToday: { date: string; xp: number }; // XP earned from games today (capped)
+}
+
 export interface Mistake {
   id: string;
   source: ContentKind;
@@ -236,4 +250,5 @@ export interface PersistedState {
   speakingDone: Record<string, string[]>; // promptId -> dates completed
   highlights: Record<string, Highlight[]>; // key: "reading:r01", "listening:l01", "grammar:g02" ...
   settings: Settings;
+  games: GamesState;
 }

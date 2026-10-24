@@ -13,6 +13,7 @@ import { Roadmap } from './pages/Roadmap';
 import { Plan } from './pages/Plan';
 import { Tutor } from './pages/Tutor';
 import { Vocab } from './pages/Vocab';
+import { GamesHub, GamePage } from './pages/Games';
 import { GrammarList, GrammarLessonPage } from './pages/Grammar';
 import { ReadingList, ReadingPage } from './pages/Reading';
 import { ListeningList, ListeningPage } from './pages/Listening';
@@ -71,6 +72,7 @@ export function App() {
     case 'plan': body = <Plan />; break;
     case 'tutor': body = <Tutor />; break;
     case 'vocab': body = <Vocab />; break;
+    case 'games': body = seg[1] ? <GamePage key={seg[1]} id={seg[1]} /> : <GamesHub />; break;
     case 'grammar': body = seg[1] ? <GrammarLessonPage id={seg[1]} /> : <GrammarList />; break;
     case 'reading': body = seg[1] ? <ReadingPage id={seg[1]} /> : <ReadingList />; break;
     case 'listening': body = seg[1] ? <ListeningPage id={seg[1]} /> : <ListeningList />; break;
