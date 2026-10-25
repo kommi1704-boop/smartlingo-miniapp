@@ -94,9 +94,31 @@ function pickProvider(): Provider | null {
 }
 
 class UpstreamError extends Error {
-  constructor(public status: number) {
+  constructor(public status: number, public detail = '') {
     super(`upstream_${status}`);
   }
+}
+
+/** Short, key-free piece of the provider's error message (for logs and for finding the cause). */
+async function failure(r: Response): Promise<UpstreamError> {
+  let detail = '';
+  try {
+    const t = (await r.text()).slice(0, 600);
+    try {
+      const j = JSON.parse(t) as { error?: { message?: string } | string };
+      detail = typeof j.error === 'string' ? j.error : j.error?.message ?? t;
+    } catch {
+      detail = t;
+    }
+  } catch {
+    /* ignore */
+  }
+  detail = detail
+    .replace(/(gsk_|sk-|AIza)[A-Za-z0-9_-]{8,}/g, '[key]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160);
+  return new UpstreamError(r.status, detail);
 }
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -126,7 +148,7 @@ async function askGemini(key: string, system: string, messages: Msg[]): Promise<
     }),
     signal: AbortSignal.timeout(25_000),
   });
-  if (!r.ok) throw new UpstreamError(r.status);
+  if (!r.ok) throw await failure(r);
   const data = (await r.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
   const parts = data.candidates?.[0]?.content?.parts ?? [];
   return parts
@@ -152,7 +174,7 @@ async function askGroq(key: string, system: string, messages: Msg[]): Promise<st
     }),
     signal: AbortSignal.timeout(25_000),
   });
-  if (!r.ok) throw new UpstreamError(r.status);
+  if (!r.ok) throw await failure(r);
   const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
   return (data.choices?.[0]?.message?.content ?? '').trim();
 }
@@ -164,7 +186,7 @@ async function askClaude(key: string, system: string, messages: Msg[]): Promise<
     body: JSON.stringify({ model: process.env.AI_MODEL || 'claude-haiku-5-5', max_tokens: 500, system, messages }),
     signal: AbortSignal.timeout(25_000),
   });
-  if (!r.ok) throw new UpstreamError(r.status);
+  if (!r.ok) throw await failure(r);
   const data = (await r.json()) as { content?: { type: string; text?: string }[] };
   return (data.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join('\n').trim();
 }
@@ -229,8 +251,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     }
     res.status(200).json({ reply });
   } catch (e) {
+    // Only the HTTP status is logged/returned (never the key or the child's text).
+    console.error('tutor upstream failure', provider.kind, e instanceof UpstreamError ? `${e.status} ${e.detail}` : String(e instanceof Error ? e.name : e));
     if (e instanceof UpstreamError && e.status === 429) res.status(429).json({ error: 'upstream_busy' });
-    else if (e instanceof UpstreamError) res.status(502).json({ error: 'upstream_error' });
+    else if (e instanceof UpstreamError) res.status(502).json({ error: 'upstream_error', status: e.status, detail: e.detail });
     else res.status(502).json({ error: 'upstream_unreachable' });
   }
 }
