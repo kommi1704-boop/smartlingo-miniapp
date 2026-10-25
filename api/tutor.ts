@@ -158,7 +158,7 @@ async function askGemini(key: string, system: string, messages: Msg[]): Promise<
     .trim();
 }
 
-const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b';
 
 /** Groq (OpenAI-compatible chat completions). */
 async function askGroq(key: string, system: string, messages: Msg[]): Promise<string> {
@@ -169,7 +169,8 @@ async function askGroq(key: string, system: string, messages: Msg[]): Promise<st
     body: JSON.stringify({
       model,
       messages: [{ role: 'system', content: system }, ...messages],
-      max_completion_tokens: 600,
+      // gpt-oss models "think" first and the thinking counts against the limit, so keep it short and leave room for the answer
+      ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low', max_completion_tokens: 1500 } : { max_completion_tokens: 600 }),
       temperature: 0.6,
     }),
     signal: AbortSignal.timeout(25_000),
