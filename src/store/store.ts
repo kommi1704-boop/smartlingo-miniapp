@@ -54,6 +54,13 @@ export function resetState(): void {
   listeners.forEach((l) => l());
 }
 
+export function subscribeState(l: () => void): () => void {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+}
+
 function subscribe(l: () => void) {
   listeners.add(l);
   return () => {

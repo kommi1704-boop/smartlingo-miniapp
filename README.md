@@ -137,7 +137,7 @@ Read this before using the free tier: according to Google's pricing page, on the
 
 1. Create an account at https://console.groq.com and make a key at https://console.groq.com/keys.
 2. In Vercel add `GROQ_API_KEY` (and `TELEGRAM_BOT_TOKEN` as above), then Redeploy.
-3. Default model is `llama-3.3-70b-versatile`; change it with `GROQ_MODEL` (for example `llama-3.1-8b-instant` is smaller and faster). Limits depend on your account: see https://console.groq.com/settings/limits.
+3. Default model is `openai/gpt-oss-20b` (a reasoning model, so the server asks for low reasoning effort). Model availability depends on your Groq account: list yours with `GET https://api.groq.com/openai/v1/models` and set `GROQ_MODEL` if needed (for example `openai/gpt-oss-120b`). Limits: see https://console.groq.com/settings/limits.
 4. Small open models write weaker Uzbek than the big commercial ones; if the Uzbek explanations look poor, try another model or provider. Check Groq's current data-use terms before putting children's messages through it.
 
 **Option C — Claude (paid per use)**
@@ -160,6 +160,9 @@ Safety notes:
 - For local testing without Telegram you may set `ALLOW_UNAUTHENTICATED=true` — **never in production**.
 
 ---
+
+### Online progress (optional)
+Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (see `supabase/README.md`). Inside Telegram, progress then follows the learner to a new phone. Chats and writing texts are never uploaded. Learners can switch it off or delete everything in Settings.
 
 ## 7. Known limits
 

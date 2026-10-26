@@ -1,22 +1,23 @@
-# Supabase (optional, later)
+# Online progress (Supabase)
 
-Not needed to run the app. Today everything lives in `localStorage` (`src/lib/repository.ts`).
-Use this only when you want progress to follow a learner to another phone.
+Optional. Without it the app keeps working and stores progress in the phone's browser only.
 
-## Plan
-1. Create a Supabase project and run `schema.sql` in the SQL Editor.
-2. Add two server-only env vars on Vercel: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-   (never `VITE_`-prefixed — the service-role key must not reach the browser).
-3. Add `api/progress.ts` (not included yet):
-   - `GET`  → validate the `x-telegram-init-data` header with `validateInitData` (exported from `api/tutor.ts`),
-     then `select state from progress where telegram_user_id = <verified id>`.
-   - `POST` → same validation, then upsert `{ telegram_user_id, state }`.
-   Never trust a user id sent in the body; only use the id from the verified initData.
-4. Add a `RemoteRepository` that implements `ProgressRepository` (`src/lib/repository.ts`),
-   keeping localStorage as the offline cache, and pass it to the store in `src/store/store.ts`.
-   Because `loadSync()` is synchronous, do the first fetch at startup and merge
-   (e.g. keep whichever copy has more XP / later activity).
+## Setup (about 10 minutes, free plan is enough)
+1. https://supabase.com → New project (any name, pick a region close to you, set a database password and keep it).
+2. Left menu **SQL Editor → New query**, paste the whole of `supabase/schema.sql`, press **Run**.
+3. **Project Settings → API**: copy the **Project URL** and the **service_role** key.
+4. Vercel → your project → **Settings → Environment Variables** add (Production):
+   - `SUPABASE_URL` = the Project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` = the service_role key
+   (`TELEGRAM_BOT_TOKEN` must already be there.) Then **Deployments → Redeploy**.
+5. Open the app inside Telegram → Settings → "Onlayn saqlash" should say "Saqlandi ✓".
 
-## Privacy
-Learners are minors. Store only what the app already holds (name/nickname, age group, progress),
-tell users what is stored, and provide a way to delete it (Settings → reset, plus a delete endpoint for the server copy).
+The service_role key is a master key: only in Vercel Environment Variables. Never GitHub, never chat, never `VITE_`-prefixed.
+
+## How it works
+- `api/progress.ts`: `GET` (restore), `PUT` (save), `DELETE` (remove). The learner id comes ONLY from verified Telegram initData.
+- `src/lib/sync.ts`: on start, a new device takes the online copy; otherwise the copy with more XP wins. Changes are saved ~4 s after the last change and when the app is hidden.
+- Not uploaded: chat history with Lingo and writing texts (they stay on the device).
+- Uploaded: XP, streak, words, badges, game results, settings, profile name/age group, linked to the Telegram user id.
+- Deletion: Settings → switch off "Onlayn saqlash" or "Barcha ma’lumotni o‘chirish" removes the server copy.
+- Limits: a state over 300 KB is refused; 40 saves per minute per user.

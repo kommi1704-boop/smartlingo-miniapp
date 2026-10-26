@@ -2,7 +2,7 @@ import { tgInitData } from './telegram';
 
 // Optional backend. If /api/tutor is not deployed (static hosting) or has no AI key configured,
 // the app silently stays in DEMO mode. No secret ever lives in the frontend.
-const BASE: string = (import.meta.env?.VITE_API_BASE as string | undefined) ?? '';
+export const BASE: string = (import.meta.env?.VITE_API_BASE as string | undefined) ?? '';
 
 let cached: boolean | null = null;
 

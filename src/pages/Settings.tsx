@@ -4,6 +4,7 @@ import { useApp } from '../store/store';
 import { resetAll, updateProfile, updateSettings } from '../store/actions';
 import { navigate } from '../lib/router';
 import { tutorIsLive } from '../lib/api';
+import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/sync';
 import { isTelegram, shareToTelegram } from '../lib/telegram';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
 import { VoicePicker } from '../components/VoicePicker';
@@ -23,6 +24,34 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
     >
       <span className={cx('absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all', checked ? 'left-[1.4rem]' : 'left-0.5')} />
     </button>
+  );
+}
+
+function SyncBlock() {
+  const sy = useSync();
+  const off = syncUserDisabled();
+  if (!isTelegram()) {
+    return <p className="text-sm text-muted">Natijalaringiz shu qurilmadagi brauzer xotirasida saqlanadi. Onlayn saqlash faqat Telegram ichida ishlaydi.</p>;
+  }
+  if (sy.status === 'unavailable') {
+    return <p className="text-sm text-muted">Natijalaringiz shu qurilmada saqlanadi. Onlayn saqlash serverda hali yoqilmagan.</p>;
+  }
+  const text = off
+    ? 'O‘chiq. Natijalar faqat shu qurilmada.'
+    : sy.status === 'synced' ? `Saqlandi ✓${sy.at ? ' · ' + new Date(sy.at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}`
+    : sy.status === 'saving' ? 'Saqlanmoqda…'
+    : sy.status === 'connecting' ? 'Ulanmoqda…'
+    : sy.status === 'error' ? 'Saqlab bo‘lmadi. Internetni tekshiring, qayta urinamiz.'
+    : 'Yoqilgan';
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="font-bold">Onlayn saqlash</div>
+        <div className="text-xs text-muted">{text}</div>
+        <div className="mt-1 text-xs text-muted">Natija (XP, so‘zlar, nishonlar) Telegram hisobingiz bilan bog‘lab saqlanadi. Telefon almashsangiz, tiklanadi. O‘chirsangiz, onlayn nusxa o‘chiriladi.</div>
+      </div>
+      <Switch checked={!off} onChange={(v) => void setSyncEnabled(v)} label="Onlayn saqlash" />
+    </div>
   );
 }
 
@@ -143,7 +172,8 @@ export function Settings() {
 
       <Section title="Ma’lumotlar">
         <Card>
-          <p className="text-sm text-muted">Natijalaringiz faqat shu qurilmadagi brauzer xotirasida saqlanadi{isTelegram() ? ' (Telegram ichida ham)' : ''}.</p>
+          <SyncBlock />
+          <p className="mt-3 text-sm text-muted">Suhbatlar va yozgan matnlaringiz faqat shu qurilmada qoladi.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {botUser && <Button size="sm" variant="secondary" icon="share" onClick={() => shareToTelegram(`https://t.me/${botUser}`, 'SmartLingo AI bilan ingliz tilini o‘rganamiz! 🚀')}>Do‘stlarga ulashish</Button>}
             <Button size="sm" variant="secondary" icon="info" onClick={() => navigate('/welcome')}>SmartLingo haqida</Button>
@@ -158,7 +188,7 @@ export function Settings() {
         <p className="text-sm text-muted">Profil, XP, so‘zlar, natijalar, xatolar daftari va suhbatlar o‘chiriladi. Buni qaytarib bo‘lmaydi.</p>
         <div className="mt-4 flex gap-2">
           <Button variant="secondary" full onClick={() => setConfirm(false)}>Bekor qilish</Button>
-          <Button variant="danger" full onClick={() => { resetAll(); setConfirm(false); navigate('/welcome', { replace: true }); }}>O‘chirish</Button>
+          <Button variant="danger" full onClick={() => { void deleteOnline(); resetAll(); setConfirm(false); navigate('/welcome', { replace: true }); }}>O‘chirish</Button>
         </div>
       </Modal>
     </div>
