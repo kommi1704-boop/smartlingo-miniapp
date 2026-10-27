@@ -1962,5 +1962,4 @@ The situation is serious but not hopeless. Researchers are studying which corals
         explain: "“aim to transcend mere sustainability, evolving into regenerative habitats where human communities and natural ecosystems mutually flourish.”",
       },
     ],
-  },
-];
+  }
