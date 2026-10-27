@@ -140,6 +140,7 @@ export interface DayActivity {
   writing: number;
   tutor: number;
   quizzes: number;
+  frozen?: boolean; // protected by a streak freeze (counts as active for the streak)
 }
 
 export interface GameBest {
@@ -216,6 +217,34 @@ export interface Profile {
   createdAt: string;
 }
 
+// ---------- Robocoin economy (coins, shop, quests) ----------
+
+export interface CoinState {
+  balance: number; // Robocoins 🪙
+  earnedToday: { date: string; amount: number }; // daily cap for game coins
+  spentTotal: number;
+}
+
+export interface OwnedItem {
+  purchasedAt: string; // ISO datetime
+  expiresAt?: string; // ISO datetime — for time-limited items (frames: 7 days)
+}
+
+export interface ShopState {
+  owned: Record<string, OwnedItem>; // item id -> ownership
+  equipped: { frame?: string; avatar?: string; title?: string };
+  chestsOpened: number;
+  streakFreezes: number; // stored "muzlatgich" items ready to auto-protect the streak
+  xpBoostUntil?: string; // ISO datetime — 2x XP active until
+  streakBonusDate?: string; // last date the weekly streak bonus was paid
+}
+
+export interface QuestState {
+  date: string; // YYYY-MM-DD the progress belongs to
+  progress: Record<string, number>; // quest counter -> amount done today
+  claimed: string[]; // quest ids whose coins were claimed today
+}
+
 export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   dailyWordGoal: number;
@@ -251,4 +280,7 @@ export interface PersistedState {
   highlights: Record<string, Highlight[]>; // key: "reading:r01", "listening:l01", "grammar:g02" ...
   settings: Settings;
   games: GamesState;
+  coins: CoinState;
+  shop: ShopState;
+  quests: QuestState;
 }

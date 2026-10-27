@@ -7,7 +7,7 @@ import { Confetti, Mascot } from './Mascot';
 import { playSfx } from '../lib/sfx';
 
 export function Overlays() {
-  const { toasts, celebrations, xpPop } = useUI();
+  const { toasts, celebrations, xpPop, coinPop } = useUI();
   const current = celebrations[0];
 
   useEffect(() => {
@@ -36,6 +36,13 @@ export function Overlays() {
         <div className="pointer-events-none fixed inset-x-0 top-16 z-[65] flex justify-center" aria-hidden="true">
           <div key={xpPop.id} className="xp-pop rounded-full bg-gradient-to-r from-amber-400 to-orange-400 px-4 py-1.5 text-sm font-extrabold text-white shadow-lg shadow-amber-500/30">
             +{xpPop.amount} XP ✨
+          </div>
+        </div>
+      )}
+      {coinPop && (
+        <div className="pointer-events-none fixed inset-x-0 top-28 z-[65] flex justify-center" aria-hidden="true">
+          <div key={coinPop.id} className="xp-pop rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-1.5 text-sm font-extrabold text-white shadow-lg shadow-amber-500/30">
+            +{coinPop.amount} 🪙
           </div>
         </div>
       )}

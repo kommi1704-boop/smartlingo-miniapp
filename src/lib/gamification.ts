@@ -1,6 +1,8 @@
 import type { DayActivity, PersistedState } from '../types';
 import { addDays, today } from './dates';
 import { buildPlan, planSummary } from './plan';
+import type { RankTier } from './shop';
+import { RANK_TIERS } from './shop';
 
 // XP "tajriba darajasi" (experience level) is separate from the CEFR English level.
 export function xpLevel(xp: number): number {
@@ -17,7 +19,7 @@ export function xpProgress(xp: number): { level: number; into: number; need: num
 }
 
 export function streakOf(activity: Record<string, DayActivity>, ref: string = today()): number {
-  const active = (k: string) => (activity[k]?.xp ?? 0) > 0;
+  const active = (k: string) => (activity[k]?.xp ?? 0) > 0 || !!activity[k]?.frozen;
   let cursor = active(ref) ? ref : addDays(ref, -1);
   let n = 0;
   while (active(cursor) && n < 3650) {
@@ -25,6 +27,38 @@ export function streakOf(activity: Record<string, DayActivity>, ref: string = to
     cursor = addDays(cursor, -1);
   }
   return n;
+}
+
+// ---------- Rating (Codeforces-style ladder for the profile) ----------
+
+/**
+ * Reyting: 1000 + XP, plus small bonuses from game stars and badges.
+ * Pure function of the saved state — the same progress always gives the same rating.
+ */
+export function ratingOf(s: PersistedState): number {
+  const stars = Object.values(s.games.best).reduce((a, b) => a + b.stars, 0);
+  const badges = Object.keys(s.badges).length;
+  return 1000 + Math.max(0, s.xp) + stars * 5 + badges * 5;
+}
+
+export interface RankInfo {
+  tier: RankTier; // current tier
+  next: RankTier | null; // next tier (null at the top)
+  rating: number;
+  into: number; // rating above the current tier start
+  need: number; // rating needed for the next tier (0 at the top)
+  pct: number;
+}
+
+export function rankInfo(rating: number): RankInfo {
+  let idx = 0;
+  for (let i = 0; i < RANK_TIERS.length; i++) if (rating >= RANK_TIERS[i].min) idx = i;
+  const tier = RANK_TIERS[idx];
+  const next = RANK_TIERS[idx + 1] ?? null;
+  const into = rating - tier.min;
+  const need = next ? next.min - tier.min : 0;
+  const pct = next ? Math.round((into / need) * 100) : 100;
+  return { tier, next, rating, into, need, pct };
 }
 
 export interface Badge {

@@ -378,3 +378,111 @@ body::after {
     bottom: 1.5rem;
   }
 }
+
+/* ================= Avatar frame rings (Do'kon / Profil) =================
+   Gradient-border trick: transparent border + two background layers
+   (padding-box = surface fill, border-box = the ring gradient). */
+.frame-ring {
+  border: 3px solid transparent;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+.frame-none {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, var(--c-line) border-box;
+}
+
+/* --- shop frames (7 kunlik rental) --- */
+.frame-bronze {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #eec089, #b47a3e 45%, #8a5524) border-box;
+}
+.frame-silver {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #f1f3f9, #aab3c8 45%, #8e99b3) border-box;
+}
+.frame-neon-blue {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #22d3ee, #3b82f6 50%, #22d3ee) border-box;
+  box-shadow: 0 0 10px 1px rgba(56, 189, 248, 0.45);
+  animation: frame-glow 2.6s ease-in-out infinite;
+  --glow-c: 56, 189, 248;
+}
+.frame-neon-pink {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #f472b6, #a855f7 50%, #f472b6) border-box;
+  box-shadow: 0 0 10px 1px rgba(244, 114, 182, 0.45);
+  animation: frame-glow 2.6s ease-in-out infinite;
+  --glow-c: 244, 114, 182;
+}
+.frame-gold {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #fde68a, #f59e0b 40%, #b45309 70%, #fbbf24) border-box;
+  box-shadow: 0 0 9px 1px rgba(245, 158, 11, 0.35);
+}
+.frame-circuit {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    repeating-linear-gradient(45deg, #2dd4bf 0 7px, #0f766e 7px 14px, #134e4a 14px 18px) border-box;
+}
+.frame-frost {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #e0f2fe, #7dd3fc 30%, #f0f9ff 55%, #38bdf8 85%) border-box;
+  box-shadow: 0 0 9px 1px rgba(125, 211, 252, 0.5);
+}
+.frame-fire {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #fbbf24, #f97316 35%, #ef4444 65%, #f59e0b) border-box;
+  animation: frame-glow 1.8s ease-in-out infinite;
+  --glow-c: 249, 115, 22;
+}
+
+/* --- rating frames (Reyting ramkalari — unlocked by rating) --- */
+.frame-specialist {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #4ade80, #16a34a) border-box;
+}
+.frame-expert {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #fde047, #eab308) border-box;
+}
+.frame-cm {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #fb923c, #ea580c) border-box;
+}
+.frame-master {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #fb7185, #e11d48) border-box;
+}
+.frame-im {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #67e8f9, #0891b2) border-box;
+}
+.frame-gm {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #60a5fa, #2563eb) border-box;
+}
+.frame-igm {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box, linear-gradient(135deg, #f9a8d4, #ec4899) border-box;
+}
+.frame-lgm {
+  background: linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, #d8b4fe, #7c3aed 40%, #a855f7 70%, #6d28d9) border-box;
+  animation: frame-glow 2s ease-in-out infinite;
+  --glow-c: 168, 85, 247;
+}
+
+@keyframes frame-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px 1px rgba(var(--glow-c, 56, 189, 248), 0.35);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(var(--glow-c, 56, 189, 248), 0.65);
+  }
+}
+
+/* chest opening shake (stronger than shake-x) */
+@keyframes chest-shake {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(-7deg) scale(1.04); }
+  30% { transform: rotate(6deg) scale(1.06); }
+  45% { transform: rotate(-5deg) scale(1.08); }
+  60% { transform: rotate(4deg) scale(1.1); }
+  75% { transform: rotate(-3deg) scale(1.12); }
+}
+.chest-shake {
+  animation: chest-shake 0.5s ease-in-out infinite;
+}

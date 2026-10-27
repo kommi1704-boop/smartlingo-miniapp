@@ -8,6 +8,7 @@ import { lastDays, shortDay, today } from '../lib/dates';
 import { Button, Card, LevelBadge, PageHeader, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { BarChart } from '../components/BarChart';
+import { Avatar } from '../components/Avatar';
 import { NAV_ALL } from '../components/Shell';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
@@ -36,7 +37,9 @@ export function Dashboard() {
         <Sparkles />
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-3xl bg-white/15 p-1.5"><Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={62} /></div>
+            <div className="rounded-3xl bg-white/15 p-1.5">
+              {s.shop.equipped.avatar ? <Avatar emoji={s.shop.equipped.avatar} size={62} /> : <Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={62} />}
+            </div>
             <div className="min-w-0">
             <h1 className="text-2xl font-extrabold leading-tight">Salom, {p.name}! 👋</h1>
             <p className="mt-1 text-sm text-indigo-100">
@@ -72,6 +75,20 @@ export function Dashboard() {
           <span className="block text-xs text-muted">{s.games.daily.date === t && s.games.daily.done ? 'Bugun bajarildi ✓' : `Hozir o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</span>
         </span>
         <Icon name="right" className="h-4 w-4 text-muted" />
+      </A>
+
+      {/* Robocoin shop promo */}
+      <A
+        to="/shop"
+        className="mt-4 flex items-center gap-3 rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-white shadow-lg shadow-amber-500/25 transition active:scale-[0.99]"
+      >
+        <span className="text-4xl">🪙</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-bold uppercase tracking-wide text-amber-100">Do‘kon · Robocoin</span>
+          <span className="block font-extrabold">{fmt(s.coins.balance)} ta coin yig‘dingiz</span>
+          <span className="block text-xs text-amber-100">Kunlik vazifalar → ramkalar, avatrlar va sirli qutilar</span>
+        </span>
+        <Icon name="right" className="h-5 w-5 shrink-0" />
       </A>
 
       <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Hammasi →</A>}>

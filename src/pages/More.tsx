@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 
 const HINT: Record<string, string> = {
   '/games': '5 ta o‘yin, yulduzlar va kunlik challenge',
+  '/shop': 'Robocoin do‘koni — ramkalar, avatrlar, sovg‘alar',
   '/roadmap': 'Bosqichma-bosqich reja',
   '/grammar': '14 ta dars va testlar',
   '/reading': '10 ta matn',
@@ -13,6 +14,7 @@ const HINT: Record<string, string> = {
   '/writing': 'Matn yozish va tekshirish',
   '/resources': 'Foydali havolalar',
   '/progress': 'Natijalar, xatolar daftari',
+  '/profile': 'Reyting, avatar va ramkalar',
   '/settings': 'Mavzu, maqsadlar, reset',
 };
 

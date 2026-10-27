@@ -63,6 +63,7 @@ export function GameEnd({ info, result, outcome, daily, onAgain, onExit }: { inf
 
         <div className="mt-3 flex flex-wrap justify-center gap-2">
           {outcome.record && <Pill tone="amber">🏅 Yangi rekord!</Pill>}
+          {outcome.coins > 0 && <Pill tone="amber">🪙 +{outcome.coins} Robocoin</Pill>}
           {outcome.dailyBonus > 0 && <Pill tone="green">📅 Kunlik challenge bajarildi +{DAILY_BONUS_XP} XP</Pill>}
           {daily && outcome.dailyBonus === 0 && result.stars === 0 && <Pill tone="neutral">Kunlik challenge uchun kamida 1 yulduz kerak</Pill>}
         </div>

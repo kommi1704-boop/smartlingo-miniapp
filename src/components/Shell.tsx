@@ -3,6 +3,7 @@ import { A, usePath } from '../lib/router';
 import { Icon, type IconName } from './Icon';
 import { cx, fmt } from '../lib/utils';
 import { useApp } from '../store/store';
+import { isXpBoosted } from '../store/actions';
 import { streakOf, xpProgress } from '../lib/gamification';
 import { ProgressBar } from './ui';
 
@@ -19,6 +20,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/tutor', label: 'Lingo (AI)', icon: 'chat' },
   { path: '/vocab', label: 'So‘zlar', icon: 'cards' },
   { path: '/games', label: 'O‘yinlar', icon: 'game' },
+  { path: '/shop', label: 'Do‘kon', icon: 'cart' },
   { path: '/grammar', label: 'Grammatika', icon: 'bulb' },
   { path: '/reading', label: 'O‘qish', icon: 'book' },
   { path: '/listening', label: 'Tinglash', icon: 'headphones' },
@@ -26,6 +28,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/writing', label: 'Yozish', icon: 'pen' },
   { path: '/resources', label: 'Resurslar', icon: 'globe' },
   { path: '/progress', label: 'Progress', icon: 'chart' },
+  { path: '/profile', label: 'Profil', icon: 'user' },
   { path: '/settings', label: 'Sozlamalar', icon: 'settings' },
 ];
 
@@ -86,6 +89,10 @@ export function Shell({ children }: { children: ReactNode }) {
             <span>🔥 {streak} kun</span>
             <span>⭐ {fmt(s.xp)} XP</span>
           </div>
+          <div className="mt-1 flex items-center justify-between text-xs font-semibold">
+            <A to="/shop" className="text-amber-600 hover:underline dark:text-amber-300">🪙 {fmt(s.coins.balance)} Robocoin</A>
+            {isXpBoosted(s) && <span className="text-amber-600 dark:text-amber-300">⚡ 2x XP</span>}
+          </div>
           <ProgressBar value={xp.pct} className="mt-2" label="Keyingi darajagacha" />
           <div className="mt-1 text-[11px] text-muted">Tajriba darajasi {xp.level}</div>
         </div>
@@ -99,9 +106,12 @@ export function Shell({ children }: { children: ReactNode }) {
               <img src="./favicon.svg" alt="" className="h-7 w-7" />
               <span className="text-[15px] font-extrabold">SmartLingo AI</span>
             </A>
-            <A to="/progress" className="flex items-center gap-2 text-xs font-bold" aria-label="Progressni ko‘rish">
+            <A to="/progress" className="flex items-center gap-1.5 text-xs font-bold" aria-label="Progressni ko‘rish">
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200">🔥 {streak}</span>
               <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">⭐ {fmt(s.xp)}</span>
+            </A>
+            <A to="/shop" className="rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-white shadow-sm shadow-amber-500/30" aria-label="Do‘konga o‘tish">
+              🪙 {fmt(s.coins.balance)}
             </A>
           </div>
         </div>

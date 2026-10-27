@@ -25,6 +25,9 @@ export function defaultState(): PersistedState {
     highlights: {},
     settings: { theme: 'auto', dailyWordGoal: 10, haptics: true, sound: true, showTranslation: false },
     games: { best: {}, plays: 0, daily: { date: '', done: false }, dailyCount: 0, xpToday: { date: '', xp: 0 } },
+    coins: { balance: 0, earnedToday: { date: '', amount: 0 }, spentTotal: 0 },
+    shop: { owned: {}, equipped: {}, chestsOpened: 0, streakFreezes: 0 },
+    quests: { date: '', progress: {}, claimed: [] },
   };
 }
 
@@ -32,7 +35,15 @@ function hydrate(): PersistedState {
   const base = defaultState();
   const saved = repo.loadSync();
   if (!saved || saved.version !== 1) return base;
-  return { ...base, ...saved, settings: { ...base.settings, ...(saved.settings ?? {}) }, games: { ...base.games, ...(saved.games ?? {}) } };
+  return {
+    ...base,
+    ...saved,
+    settings: { ...base.settings, ...(saved.settings ?? {}) },
+    games: { ...base.games, ...(saved.games ?? {}) },
+    coins: { ...base.coins, ...(saved.coins ?? {}) },
+    shop: { ...base.shop, ...(saved.shop ?? {}) },
+    quests: { ...base.quests, ...(saved.quests ?? {}) },
+  };
 }
 
 let state: PersistedState = hydrate();

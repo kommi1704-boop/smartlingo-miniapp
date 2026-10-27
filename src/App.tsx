@@ -3,6 +3,7 @@ import { navigate, goBack, segments, usePath } from './lib/router';
 import { bindBackButton, tgUser } from './lib/telegram';
 import { applyTheme, watchTheme } from './lib/theme';
 import { getState, useApp } from './store/store';
+import { dayStart } from './store/actions';
 import { Shell, TAB_ROOTS } from './components/Shell';
 import { Overlays } from './components/Overlays';
 import { Button, Empty } from './components/ui';
@@ -23,6 +24,8 @@ import { Resources } from './pages/Resources';
 import { Progress } from './pages/Progress';
 import { Settings } from './pages/Settings';
 import { More } from './pages/More';
+import { Shop } from './pages/Shop';
+import { Profile } from './pages/Profile';
 
 const PUBLIC = ['welcome', 'onboarding', 'assessment', 'result'];
 
@@ -38,6 +41,11 @@ export function App() {
     applyTheme(s.settings.theme);
     return watchTheme(() => getState().settings.theme);
   }, [s.settings.theme]);
+
+  // daily upkeep: streak freeze auto-use, weekly streak bonus (safe to call any number of times)
+  useEffect(() => {
+    dayStart();
+  }, []);
 
   // Telegram native Back button
   const showBack = !!first && !TAB_ROOTS.includes(path);
@@ -80,6 +88,8 @@ export function App() {
     case 'writing': body = seg[1] ? <WritingPage id={seg[1]} /> : <WritingList />; break;
     case 'resources': body = <Resources />; break;
     case 'progress': body = <Progress />; break;
+    case 'shop': body = <Shop />; break;
+    case 'profile': body = <Profile />; break;
     case 'settings': body = <Settings />; break;
     case 'more': body = <More />; break;
     default:

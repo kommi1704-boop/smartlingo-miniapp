@@ -1,23 +1,97 @@
 import type {
-  ChatMessage, ContentKind, Conversation, DayActivity, HlColor, Mistake, PersistedState, Profile, Quiz, Settings,
+  ChatMessage, ContentKind, Conversation, DayActivity, HlColor, Mistake, PersistedState, Profile, Quiz, QuestState, Settings,
 } from '../types';
 import { addRange, subtractRange, type HlSeg } from '../lib/highlights';
 import { getState, setState, resetState } from './store';
-import { celebrate, showXp, toast } from './ui';
-import { today } from '../lib/dates';
+import { celebrate, showCoins, showXp, toast } from './ui';
+import { addDays, today } from '../lib/dates';
 import { applyReview, markLearnedProgress, markReviewProgress } from '../lib/srs';
-import { BADGES, newBadges, xpLevel } from '../lib/gamification';
+import { BADGES, newBadges, streakOf, xpLevel } from '../lib/gamification';
 import { emptyDay } from '../lib/plan';
 import { uid } from '../lib/utils';
 import { haptic, setHapticsEnabled } from '../lib/telegram';
 import { DAILY_BONUS_XP, GAME_XP_CAP, xpForResult, type GameResult } from '../lib/games';
+import {
+  CHEST_PRICE, FIRST_LESSON_COINS, FRAME_DAYS, FREEZE_PRICE, GAME_COIN_CAP, LEVEL_UP_COINS,
+  STREAK_BONUS_COINS, XP_BOOST_HOURS, XP_BOOST_PRICE, coinsForResult, questById, rollChest,
+  type AvatarItem, type ChestReward, type FrameItem, type QuestCounter, type TitleItem,
+} from '../lib/shop';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Counters = Partial<Record<keyof DayActivity, number>>;
 
+// ---------- Robocoin helpers ----------
+
+/** True while the 2x XP booster is active. */
+export function isXpBoosted(s: PersistedState): boolean {
+  return !!s.shop.xpBoostUntil && new Date(s.shop.xpBoostUntil).getTime() > Date.now();
+}
+
 function bump(s: PersistedState, c: Counters, date = today()): PersistedState {
   const day: DayActivity = { ...emptyDay(), ...(s.activity[date] ?? {}) };
-  for (const k of Object.keys(c) as (keyof DayActivity)[]) day[k] += c[k] ?? 0;
-  return { ...s, xp: s.xp + (c.xp ?? 0), activity: { ...s.activity, [date]: day } };
+  for (const k of Object.keys(c) as (keyof DayActivity)[]) {
+    if (k === 'frozen') continue; // only numeric counters arrive here
+    day[k] = ((day[k] as number | undefined) ?? 0) + (c[k] ?? 0);
+  }
+  // 2x XP booster also applies to the day total (streaks and charts show boosted XP)
+  const mult = isXpBoosted(s) ? 2 : 1;
+  const gain = (c.xp ?? 0) * mult;
+  day.xp += (c.xp ?? 0) * (mult - 1);
+  // daily quest progress: most activity counters map straight onto quest counters
+  const quests: QuestState =
+    s.quests.date !== date ? { date, progress: {}, claimed: [] } : { ...s.quests, progress: { ...s.quests.progress } };
+  const qp = quests.progress;
+  if (c.xp) qp.xp = (qp.xp ?? 0) + gain;
+  if (c.words) qp.words = (qp.words ?? 0) + (c.words ?? 0);
+  if (c.tutor) qp.tutor = (qp.tutor ?? 0) + (c.tutor ?? 0);
+  if (c.speaking) qp.speaking = (qp.speaking ?? 0) + (c.speaking ?? 0);
+  if (c.writing) qp.writing = (qp.writing ?? 0) + (c.writing ?? 0);
+  return { ...s, xp: s.xp + gain, activity: { ...s.activity, [date]: day }, quests };
+}
+
+/** Adds Robocoins to the balance and shows a floating "+N 🪙" bubble. */
+export function addCoins(amount: number, opts: { silent?: boolean } = {}): void {
+  if (amount <= 0) return;
+  setState((s) => ({ ...s, coins: { ...s.coins, balance: s.coins.balance + amount } }));
+  if (!opts.silent) showCoins(amount);
+}
+
+/** Advances a quest counter that has no dedicated activity counter (games played, lessons completed). */
+export function tickQuest(counter: QuestCounter, amount = 1): void {
+  const date = today();
+  setState((s) => {
+    const quests: QuestState =
+      s.quests.date !== date ? { date, progress: {}, claimed: [] } : s.quests;
+    return { ...s, quests: { ...quests, progress: { ...quests.progress, [counter]: (quests.progress[counter] ?? 0) + amount } } };
+  });
+}
+
+/**
+ * Once-per-day upkeep: auto-consume a streak freeze when yesterday was missed,
+ * and pay the weekly streak bonus. Safe to call any number of times.
+ */
+export function dayStart(): void {
+  const s = getState();
+  const t = today();
+  const y = addDays(t, -1);
+  const yesterday = s.activity[y];
+  const dayBefore = s.activity[addDays(y, -1)];
+  if (!yesterday && (dayBefore?.xp ?? 0) > 0 && s.shop.streakFreezes > 0) {
+    setState((st) => ({
+      ...st,
+      shop: { ...st.shop, streakFreezes: st.shop.streakFreezes - 1 },
+      activity: { ...st.activity, [y]: { ...emptyDay(), frozen: true } },
+    }));
+    toast('🧊 Muzlatgich ishladi — kunlik seriyangiz saqlab qolindi!', 'success');
+  }
+  const st2 = getState();
+  const streak = streakOf(st2.activity);
+  if (streak >= 7 && streak % 7 === 0 && st2.shop.streakBonusDate !== t && (st2.activity[t]?.xp ?? 0) > 0) {
+    setState((st) => ({ ...st, shop: { ...st.shop, streakBonusDate: t } }));
+    addCoins(STREAK_BONUS_COINS);
+    toast(`🔥 ${streak} kunlik seriya! +${STREAK_BONUS_COINS} Robocoin`, 'success');
+  }
 }
 
 function afterChange(beforeXp: number): void {
@@ -31,15 +105,19 @@ function afterChange(beforeXp: number): void {
   }
   if (lvAfter > lvBefore) {
     celebrate({ emoji: '🚀', title: `Yangi daraja: ${lvAfter}!`, text: 'Siz muntazam o‘rganayotganingiz uchun tajriba darajangiz oshdi. Davom eting!' });
+    addCoins(LEVEL_UP_COINS);
   }
   fresh.forEach((b) => celebrate({ emoji: b.emoji, title: `Yangi nishon: ${b.title}`, text: b.desc }));
 }
 
 /** Adds XP / activity counters for today and checks level-ups and badges. */
 export function record(c: Counters): void {
-  const before = getState().xp;
+  const s0 = getState();
+  const before = s0.xp;
+  const newDay = s0.quests.date !== today();
   setState((s) => bump(s, c));
-  if ((c.xp ?? 0) > 0) showXp(c.xp ?? 0);
+  if (newDay) dayStart();
+  if ((c.xp ?? 0) > 0) showXp((c.xp ?? 0) * (isXpBoosted(getState()) ? 2 : 1));
   afterChange(before);
 }
 
@@ -168,6 +246,8 @@ export function finishQuiz(args: {
   const counter: Counters =
     kind === 'grammar' ? { grammar: 1 } : kind === 'reading' ? { reading: 1 } : kind === 'listening' ? { listening: 1 } : {};
   record({ xp, quizzes: 1, ...counter });
+  if (completedNow) tickQuest('lessons', 1);
+  if (firstCompletion) addCoins(FIRST_LESSON_COINS);
   return { score, total, xp, completed: completedNow, firstCompletion, mistakes: wrong.length };
 }
 
@@ -190,6 +270,7 @@ export interface GameOutcome {
   record: boolean;
   capped: boolean;
   bestStars: number;
+  coins: number;
 }
 
 /** Saves a finished game: personal best, stars, XP (capped per day so games never replace lessons) and the daily challenge. */
@@ -218,7 +299,24 @@ export function finishGame(r: GameResult, daily: boolean): GameOutcome {
     },
   }));
   record({ xp: xp + dailyBonus });
-  return { xp, dailyBonus, record: isRecord, capped, bestStars: Math.max(prev.stars, r.stars) };
+  // Robocoins: stars + record bonus, with a daily cap so games never replace tasks either
+  const wantCoins = coinsForResult(r, isRecord);
+  const cState = getState().coins;
+  const usedCoins = cState.earnedToday.date === t ? cState.earnedToday.amount : 0;
+  const coins = Math.max(0, Math.min(wantCoins, GAME_COIN_CAP - usedCoins));
+  if (coins > 0) {
+    setState((s) => ({
+      ...s,
+      coins: {
+        ...s.coins,
+        balance: s.coins.balance + coins,
+        earnedToday: { date: t, amount: (s.coins.earnedToday.date === t ? s.coins.earnedToday.amount : 0) + coins },
+      },
+    }));
+    showCoins(coins);
+  }
+  tickQuest('games', 1);
+  return { xp, dailyBonus, record: isRecord, capped, bestStars: Math.max(prev.stars, r.stars), coins };
 }
 
 export function toggleMistake(id: string): void {
@@ -239,6 +337,7 @@ export function completeSpeaking(promptId: string, checked: number, total: numbe
   const xp = 10 + Math.round((checked / Math.max(1, total)) * 10);
   setState((s) => ({ ...s, speakingDone: { ...s.speakingDone, [promptId]: [...(s.speakingDone[promptId] ?? []), today()] } }));
   record({ xp, speaking: 1 });
+  addCoins(4);
   return xp;
 }
 
@@ -249,6 +348,7 @@ export function submitWriting(promptId: string, text: string, words: number, iss
     writing: [...s.writing, { id: uid('w'), promptId, text, words, issues, date: new Date().toISOString() }].slice(-100),
   }));
   record({ xp, writing: 1 });
+  addCoins(4);
   return xp;
 }
 
@@ -329,4 +429,145 @@ export function clearHighlights(key: string): void {
     delete next[key];
     return { ...s, highlights: next };
   });
+}
+
+// ---------- Robocoin shop ----------
+
+/** Ownership that has not expired (items without expiry are permanent). */
+export function isOwnedActive(id: string): boolean {
+  const o = getState().shop.owned[id];
+  if (!o) return false;
+  return !o.expiresAt || new Date(o.expiresAt).getTime() > Date.now();
+}
+
+function spend(price: number): boolean {
+  const s = getState();
+  if (s.coins.balance < price) {
+    toast('Yetarli Robocoin yo‘q — vazifalar va o‘yinlar bilan yig‘ing!', 'warn');
+    return false;
+  }
+  setState((st) => ({ ...st, coins: { ...st.coins, balance: st.coins.balance - price, spentTotal: st.coins.spentTotal + price } }));
+  return true;
+}
+
+function markOwned(id: string, days?: number): void {
+  const now = Date.now();
+  setState((st) => ({
+    ...st,
+    shop: {
+      ...st.shop,
+      owned: {
+        ...st.shop.owned,
+        [id]: days ? { purchasedAt: new Date(now).toISOString(), expiresAt: new Date(now + days * DAY_MS).toISOString() } : { purchasedAt: new Date(now).toISOString() },
+      },
+    },
+  }));
+}
+
+/** Buys a 7-day avatar frame and equips it right away. Renewing: just call again while active. */
+export function buyFrame(item: FrameItem): boolean {
+  if (isOwnedActive(item.id)) {
+    equipFrame(item.id);
+    toast(`${item.name} taqildi`, 'success');
+    return true;
+  }
+  if (!spend(item.price)) return false;
+  markOwned(item.id, FRAME_DAYS);
+  equipFrame(item.id);
+  haptic('success');
+  toast(`${item.name} taqildi! ${FRAME_DAYS} kun davom etadi 🎉`, 'success');
+  return true;
+}
+
+/** Extends an owned frame by 7 days (from the current expiry if still active). */
+export function renewFrame(item: FrameItem): boolean {
+  if (!spend(item.price)) return false;
+  const current = getState().shop.owned[item.id]?.expiresAt;
+  const base = Math.max(Date.now(), current ? new Date(current).getTime() : 0);
+  setState((st) => ({
+    ...st,
+    shop: { ...st.shop, owned: { ...st.shop.owned, [item.id]: { ...st.shop.owned[item.id], expiresAt: new Date(base + FRAME_DAYS * DAY_MS).toISOString() } } },
+  }));
+  equipFrame(item.id);
+  haptic('success');
+  toast(`${item.name} ${FRAME_DAYS} kunga uzaytirildi ✓`, 'success');
+  return true;
+}
+
+export function equipFrame(id?: string): void {
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, frame: id } } }));
+}
+
+export function buyAvatar(item: AvatarItem): boolean {
+  if (!spend(item.price)) return false;
+  markOwned(item.id);
+  equipAvatar(item.emoji);
+  haptic('success');
+  toast(`${item.name} avatari sizniki! 🎉`, 'success');
+  return true;
+}
+
+export function equipAvatar(emoji: string): void {
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, avatar: emoji } } }));
+}
+
+export function buyTitle(item: TitleItem): boolean {
+  if (!spend(item.price)) return false;
+  markOwned(item.id);
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, title: item.id } } }));
+  haptic('success');
+  toast(`“${item.name}” unvoni taqildi! 🎉`, 'success');
+  return true;
+}
+
+export function equipTitle(id?: string): void {
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, title: id } } }));
+}
+
+/** Buys and opens a mystery chest. Returns the rolled reward (or null if the purchase failed). */
+export function openChest(): ChestReward | null {
+  if (!spend(CHEST_PRICE)) return null;
+  const reward = rollChest();
+  setState((st) => ({ ...st, shop: { ...st.shop, chestsOpened: st.shop.chestsOpened + 1 } }));
+  haptic('success');
+  if (reward.kind === 'coins') addCoins(reward.amount);
+  else if (reward.kind === 'xp') record({ xp: reward.amount });
+  else if (reward.kind === 'freeze') {
+    setState((st) => ({ ...st, shop: { ...st.shop, streakFreezes: st.shop.streakFreezes + 1 } }));
+    toast('🧊 Muzlatgich omborga qo‘shildi — seriya himoyada!', 'success');
+  }
+  return reward;
+}
+
+/** Activates the 2x XP booster for 24 hours. */
+export function buyXpBoost(): boolean {
+  if (!spend(XP_BOOST_PRICE)) return false;
+  const until = new Date(Date.now() + XP_BOOST_HOURS * 60 * 60 * 1000).toISOString();
+  setState((st) => ({ ...st, shop: { ...st.shop, xpBoostUntil: until } }));
+  haptic('success');
+  toast(`⚡ 2x XP yoqildi! ${XP_BOOST_HOURS} soat davom etadi`, 'success');
+  return true;
+}
+
+/** Buys one streak freeze (auto-used when a day is missed). */
+export function buyFreeze(): boolean {
+  if (!spend(FREEZE_PRICE)) return false;
+  setState((st) => ({ ...st, shop: { ...st.shop, streakFreezes: st.shop.streakFreezes + 1 } }));
+  haptic('success');
+  toast('🧊 Muzlatgich qo‘shildi — seriyangiz endi himoyada!', 'success');
+  return true;
+}
+
+/** Claims the coins for a completed daily quest. */
+export function claimQuest(id: string): void {
+  const t = today();
+  const quest = questById(id);
+  if (!quest) return;
+  const q = getState().quests;
+  if (q.date !== t || q.claimed.includes(id)) return;
+  if ((q.progress[quest.counter] ?? 0) < quest.target) return;
+  setState((st) => ({ ...st, quests: { ...st.quests, claimed: [...st.quests.claimed, id] } }));
+  addCoins(quest.coins);
+  haptic('success');
+  toast(`Vazifa bajarildi: +${quest.coins} Robocoin! 🪙`, 'success');
 }

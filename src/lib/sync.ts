@@ -88,6 +88,9 @@ function adopt(remote: Partial<PersistedState>) {
     ...remote,
     settings: { ...base.settings, ...(remote.settings ?? {}) },
     games: { ...base.games, ...(remote.games ?? {}) },
+    coins: { ...base.coins, ...(remote.coins ?? {}) },
+    shop: { ...base.shop, ...(remote.shop ?? {}) },
+    quests: { ...base.quests, ...(remote.quests ?? {}) },
     conversations: s.conversations,
     writing: s.writing,
   }));
