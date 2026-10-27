@@ -576,4 +576,8 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
   },
 ];
 
-export const READING: ReadingPassage[] = [...READING_BASE, ...READING_MORE];
+export const READING: ReadingPassage[] = [
+  ...READING_BASE,
+  ...READING_MORE,
+  ...READING_EXTENDED,
+];
