@@ -98,7 +98,7 @@ export function Profile() {
               <span className="text-muted">{rank.next.name} · {fmt(rank.next.min)}</span>
             </div>
             <ProgressBar value={rank.pct} className="mt-1.5" color="bg-gradient-to-r from-emerald-400 to-teal-500" label="Reyting progress" />
-            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + XP + o‘yin yulduzlari + nishonlar bonusi. Darslar va testlar bajarilganda oshadi.</p>
+            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + XP÷3 + o‘yin yulduzlari + nishonlar bonusi. Darslar va testlar bajarilganda sekin-asta oshadi.</p>
           </Card>
         )}
       </Section>
@@ -205,7 +205,7 @@ export function Profile() {
       </div>
       {s.coins.balance > 0 && (
         <div className="mt-3">
-          <Pill tone="amber" className="!px-3 !py-1.5">🪙 {fmt(s.coins.balance)} Robocoin — do‘konda sarflang</Pill>
+          <Pill tone="amber" className="!px-3 !py-1.5">🪙 {fmt(s.coins.balance)} Coin — do‘konda sarflang</Pill>
         </div>
       )}
     </div>

@@ -93,7 +93,7 @@ export function GamesHub() {
 
       <div className="mt-4">
         <Notice>
-          O‘yinlardan kuniga {GAME_XP_CAP} XP gacha olinadi (bugun: {usedXp}). Shunda o‘yin darslarni almashtirmaydi, balki to‘ldiradi. Xato qilgan so‘zlaringizni takrorlashga qo‘shishingiz mumkin. O‘yinlarda Robocoin ham yig‘iladi (kuniga 30 tagacha 🪙) — Do‘konda sarflang!
+          O‘yinlardan kuniga {GAME_XP_CAP} XP gacha olinadi (bugun: {usedXp}). Shunda o‘yin darslarni almashtirmaydi, balki to‘ldiradi. Xato qilgan so‘zlaringizni takrorlashga qo‘shishingiz mumkin. O‘yinlarda Coin ham yig‘iladi (kuniga 30 tagacha 🪙) — Do‘konda sarflang!
         </Notice>
       </div>
     </div>

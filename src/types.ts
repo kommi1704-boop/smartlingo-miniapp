@@ -217,10 +217,10 @@ export interface Profile {
   createdAt: string;
 }
 
-// ---------- Robocoin economy (coins, shop, quests) ----------
+// ---------- Coin economy (coins, shop, quests) ----------
 
 export interface CoinState {
-  balance: number; // Robocoins 🪙
+  balance: number; // Coins 🪙
   earnedToday: { date: string; amount: number }; // daily cap for game coins
   spentTotal: number;
 }

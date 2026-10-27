@@ -21,7 +21,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Counters = Partial<Record<keyof DayActivity, number>>;
 
-// ---------- Robocoin helpers ----------
+// ---------- Coin helpers ----------
 
 /** True while the 2x XP booster is active. */
 export function isXpBoosted(s: PersistedState): boolean {
@@ -50,7 +50,7 @@ function bump(s: PersistedState, c: Counters, date = today()): PersistedState {
   return { ...s, xp: s.xp + gain, activity: { ...s.activity, [date]: day }, quests };
 }
 
-/** Adds Robocoins to the balance and shows a floating "+N 🪙" bubble. */
+/** Adds Coins to the balance and shows a floating "+N 🪙" bubble. */
 export function addCoins(amount: number, opts: { silent?: boolean } = {}): void {
   if (amount <= 0) return;
   setState((s) => ({ ...s, coins: { ...s.coins, balance: s.coins.balance + amount } }));
@@ -90,7 +90,7 @@ export function dayStart(): void {
   if (streak >= 7 && streak % 7 === 0 && st2.shop.streakBonusDate !== t && (st2.activity[t]?.xp ?? 0) > 0) {
     setState((st) => ({ ...st, shop: { ...st.shop, streakBonusDate: t } }));
     addCoins(STREAK_BONUS_COINS);
-    toast(`🔥 ${streak} kunlik seriya! +${STREAK_BONUS_COINS} Robocoin`, 'success');
+    toast(`🔥 ${streak} kunlik seriya! +${STREAK_BONUS_COINS} Coin`, 'success');
   }
 }
 
@@ -299,7 +299,7 @@ export function finishGame(r: GameResult, daily: boolean): GameOutcome {
     },
   }));
   record({ xp: xp + dailyBonus });
-  // Robocoins: stars + record bonus, with a daily cap so games never replace tasks either
+  // Coins: stars + record bonus, with a daily cap so games never replace tasks either
   const wantCoins = coinsForResult(r, isRecord);
   const cState = getState().coins;
   const usedCoins = cState.earnedToday.date === t ? cState.earnedToday.amount : 0;
@@ -431,7 +431,7 @@ export function clearHighlights(key: string): void {
   });
 }
 
-// ---------- Robocoin shop ----------
+// ---------- Coin shop ----------
 
 /** Ownership that has not expired (items without expiry are permanent). */
 export function isOwnedActive(id: string): boolean {
@@ -443,7 +443,7 @@ export function isOwnedActive(id: string): boolean {
 function spend(price: number): boolean {
   const s = getState();
   if (s.coins.balance < price) {
-    toast('Yetarli Robocoin yo‘q — vazifalar va o‘yinlar bilan yig‘ing!', 'warn');
+    toast('Yetarli Coin yo‘q — vazifalar va o‘yinlar bilan yig‘ing!', 'warn');
     return false;
   }
   setState((st) => ({ ...st, coins: { ...st.coins, balance: st.coins.balance - price, spentTotal: st.coins.spentTotal + price } }));
@@ -569,5 +569,5 @@ export function claimQuest(id: string): void {
   setState((st) => ({ ...st, quests: { ...st.quests, claimed: [...st.quests.claimed, id] } }));
   addCoins(quest.coins);
   haptic('success');
-  toast(`Vazifa bajarildi: +${quest.coins} Robocoin! 🪙`, 'success');
+  toast(`Vazifa bajarildi: +${quest.coins} Coin! 🪙`, 'success');
 }

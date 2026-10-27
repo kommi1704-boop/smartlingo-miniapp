@@ -32,13 +32,14 @@ export function streakOf(activity: Record<string, DayActivity>, ref: string = to
 // ---------- Rating (Codeforces-style ladder for the profile) ----------
 
 /**
- * Reyting: 1000 + XP, plus small bonuses from game stars and badges.
+ * Reyting: 1000 + XP/3 (sekin o‘sishi uchun XP uchdan 1 qismi hisobga olinadi),
+ * plus small bonuses from game stars and badges.
  * Pure function of the saved state — the same progress always gives the same rating.
  */
 export function ratingOf(s: PersistedState): number {
   const stars = Object.values(s.games.best).reduce((a, b) => a + b.stars, 0);
   const badges = Object.keys(s.badges).length;
-  return 1000 + Math.max(0, s.xp) + stars * 5 + badges * 5;
+  return 1000 + Math.floor(Math.max(0, s.xp) / 3) + stars * 5 + badges * 5;
 }
 
 export interface RankInfo {

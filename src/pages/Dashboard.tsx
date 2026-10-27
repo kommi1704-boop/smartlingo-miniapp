@@ -77,14 +77,14 @@ export function Dashboard() {
         <Icon name="right" className="h-4 w-4 text-muted" />
       </A>
 
-      {/* Robocoin shop promo */}
+      {/* Coin shop promo */}
       <A
         to="/shop"
         className="mt-4 flex items-center gap-3 rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-white shadow-lg shadow-amber-500/25 transition active:scale-[0.99]"
       >
         <span className="text-4xl">🪙</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-bold uppercase tracking-wide text-amber-100">Do‘kon · Robocoin</span>
+          <span className="block text-xs font-bold uppercase tracking-wide text-amber-100">Do‘kon · Coin</span>
           <span className="block font-extrabold">{fmt(s.coins.balance)} ta coin yig‘dingiz</span>
           <span className="block text-xs text-amber-100">Kunlik vazifalar → ramkalar, avatrlar va sirli qutilar</span>
         </span>

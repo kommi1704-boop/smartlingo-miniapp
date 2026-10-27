@@ -90,7 +90,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <span>⭐ {fmt(s.xp)} XP</span>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs font-semibold">
-            <A to="/shop" className="text-amber-600 hover:underline dark:text-amber-300">🪙 {fmt(s.coins.balance)} Robocoin</A>
+            <A to="/shop" className="text-amber-600 hover:underline dark:text-amber-300">🪙 {fmt(s.coins.balance)} Coin</A>
             {isXpBoosted(s) && <span className="text-amber-600 dark:text-amber-300">⚡ 2x XP</span>}
           </div>
           <ProgressBar value={xp.pct} className="mt-2" label="Keyingi darajagacha" />

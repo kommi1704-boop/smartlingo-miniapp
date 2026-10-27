@@ -3,7 +3,7 @@ import { seededRng } from './games';
 import { today } from './dates';
 import type { PersistedState, QuestState } from '../types';
 
-// ---------- Robocoin economy: catalog, tiers, quests, chest ----------
+// ---------- Coin economy: catalog, tiers, quests, chest ----------
 // This module is pure data + helpers (no store imports) so both pages and actions can use it.
 
 // ===== Avatar frames (Do'kon: "Ramkalar") =====
@@ -13,7 +13,7 @@ export type FrameTier = 'oddiy' | 'premium';
 export interface FrameItem {
   id: string; // "frame-bronze"
   name: string; // Uzbek display name
-  price: number; // Robocoins
+  price: number; // Coins
   tier: FrameTier;
   cls: string; // CSS ring class (index.css)
 }
@@ -21,14 +21,14 @@ export interface FrameItem {
 export const FRAME_DAYS = 7; // frames are rented for 7 days, renewable
 
 export const FRAMES: FrameItem[] = [
-  { id: 'frame-bronze', name: 'Bronza ramka', price: 20, tier: 'oddiy', cls: 'frame-bronze' },
-  { id: 'frame-silver', name: 'Kumush ramka', price: 60, tier: 'oddiy', cls: 'frame-silver' },
-  { id: 'frame-neon-blue', name: 'Neon moviy', price: 120, tier: 'oddiy', cls: 'frame-neon-blue' },
-  { id: 'frame-neon-pink', name: 'Neon pushti', price: 120, tier: 'oddiy', cls: 'frame-neon-pink' },
-  { id: 'frame-gold', name: 'Oltin ramka', price: 180, tier: 'premium', cls: 'frame-gold' },
-  { id: 'frame-circuit', name: 'Mikrosxema', price: 200, tier: 'premium', cls: 'frame-circuit' },
-  { id: 'frame-frost', name: 'Ayoz', price: 200, tier: 'premium', cls: 'frame-frost' },
-  { id: 'frame-fire', name: 'Olov', price: 250, tier: 'premium', cls: 'frame-fire' },
+  { id: 'frame-bronze', name: 'Bronza ramka', price: 35, tier: 'oddiy', cls: 'frame-bronze' },
+  { id: 'frame-silver', name: 'Kumush ramka', price: 100, tier: 'oddiy', cls: 'frame-silver' },
+  { id: 'frame-neon-blue', name: 'Neon moviy', price: 180, tier: 'oddiy', cls: 'frame-neon-blue' },
+  { id: 'frame-neon-pink', name: 'Neon pushti', price: 180, tier: 'oddiy', cls: 'frame-neon-pink' },
+  { id: 'frame-gold', name: 'Oltin ramka', price: 270, tier: 'premium', cls: 'frame-gold' },
+  { id: 'frame-circuit', name: 'Mikrosxema', price: 300, tier: 'premium', cls: 'frame-circuit' },
+  { id: 'frame-frost', name: 'Ayoz', price: 300, tier: 'premium', cls: 'frame-frost' },
+  { id: 'frame-fire', name: 'Olov', price: 380, tier: 'premium', cls: 'frame-fire' },
 ];
 
 export const frameById = (id?: string): FrameItem | undefined => FRAMES.find((f) => f.id === id);
@@ -131,7 +131,7 @@ export function rollChest(rnd: () => number = Math.random): ChestReward {
 }
 
 export function chestRewardText(r: ChestReward): string {
-  if (r.kind === 'coins') return `+${r.amount} 🪙 Robocoin`;
+  if (r.kind === 'coins') return `+${r.amount} 🪙 Coin`;
   if (r.kind === 'xp') return `+${r.amount} ⭐ XP`;
   return '🧊 1 ta muzlatgich';
 }
@@ -182,7 +182,7 @@ export function todaysQuests(date: string = today()): QuestDef[] {
 
 // ===== Coin rules =====
 
-export const GAME_COIN_CAP = 30; // max Robocoins per day from games
+export const GAME_COIN_CAP = 30; // max Coins per day from games
 export const FIRST_LESSON_COINS = 5;
 export const LEVEL_UP_COINS = 10;
 export const STREAK_BONUS_COINS = 20; // every 7th streak day

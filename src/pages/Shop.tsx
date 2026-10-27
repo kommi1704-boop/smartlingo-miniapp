@@ -83,7 +83,7 @@ export function Shop() {
 
   return (
     <div>
-      <PageHeader emoji="🛒" title="Do‘kon" subtitle="Robocoin yig‘ing va o‘zingizni yangilang!" />
+      <PageHeader emoji="🛒" title="Do‘kon" subtitle="Coin yig‘ing va o‘zingizni yangilang!" />
 
       {/* Balance hero */}
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-amber-400 to-orange-500 p-5 text-white shadow-lg shadow-amber-500/25">
@@ -92,7 +92,7 @@ export function Shop() {
           <div>
             <div className="text-xs font-bold uppercase tracking-wide text-amber-100">Sizning hisobingiz</div>
             <div className="mt-1 text-4xl font-black leading-none">{fmt(balance)} 🪙</div>
-            <div className="mt-1 text-sm text-amber-100">Robocoin · vazifalar va o‘yinlarda yig‘iladi</div>
+            <div className="mt-1 text-sm text-amber-100">Coin · vazifalar va o‘yinlarda yig‘iladi</div>
           </div>
           <div className="text-right text-xs font-semibold text-amber-100">
             <div>🎁 {s.shop.chestsOpened} quti ochilgan</div>
@@ -169,7 +169,7 @@ export function Shop() {
                 {FRAMES.filter((f) => f.tier === 'premium').map((f) => <FrameCard key={f.id} item={f} avatarEmoji={avatarEmoji} />)}
               </div>
             </div>
-            <p className="text-xs text-muted">Ramkalar {FRAME_DAYS} kun davom etadi. Muddati tugasa, bir xil narxga “Yangilash” mumkin. Reyting ramkalari esa Profil sahifasida — ular Robocoinga sotilmaydi, reyting yetganda o‘zi ochiladi.</p>
+            <p className="text-xs text-muted">Ramkalar {FRAME_DAYS} kun davom etadi. Muddati tugasa, bir xil narxga “Yangilash” mumkin. Reyting ramkalari esa Profil sahifasida — ular Coin bilan sotilmaydi, reyting yetganda o‘zi ochiladi.</p>
           </div>
         )}
 
@@ -271,7 +271,7 @@ export function Shop() {
                 <div className="bounce-soft text-6xl">🎁</div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg font-extrabold">Sirli quti</h3>
-                  <p className="text-sm text-purple-100">Ichida nima bor? Robocoin, XP yoki muzlatgich chiqishi mumkin!</p>
+                  <p className="text-sm text-purple-100">Ichida nima bor? Coin, XP yoki muzlatgich chiqishi mumkin!</p>
                   <div className="mt-2 flex items-center gap-2">
                     <CoinPill price={CHEST_PRICE} />
                     <Button size="sm" variant="secondary" className="!bg-white/20 !text-white border-0 hover:!bg-white/30" disabled={s.coins.balance < CHEST_PRICE} onClick={handleOpenChest}>
