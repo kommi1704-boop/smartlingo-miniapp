@@ -234,7 +234,7 @@ export const VOCAB_B2: VocabWord[] = [
   { id: "v479", en: "stomachache", uz: "qorin og'rig'i", ipa: "/ˈstʌməkeɪk/", exEn: "Eating too much ice cream gave her a stomachache.", exUz: "Ko'p muzqaymoq yeyish uning qornini og'ritdi.", level: "A2", topic: "Sog'liq" },
   { id: "v480", en: "toothache", uz: "tish og'rig'i", ipa: "/ˈtuːθeɪk/", exEn: "A severe toothache made him visit the dentist.", exUz: "Kuchli tish og'rig'i uni stomatologga borishga majbur qildi.", level: "A2", topic: "Sog'liq" },
   { id: "v481", en: "dentist", uz: "stomatolog, tish shifokori", ipa: "/ˈdentɪst/", exEn: "You should visit the dentist twice a year.", exUz: "Siz yiliga ikki marta tish shifokoriga borishingiz kerak.", level: "A2", topic: "Kasblar" },
-  { id: "v482", en: "nurse", uz: "hamshira", ipa: "/nɜːs/", exEn: "The nurse checked my blood pressure.", exUz:ingHamshira qon bosimimni o'lchadi.", level: "A2", topic: "Kasblar" },
+  { id: "v482", en: "nurse", uz: "hamshira", ipa: "/nɜːs/", exEn: "The nurse checked my blood pressure.", exUz: "Hamshira qon bosimimni o'lchadi.", level: "A2", topic: "Kasblar" },
   { id: "v483", en: "pulse", uz: "puls, yurak urishi", ipa: "/pʌls/", exEn: "The doctor checked the patient's pulse.", exUz: "Shifokor bemorning pulsini tekshirdi.", level: "B1", topic: "Sog'liq" },
   { id: "v484", en: "blood", uz: "qon", ipa: "/blʌd/", exEn: "Donating blood can save someone's life.", exUz: "Qon topshirish kimningdir hayotini saqlab qolishi mumkin.", level: "B1", topic: "Sog'liq" },
   { id: "v485", en: "bone", uz: "suyak", ipa: "/bəʊn/", exEn: "Drinking milk helps keep your bones strong.", exUz: "Sut ichish suyaklaringizni baquvvat saqlashga yordam beradi.", level: "A2", topic: "Sog'liq" },
