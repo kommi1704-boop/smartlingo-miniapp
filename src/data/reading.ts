@@ -2,7 +2,7 @@ import type { ReadingPassage } from '../types';
 import { READING_MORE } from './reading-more';
 import { READING_EXTENDED } from './reading-extended';
 
-export const READING: ReadingPassage[] = [
+const READING_BASE: ReadingPassage[] = [
   {
     id: "r01",
     title: "My Family",
@@ -572,8 +572,9 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
         ],
         answer: 1,
         explain: "“Supplement” – to‘ldirmoq, “supplant” – o‘rnini bosmoq. Texnologiya o‘quvchining mehnatini to‘ldirishi kerak, uning o‘rniga o‘tmasligi lozim.",
-      }
-   ...READING_MORE,
-  ...READING_EXTENDED,
+      },
+    ],
+  },
 ];
 
+export const READING: ReadingPassage[] = [...READING_BASE, ...READING_MORE, ...READING_EXTENDED];
