@@ -1,7 +1,9 @@
 import type { ReadingPassage } from '../types';
+import { READING_BASE } from './reading-base';
 import { READING_MORE } from './reading-more';
+import { READING_EXTENDED } from './reading-extended'; // 1. Import qilingan bo'lishi shart
 
-const READING_BASE: ReadingPassage[] = [
+export const READING: ReadingPassage[] = [
   {
     id: "r01",
     title: "My Family",
