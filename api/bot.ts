@@ -51,11 +51,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       await tg(token, 'sendMessage', {
         chat_id: msg.chat.id,
         text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
-        reply_markup: { inline_keyboard: [
-    [{ text: '🚀 O‘rganishni boshlash', web_app: { url } }],
-    [{ text: '📢 Yangiliklar', url: 'https://t.me/smartLingoUp' }]
-  ]
-},
+        reply_markup: { inline_keyboard: [[{ text: '🚀 O‘rganishni boshlash', web_app: { url } }]] },
       });
     } else {
       await tg(token, 'sendMessage', {
