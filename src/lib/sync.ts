@@ -93,6 +93,7 @@ function adopt(remote: Partial<PersistedState>) {
     quests: { ...base.quests, ...(remote.quests ?? {}) },
     conversations: s.conversations,
     writing: s.writing,
+    battle: { ...base.battle, ...(remote.battle ?? {}) },
   }));
 }
 

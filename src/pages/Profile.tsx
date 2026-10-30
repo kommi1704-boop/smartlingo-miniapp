@@ -98,7 +98,7 @@ export function Profile() {
               <span className="text-muted">{rank.next.name} · {fmt(rank.next.min)}</span>
             </div>
             <ProgressBar value={rank.pct} className="mt-1.5" color="bg-gradient-to-r from-emerald-400 to-teal-500" label="Reyting progress" />
-            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + XP÷3 + o‘yin yulduzlari + nishonlar bonusi. Darslar va testlar bajarilganda sekin-asta oshadi.</p>
+            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + XP÷3 + o‘yin yulduzlari + nishonlar + janglar natijasi. Darslar, testlar va do‘stona janglar bajarilganda oshadi.</p>
           </Card>
         )}
       </Section>
@@ -190,8 +190,20 @@ export function Profile() {
       <div className="mt-6 grid grid-cols-2 gap-3">
         <StatTile icon="flame" tone="amber" label="Kunlik seriya" value={`${streak} kun`} />
         <StatTile icon="trophy" tone="violet" label="Nishonlar" value={`${Object.keys(s.badges).length}/${BADGES.length}`} />
+        <StatTile icon="swords" tone="emerald" label="Jang g‘alibalari" value={s.battle.wins} hint={`${s.battle.losses} mag‘lubiyat · ${s.battle.draws} durrang`} />
+        <StatTile icon="chart" tone="indigo" label="Janglar reytingi" value={`${s.battle.ratingDelta >= 0 ? '+' : ''}${fmt(s.battle.ratingDelta)}`} hint="do‘stona janglardan" />
       </div>
-      <div className="mt-3">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <A to="/leaderboard" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
+            <Icon name="trophy" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">Reyting jadvali</span>
+            <span className="block truncate text-xs text-muted">Boshqa o‘quvchilar bilan solishtiring</span>
+          </span>
+          <Icon name="right" className="h-4 w-4 text-muted" />
+        </A>
         <A to="/progress" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
             <Icon name="chart" />

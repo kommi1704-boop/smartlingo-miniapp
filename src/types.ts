@@ -245,6 +245,29 @@ export interface QuestState {
   claimed: string[]; // quest ids whose coins were claimed today
 }
 
+// ---------- Friendly battle (rating duels) ----------
+
+export interface BattleRecord {
+  id: string;
+  date: string; // ISO datetime
+  vs: 'ai' | 'player';
+  opponent: string; // display name ("Lingo (AI)" or the other learner's first name)
+  you: number; // your correct answers
+  them: number; // opponent's correct answers
+  total: number; // questions in the battle
+  result: 'win' | 'loss' | 'draw';
+  delta: number; // rating change actually applied (0 when unrated)
+}
+
+export interface BattleState {
+  ratingDelta: number; // accumulated Elo from battles, added on top of the base rating
+  wins: number;
+  losses: number;
+  draws: number;
+  ratedToday: { date: string; count: number }; // AI battles played today (only the first N are rated)
+  history: BattleRecord[]; // latest first, capped at 20
+}
+
 export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   dailyWordGoal: number;
@@ -283,4 +306,5 @@ export interface PersistedState {
   coins: CoinState;
   shop: ShopState;
   quests: QuestState;
+  battle: BattleState;
 }

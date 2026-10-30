@@ -28,6 +28,7 @@ export function defaultState(): PersistedState {
     coins: { balance: 0, earnedToday: { date: '', amount: 0 }, spentTotal: 0 },
     shop: { owned: {}, equipped: {}, chestsOpened: 0, streakFreezes: 0 },
     quests: { date: '', progress: {}, claimed: [] },
+    battle: { ratingDelta: 0, wins: 0, losses: 0, draws: 0, ratedToday: { date: '', count: 0 }, history: [] },
   };
 }
 
@@ -43,6 +44,7 @@ function hydrate(): PersistedState {
     coins: { ...base.coins, ...(saved.coins ?? {}) },
     shop: { ...base.shop, ...(saved.shop ?? {}) },
     quests: { ...base.quests, ...(saved.quests ?? {}) },
+    battle: { ...base.battle, ...(saved.battle ?? {}) },
   };
 }
 

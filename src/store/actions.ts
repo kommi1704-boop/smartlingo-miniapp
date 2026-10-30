@@ -1,5 +1,5 @@
 import type {
-  ChatMessage, ContentKind, Conversation, DayActivity, HlColor, Mistake, PersistedState, Profile, Quiz, QuestState, Settings,
+  BattleRecord, ChatMessage, ContentKind, Conversation, DayActivity, HlColor, Mistake, PersistedState, Profile, Quiz, QuestState, Settings,
 } from '../types';
 import { addRange, subtractRange, type HlSeg } from '../lib/highlights';
 import { getState, setState, resetState } from './store';
@@ -16,6 +16,7 @@ import {
   STREAK_BONUS_COINS, XP_BOOST_HOURS, XP_BOOST_PRICE, coinsForResult, questById, rollChest,
   type AvatarItem, type ChestReward, type FrameItem, type QuestCounter, type TitleItem,
 } from '../lib/shop';
+import { AI_BATTLES_PER_DAY } from '../lib/battle';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -393,6 +394,32 @@ export function recordTutorMessage(): void {
 
 export function resetAll(): void {
   resetState();
+}
+
+// ---------- Friendly battles ----------
+
+/**
+ * Records a finished battle: W/L/D counters, the Elo delta (only rated battles) and the history.
+ * AI battles are rated only for the first AI_BATTLES_PER_DAY per day (no rating farming).
+ */
+export function recordBattleResult(r: BattleRecord): void {
+  const t = today();
+  setState((s) => {
+    const used = s.battle.ratedToday.date === t ? s.battle.ratedToday.count : 0;
+    const rated = r.vs === 'player' || used < AI_BATTLES_PER_DAY;
+    const delta = rated ? r.delta : 0;
+    return {
+      ...s,
+      battle: {
+        ratingDelta: s.battle.ratingDelta + delta,
+        wins: s.battle.wins + (r.result === 'win' ? 1 : 0),
+        losses: s.battle.losses + (r.result === 'loss' ? 1 : 0),
+        draws: s.battle.draws + (r.result === 'draw' ? 1 : 0),
+        ratedToday: { date: t, count: used + (r.vs === 'ai' ? 1 : 0) },
+        history: [{ ...r, delta }, ...s.battle.history].slice(0, 20),
+      },
+    };
+  });
 }
 
 export { BADGES, haptic };

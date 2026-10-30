@@ -26,6 +26,8 @@ import { Settings } from './pages/Settings';
 import { More } from './pages/More';
 import { Shop } from './pages/Shop';
 import { Profile } from './pages/Profile';
+import { Battle } from './pages/Battle';
+import { Leaderboard } from './pages/Leaderboard';
 
 const PUBLIC = ['welcome', 'onboarding', 'assessment', 'result'];
 
@@ -90,6 +92,8 @@ export function App() {
     case 'progress': body = <Progress />; break;
     case 'shop': body = <Shop />; break;
     case 'profile': body = <Profile />; break;
+    case 'battle': body = <Battle />; break;
+    case 'leaderboard': body = <Leaderboard />; break;
     case 'settings': body = <Settings />; break;
     case 'more': body = <More />; break;
     default:

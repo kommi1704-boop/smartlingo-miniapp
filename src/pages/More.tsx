@@ -5,6 +5,8 @@ import { Icon } from '../components/Icon';
 
 const HINT: Record<string, string> = {
   '/games': '5 ta o‘yin, yulduzlar va kunlik challenge',
+  '/battle': 'Do‘stona jang — raqib yoki Lingo AI, reyting uchun',
+  '/leaderboard': 'Reyting jadvali — eng kuchli o‘quvchilar',
   '/shop': 'Coin do‘koni — ramkalar, avatrlar, sovg‘alar',
   '/roadmap': 'Bosqichma-bosqich reja',
   '/grammar': '14 ta dars va testlar',

@@ -33,13 +33,14 @@ export function streakOf(activity: Record<string, DayActivity>, ref: string = to
 
 /**
  * Reyting: 1000 + XP/3 (sekin o‘sishi uchun XP uchdan 1 qismi hisobga olinadi),
- * plus small bonuses from game stars and badges.
+ * plus small bonuses from game stars and badges and the accumulated Elo from friendly battles.
  * Pure function of the saved state — the same progress always gives the same rating.
  */
 export function ratingOf(s: PersistedState): number {
   const stars = Object.values(s.games.best).reduce((a, b) => a + b.stars, 0);
   const badges = Object.keys(s.badges).length;
-  return 1000 + Math.floor(Math.max(0, s.xp) / 3) + stars * 5 + badges * 5;
+  const battleDelta = s.battle?.ratingDelta ?? 0;
+  return Math.max(900, 1000 + Math.floor(Math.max(0, s.xp) / 3) + stars * 5 + badges * 5 + battleDelta);
 }
 
 export interface RankInfo {
