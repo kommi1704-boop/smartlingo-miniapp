@@ -67,7 +67,7 @@ export function Profile() {
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {RATING_FRAMES.map((tier) => {
             const unlocked = rating >= tier.min;
-            const equipped = s.shop.equipped.frame === `rf-${tier.id}`;
+            const equipped = unlocked && s.shop.equipped.frame === `rf-${tier.id}`;
             return (
               <Card key={tier.id} className={cx('!p-3.5 text-center', !unlocked && 'opacity-75')}>
                 <div className="flex justify-center">
@@ -98,7 +98,7 @@ export function Profile() {
               <span className="text-muted">{rank.next.name} · {fmt(rank.next.min)}</span>
             </div>
             <ProgressBar value={rank.pct} className="mt-1.5" color="bg-gradient-to-r from-emerald-400 to-teal-500" label="Reyting progress" />
-            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + XP÷3 + o‘yin yulduzlari + nishonlar + janglar natijasi. Darslar, testlar va do‘stona janglar bajarilganda oshadi.</p>
+            <p className="mt-1.5 text-[11px] text-muted">Reyting = 1000 + do‘stona janglar natijasi. Faqat g‘alaba oshiradi, mag‘lubiyat kamaytiradi. Darslar va XP reytingga ta’sir qilmaydi.</p>
           </Card>
         )}
       </Section>

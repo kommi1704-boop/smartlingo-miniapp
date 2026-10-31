@@ -9,10 +9,15 @@ import { seededRng } from './games';
 // ===== Tunables =====
 
 export const BATTLE_QUESTIONS = 7; // questions per battle
-export const AI_BATTLES_PER_DAY = 5; // only the first N AI battles per day change the rating
-export const AI_ELO_K = 20; // AI battles move the rating less than real duels
-export const PVP_ELO_K = 32; // standard Elo K-factor for player vs player
-export const RATING_FLOOR = 900; // the rating never drops below this (kids stay motivated)
+export const AI_BATTLES_PER_DAY = 3; // only the first N AI battles per day change the rating
+export const AI_ELO_K = 16; // AI battles move the rating less than real duels
+export const PVP_ELO_K = 24; // Elo K-factor for player vs player (the server in api/battle.ts uses the same value)
+
+/** Climbing gets slower the higher you are: the same win is worth less at 1500 than at 1000. */
+export function kScale(rating: number): number {
+  return rating < 1100 ? 1 : rating < 1250 ? 0.8 : rating < 1400 ? 0.65 : rating < 1600 ? 0.5 : 0.4;
+}
+export const aiK = (rating: number): number => Math.max(4, Math.round(AI_ELO_K * kScale(rating)));
 
 export function levelIdx(level: Level): number {
   return LEVELS.indexOf(level);

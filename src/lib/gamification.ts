@@ -31,16 +31,16 @@ export function streakOf(activity: Record<string, DayActivity>, ref: string = to
 
 // ---------- Rating (Codeforces-style ladder for the profile) ----------
 
+export const RATING_BASE = 1000;
+export const RATING_FLOOR = 900; // kids never sink below this
+
 /**
- * Reyting: 1000 + XP/3 (sekin o‘sishi uchun XP uchdan 1 qismi hisobga olinadi),
- * plus small bonuses from game stars and badges and the accumulated Elo from friendly battles.
- * Pure function of the saved state — the same progress always gives the same rating.
+ * Reyting = 1000 + the accumulated Elo of friendly battles. Nothing else counts.
+ * XP, stars, badges and lessons do NOT change the rating (they were easy to farm), so the only way
+ * up is to win battles. Pure function of the saved state.
  */
 export function ratingOf(s: PersistedState): number {
-  const stars = Object.values(s.games.best).reduce((a, b) => a + b.stars, 0);
-  const badges = Object.keys(s.badges).length;
-  const battleDelta = s.battle?.ratingDelta ?? 0;
-  return Math.max(900, 1000 + Math.floor(Math.max(0, s.xp) / 3) + stars * 5 + badges * 5 + battleDelta);
+  return Math.max(RATING_FLOOR, RATING_BASE + Math.round(s.battle?.ratingDelta ?? 0));
 }
 
 export interface RankInfo {

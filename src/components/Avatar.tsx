@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 import { useApp } from '../store/store';
 import { frameClassFor } from '../lib/shop';
+import { ratingOf } from '../lib/gamification';
 import { isOwnedActive } from '../store/actions';
 import { cx } from '../lib/utils';
 
 /** Circular avatar with the equipped frame ring. */
 export function Avatar({ emoji, size = 64, className }: { emoji: string; size?: number; className?: string }) {
   const s = useApp();
-  const ring = frameClassFor(s.shop.equipped.frame, isOwnedActive);
+  const ring = frameClassFor(s.shop.equipped.frame, isOwnedActive, ratingOf(s));
   const pad = size >= 80 ? 6 : 4;
   return (
     <div

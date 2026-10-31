@@ -110,8 +110,8 @@ export interface LeaderRow {
   avatar?: string;
   frame?: string;
   rating: number;
-  xp: number;
   wins: number;
+  draws?: number;
   losses: number;
   delta: number;
 }

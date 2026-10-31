@@ -5,7 +5,7 @@ import { addCoins, recordBattleResult } from '../store/actions';
 import { toast } from '../store/ui';
 import { rankInfo, ratingOf } from '../lib/gamification';
 import {
-  AI_BATTLES_PER_DAY, AI_ELO_K, BATTLE_QUESTIONS, aiAccuracy, aiCorrectFor, aiRatedLeft, aiThinkMs,
+  AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiCorrectFor, aiRatedLeft, aiThinkMs,
   battleResultOf, buildBattleQuestions, eloDelta, scoreOf,
 } from '../lib/battle';
 import {
@@ -177,7 +177,7 @@ export function Battle() {
     (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
       const result = battleResultOf(you, them);
       const rated = vs === 'player' || ratedLeft > 0;
-      const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), AI_ELO_K) : serverDelta ?? 0;
+      const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), aiK(rating)) : serverDelta ?? 0;
       const delta = rated ? rawDelta : 0;
       recordBattleResult({
         id: uid('bt'),

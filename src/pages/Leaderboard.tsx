@@ -107,13 +107,17 @@ export function Leaderboard() {
           {!inList && (
             <div className="mt-3">
               <Notice>
-                Siz hali onlayn ro‘yxatdasiz emas — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, natijangiz jadvalga tushadi.
+                {s.battle.wins + s.battle.losses + s.battle.draws === 0 ? (
+                  <>Jadvalga tushish uchun kamida <b>1 ta jang</b> o‘ynang. Reyting faqat janglardan oshadi.</>
+                ) : (
+                  <>Siz hali onlayn ro‘yxatdasiz emas — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, natijangiz jadvalga tushadi.</>
+                )}
               </Notice>
             </div>
           )}
           <Section title={`Top ${Math.min(rows.length, 100)} o‘quvchi`}>
             {rows.length === 0 ? (
-              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib reyting jadvaliga kirishingiz mumkin — darslarni bajarib reyting to‘plang!" />
+              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing: kamida 1 ta do‘stona jang o‘ynang!" />
             ) : (
               <div className="space-y-2">
                 {rows.map((r, i) => {
@@ -155,7 +159,7 @@ export function Leaderboard() {
           </Section>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Pill tone="indigo">📈 Reyting = o‘rganish + janglar</Pill>
+            <Pill tone="indigo">📈 Reyting faqat janglardan</Pill>
             <A to="/battle">
               <Pill tone="amber" className="cursor-pointer">⚔️ Jang qilib oshiring →</Pill>
             </A>
@@ -165,7 +169,7 @@ export function Leaderboard() {
 
       <div className="mt-4 flex items-center gap-2 text-xs text-muted">
         <Icon name="info" className="h-4 w-4 shrink-0" />
-        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Reyting = 1000 + XP÷3 + yulduzlar + nishonlar + janglar natijasi.</p>
+        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Reyting = 1000 + janglar natijasi (XP va darslar hisobga olinmaydi). Jadvalda kamida 1 ta jang o‘ynaganlar ko‘rinadi.</p>
       </div>
     </div>
   );

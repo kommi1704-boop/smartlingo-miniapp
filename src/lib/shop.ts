@@ -195,10 +195,13 @@ export function coinsForResult(r: GameResult, isRecord: boolean): number {
 // ===== Equipped look helpers (pure — used by Avatar component) =====
 
 /** CSS ring class for the equipped frame id (shop frames need an active rental). */
-export function frameClassFor(frameId: string | undefined, isOwnedActive: (id: string) => boolean): string {
+export function frameClassFor(frameId: string | undefined, isOwnedActive: (id: string) => boolean, rating?: number): string {
   if (!frameId) return 'frame-none';
   if (frameId.startsWith('rf-')) {
-    return RANK_TIERS.find((t) => `rf-${t.id}` === frameId)?.ring ?? 'frame-none';
+    const tier = RANK_TIERS.find((t) => `rf-${t.id}` === frameId);
+    if (!tier) return 'frame-none';
+    // a rating frame only shows while the rating still reaches its tier
+    return rating !== undefined && rating < tier.min ? 'frame-none' : tier.ring;
   }
   return isOwnedActive(frameId) ? (frameById(frameId)?.cls ?? 'frame-none') : 'frame-none';
 }
