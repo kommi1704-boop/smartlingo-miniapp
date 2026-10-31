@@ -13,8 +13,8 @@ import { haptic, setHapticsEnabled } from '../lib/telegram';
 import { DAILY_BONUS_XP, GAME_XP_CAP, xpForResult, type GameResult } from '../lib/games';
 import {
   CHEST_PRICE, FIRST_LESSON_COINS, FRAME_DAYS, FREEZE_PRICE, GAME_COIN_CAP, LEVEL_UP_COINS,
-  STREAK_BONUS_COINS, XP_BOOST_HOURS, XP_BOOST_PRICE, coinsForResult, questById, rollChest,
-  type AvatarItem, type ChestReward, type FrameItem, type QuestCounter, type TitleItem,
+  NAME_STYLE_DAYS, STREAK_BONUS_COINS, XP_BOOST_HOURS, XP_BOOST_PRICE, coinsForResult, questById, rollChest,
+  type AvatarItem, type ChestReward, type FrameItem, type NameColorItem, type NameFxItem, type QuestCounter, type TitleItem,
 } from '../lib/shop';
 import { AI_BATTLES_PER_DAY } from '../lib/battle';
 
@@ -549,6 +549,40 @@ export function buyTitle(item: TitleItem): boolean {
 
 export function equipTitle(id?: string): void {
   setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, title: id } } }));
+}
+
+/** Buys (or renews) a 7-day name color / effect and equips it right away. */
+export function buyNameStyle(item: NameColorItem | NameFxItem, kind: 'nameColor' | 'nameFx'): boolean {
+  const active = isOwnedActive(item.id);
+  if (active) {
+    setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, [kind]: item.id } } }));
+    toast(`${item.name} taqildi`, 'success');
+    return true;
+  }
+  if (!spend(item.price)) return false;
+  const expired = !!getState().shop.owned[item.id]; // had it before -> renew, extending the old expiry
+  if (expired) {
+    const current = getState().shop.owned[item.id]?.expiresAt;
+    const base = Math.max(Date.now(), current ? new Date(current).getTime() : 0);
+    setState((st) => ({
+      ...st,
+      shop: { ...st.shop, owned: { ...st.shop.owned, [item.id]: { ...st.shop.owned[item.id], expiresAt: new Date(base + NAME_STYLE_DAYS * DAY_MS).toISOString() } } },
+    }));
+  } else {
+    markOwned(item.id, NAME_STYLE_DAYS);
+  }
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, [kind]: item.id } } }));
+  haptic('success');
+  toast(`${item.name} taqildi! ${NAME_STYLE_DAYS} kun davom etadi 🎉`, 'success');
+  return true;
+}
+
+export function equipNameColor(id?: string): void {
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, nameColor: id } } }));
+}
+
+export function equipNameFx(id?: string): void {
+  setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, nameFx: id } } }));
 }
 
 /** Buys and opens a mystery chest. Returns the rolled reward (or null if the purchase failed). */

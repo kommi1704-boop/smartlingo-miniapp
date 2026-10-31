@@ -486,3 +486,85 @@ body::after {
 .chest-shake {
   animation: chest-shake 0.5s ease-in-out infinite;
 }
+
+/* ===== Name styles ("Ism effektlari") ===== */
+/* gradient text colors: element also gets .nm-grad (background-clip:text) */
+.nm-grad {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.nc-fire {
+  background-image: linear-gradient(92deg, #fde047, #f97316 45%, #ef4444 80%, #fbbf24);
+}
+.nc-ocean {
+  background-image: linear-gradient(92deg, #22d3ee, #3b82f6 50%, #8b5cf6);
+}
+.nc-neon {
+  background-image: linear-gradient(92deg, #4ade80, #22d3ee 55%, #a3e635);
+}
+.nc-gold {
+  background-image: linear-gradient(92deg, #fef3c7, #f59e0b 45%, #b45309 75%, #fbbf24);
+}
+.nc-rainbow {
+  background-image: linear-gradient(92deg, #f87171, #fbbf24 25%, #4ade80 50%, #60a5fa 75%, #c084fc);
+}
+
+/* effects (work on plain and gradient names) */
+.nfx-outline {
+  text-shadow:
+    2px 0 0 rgba(15, 23, 42, 0.45),
+    -2px 0 0 rgba(15, 23, 42, 0.45),
+    0 2px 0 rgba(15, 23, 42, 0.45),
+    0 -2px 0 rgba(15, 23, 42, 0.45);
+}
+.nfx-shadow {
+  text-shadow:
+    3px 3px 0 rgba(15, 23, 42, 0.3),
+    6px 6px 0 rgba(15, 23, 42, 0.16);
+}
+.nfx-underline {
+  text-decoration-line: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 5px;
+  text-decoration-color: #6366f1;
+}
+.nfx-neon {
+  animation: nm-neon 2.2s ease-in-out infinite;
+}
+@keyframes nm-neon {
+  0%,
+  100% {
+    text-shadow:
+      0 0 6px rgba(74, 222, 128, 0.75),
+      0 0 16px rgba(34, 211, 238, 0.45);
+  }
+  50% {
+    text-shadow:
+      0 0 10px rgba(74, 222, 128, 0.95),
+      0 0 26px rgba(34, 211, 238, 0.7);
+  }
+}
+
+/* ===== Duolingo-style learning path (Progress page) ===== */
+.path-line {
+  background-image: linear-gradient(to bottom, var(--c-line) 55%, transparent 45%);
+  background-size: 4px 18px;
+  background-repeat: repeat-y;
+}
+@keyframes node-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.node-pop {
+  animation: node-pop 0.35s ease-out both;
+}
+@keyframes bub-bob {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.bub-bob {
+  animation: bub-bob 1.6s ease-in-out infinite;
+}

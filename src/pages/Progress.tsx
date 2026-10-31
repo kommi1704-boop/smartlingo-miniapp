@@ -11,6 +11,7 @@ import { LISTENING } from '../data/listening';
 import { SPEAKING } from '../data/speaking';
 import { WRITING } from '../data/writing';
 import { Button, Card, Chip, Empty, PageHeader, Pill, ProgressBar, Section, StatTile } from '../components/ui';
+import { PathMap } from '../components/PathMap';
 import { BarChart } from '../components/BarChart';
 import { cx, fmt, pct } from '../lib/utils';
 import { haptic } from '../lib/telegram';
@@ -117,10 +118,18 @@ export function Progress() {
     <div>
       <PageHeader emoji="📊" title="Progress" subtitle={`Tajriba darajasi ${xp.level} · ${fmt(s.xp)} XP`} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatTile icon="check" tone="emerald" label="Tugatilgan darslar" value={lessonsDone} />
+      <div className="grid grid-cols-3 gap-2">
+        <StatTile icon="flame" tone="amber" label="Seriya" value={`${streak} 🔥`} />
+        <StatTile icon="star" tone="violet" label="XP" value={fmt(s.xp)} />
+        <StatTile icon="trophy" tone="emerald" label="Darslar" value={lessonsDone} />
+      </div>
+
+      <Section title="🗺️ O‘quv yo‘li" action={<Pill tone="indigo">Qadam-baqadam</Pill>}>
+        <PathMap />
+      </Section>
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
         <StatTile icon="cards" tone="indigo" label="So‘zlar" value={`${learned}/${VOCAB.length}`} hint={`${reviewed} tasi ko‘rilgan`} />
-        <StatTile icon="flame" tone="amber" label="Joriy seriya" value={`${streak} kun`} hint={`${activeDays} ta faol kun`} />
         <StatTile icon="trophy" tone="violet" label="Nishonlar" value={`${Object.keys(s.badges).length}/${BADGES.length}`} />
       </div>
 

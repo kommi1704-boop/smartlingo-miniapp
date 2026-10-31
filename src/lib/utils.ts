@@ -47,3 +47,36 @@ export function uid(prefix = 'id'): string {
 export function fmt(n: number): string {
   return new Intl.NumberFormat('en-US').format(n);
 }
+
+/**
+ * Turns an uploaded image file into a small square JPEG data URL (center-cropped),
+ * so it comfortably fits into the synced state (a few KB instead of megabytes).
+ */
+export function fileToAvatarDataUrl(file: File, size = 192): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('canvas'));
+        return;
+      }
+      // cover-crop: scale so the image fills the square, centered
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = (img.naturalWidth - side) / 2;
+      const sy = (img.naturalHeight - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('decode'));
+    };
+    img.src = url;
+  });
+}

@@ -1,9 +1,11 @@
+import { useRef, useState } from 'react';
 import { useApp } from '../store/store';
-import { equipAvatar, equipFrame, isOwnedActive, renewFrame } from '../store/actions';
+import { equipAvatar, equipFrame, isOwnedActive, renewFrame, updateProfile } from '../store/actions';
 import { BADGES, rankInfo, ratingOf, streakOf, xpProgress } from '../lib/gamification';
-import { DEFAULT_AVATAR, FREE_AVATARS, FRAMES, PREMIUM_AVATARS, RATING_FRAMES, titleById } from '../lib/shop';
-import { cx, fmt } from '../lib/utils';
+import { DEFAULT_AVATAR, FREE_AVATARS, FRAMES, PREMIUM_AVATARS, RATING_FRAMES, nameStyleClasses, titleById } from '../lib/shop';
+import { cx, fileToAvatarDataUrl, fmt } from '../lib/utils';
 import { haptic } from '../lib/telegram';
+import { toast } from '../store/ui';
 import { A, navigate } from '../lib/router';
 import { Button, Card, Empty, PageHeader, Pill, ProgressBar, Section, StatTile } from '../components/ui';
 import { Avatar, FramedEmoji } from '../components/Avatar';
@@ -17,13 +19,37 @@ function daysLeft(iso?: string): number {
 export function Profile() {
   const s = useApp();
   const p = s.profile;
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   if (!p) return null;
+
+  async function onPhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast('Faqat rasm faylini tanlang', 'warn');
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      updateProfile({ photoAvatar: dataUrl });
+      haptic('success');
+      toast('Rasm avatar sifatida taqildi! 📸', 'success');
+    } catch {
+      toast('Rasmni yuklab bo‘lmadi — boshqa rasm tanlang', 'warn');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   const rating = ratingOf(s);
   const rank = rankInfo(rating);
   const xp = xpProgress(s.xp);
   const streak = streakOf(s.activity);
   const equippedAvatar = s.shop.equipped.avatar ?? DEFAULT_AVATAR;
+  const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
   const equippedTitle = titleById(s.shop.equipped.title);
   const ownedFrames = FRAMES.filter((f) => s.shop.owned[f.id]);
 
@@ -38,7 +64,7 @@ export function Profile() {
             <Avatar emoji={equippedAvatar} size={84} />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-2xl font-extrabold leading-tight">{p.name}</h1>
+            <h1 className={cx('truncate text-2xl font-extrabold leading-tight', nameCls)}>{p.name}</h1>
             {equippedTitle && <p className="mt-0.5 text-sm font-bold text-amber-200">{equippedTitle.name}</p>}
             <p className={cx('mt-1 text-sm font-extrabold', 'text-indigo-100')}>
               <span className="rounded-full bg-white/20 px-2.5 py-0.5">{rank.tier.name}</span>{' '}
@@ -106,6 +132,29 @@ export function Profile() {
       {/* Avatars */}
       <Section title="😄 Avatrlar">
         <Card>
+          {/* custom photo avatar */}
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-indigo-300/70 bg-indigo-50/50 p-3 dark:border-indigo-400/40 dark:bg-indigo-500/10">
+            {s.profile?.photoAvatar ? (
+              <img src={s.profile.photoAvatar} alt="" className="h-14 w-14 rounded-full object-cover ring-2 ring-indigo-400" />
+            ) : (
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface2 text-2xl">📷</span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold">O‘z rasmingiz</p>
+              <p className="text-xs text-muted">Telefoningizdan rasm tanlang — u dumaloq qilib, ramka ichiga joylanadi.</p>
+            </div>
+            <div className="shrink-0 space-y-1.5 text-right">
+              <Button size="sm" disabled={photoBusy} onClick={() => fileRef.current?.click()}>
+                {photoBusy ? 'Yuklanmoqda…' : s.profile?.photoAvatar ? 'Almashtirish' : 'Rasm tanlash'}
+              </Button>
+              {s.profile?.photoAvatar && (
+                <Button size="sm" variant="ghost" onClick={() => { updateProfile({ photoAvatar: undefined }); toast('Rasm olib tashlandi', 'info'); }}>
+                  O‘chirish
+                </Button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPhotoPicked} />
+          </div>
           <div className="flex flex-wrap gap-2">
             {FREE_AVATARS.map((e) => {
               const active = equippedAvatar === e;

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { ResourceCategory } from '../types';
 import { RESOURCES } from '../data/resources';
+import { tickQuest } from '../store/actions';
 import { Button, Card, Chip, Empty, Notice, PageHeader, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { openExternal } from '../lib/telegram';
@@ -18,6 +19,8 @@ const CATS: { id: ResourceCategory | 'all'; label: string; emoji: string }[] = [
 export function Resources() {
   const [cat, setCat] = useState<ResourceCategory | 'all'>('all');
   const [q, setQ] = useState('');
+  // a visit counts towards the daily plan's "useful resource" step (resets with the quest day)
+  useEffect(() => { tickQuest('resources'); }, []);
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase();
     return RESOURCES.filter((r) => (cat === 'all' || r.category === cat) && (!t || `${r.title} ${r.desc} ${r.level}`.toLowerCase().includes(t)));

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Quiz } from '../types';
 import { useApp } from '../store/store';
-import { addCoins, recordBattleResult } from '../store/actions';
+import { addCoins, isOwnedActive, recordBattleResult } from '../store/actions';
 import { toast } from '../store/ui';
 import { rankInfo, ratingOf } from '../lib/gamification';
+import { nameStyleClasses } from '../lib/shop';
 import {
   AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiCorrectFor, aiRatedLeft, aiThinkMs,
   battleResultOf, buildBattleQuestions, eloDelta, scoreOf,
@@ -33,6 +34,16 @@ interface BattleOutcome {
 }
 
 const LETTERS = ['A', 'B', 'C', 'D'];
+
+/** Maps a matchmaking failure to a diagnosable kind for the lobby notice. */
+function diagOf(e: unknown): string {
+  const m = e instanceof Error ? e.message : '';
+  if (m === 'unauthorized') return 'unauthorized';
+  if (m === 'not_configured' || m === 'http_503') return 'not_configured';
+  if (m === 'storage_error' || m === 'http_502' || m.startsWith('supabase_')) return 'storage';
+  if (m === 'too_many_requests' || m === 'http_429') return 'rate';
+  return 'net';
+}
 const WIN_COINS = 8;
 const DRAW_COINS = 4;
 const LOSS_COINS = 2;
@@ -72,6 +83,7 @@ export function Battle() {
   const [searchBattle, setSearchBattle] = useState<BattleView | null>(null);
   const [outcome, setOutcome] = useState<BattleOutcome | null>(null);
   const [waitNote, setWaitNote] = useState('');
+  const [diag, setDiag] = useState<string | null>(null); // why matchmaking last failed
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const battleIdRef = useRef<string | null>(null);
@@ -81,6 +93,8 @@ export function Battle() {
 
   const myName = (s.profile?.name ?? 'O‘quvchi').trim().split(/\s+/)[0] || 'O‘quvchi';
   const myAvatar = s.shop.equipped.avatar ?? '🙂';
+  const myPhoto = s.profile?.photoAvatar;
+  const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
 
   useEffect(() => {
     let alive = true;
@@ -112,6 +126,7 @@ export function Battle() {
 
   const goSearching = useCallback(async () => {
     setPhase('searching');
+    setDiag(null);
     const me = { rating, name: myName, avatar: myAvatar };
     try {
       // 1) join an existing open challenge if there is one
@@ -158,11 +173,21 @@ export function Battle() {
         }
       }, 3000);
     } catch (e) {
-      if (notConfigured(e)) setOnline(false);
-      setPhase('lobby');
-      toast('Raqib topish hozir ishlamadi — keyinroq urinib ko‘ring', 'warn');
+      if (pollRef.current) clearInterval(pollRef.current);
+      battleIdRef.current = null;
+      const kind = diagOf(e);
+      if (kind === 'not_configured') setOnline(false);
+      setDiag(kind); // the lobby shows the exact reason + fix
+      // Never dead-end: matchmaking failed, so fall back to a Lingo AI battle.
+      toast(
+        kind === 'unauthorized'
+          ? 'Raqib topish uchun ilovani bot ichida oching — avval Lingo AI bilan jang!'
+          : 'Raqib topish hozir ishlamadi — Lingo AI bilan jang boshlanadi!',
+        'warn',
+      );
+      startAi();
     }
-  }, [rating, myName, myAvatar, s.quizHistory, s.profile]);
+  }, [rating, myName, myAvatar, s.quizHistory, s.profile, startAi]);
 
   const cancelSearch = useCallback(async () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -366,9 +391,13 @@ export function Battle() {
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-rose-500 to-orange-500 p-5 text-white shadow-lg shadow-rose-500/25">
         <div className="pointer-events-none absolute -right-3 -top-5 text-[6.5rem] opacity-20 select-none">⚔️</div>
         <div className="flex items-center gap-3">
-          <span className="text-4xl">{myAvatar}</span>
+          {myPhoto ? (
+            <img src={myPhoto} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white/60" />
+          ) : (
+            <span className="text-4xl">{myAvatar}</span>
+          )}
           <div className="min-w-0 flex-1">
-            <p className="truncate font-extrabold">{myName}</p>
+            <p className={cx('truncate font-extrabold', nameCls)}>{myName}</p>
             <p className="mt-0.5 text-sm text-rose-100">
               <span className="rounded-full bg-white/20 px-2.5 py-0.5 font-bold">{rank.tier.name}</span>{' '}
               <b className="text-white">{fmt(rating)} reyting</b>
@@ -386,6 +415,24 @@ export function Battle() {
         <div className="mt-3">
           <Notice tone="warn">
             Haqiqiy raqib topish uchun onlayn server kerak (Vercelda <b>/api/battle</b> + Supabase). Hozircha Lingo AI bilan jang qiling — bu ham reytingga ta’sir qiladi!
+          </Notice>
+        </div>
+      )}
+
+      {diag && (
+        <div className="mt-3">
+          <Notice tone="warn">
+            {diag === 'storage' && (
+              <>🔌 Server bazasiga yozish ishlamadi. Ko‘pincha sabab — <b>battles</b> jadvali yo‘qligi: Supabase → SQL Editor → <b>supabase/schema.sql</b> ni to‘liq qayta ishga tushiring (Table Editor’da <b>battles</b> jadvali paydo bo‘lishi kerak), so‘ng Vercelda <b>Redeploy</b>.</>
+            )}
+            {diag === 'unauthorized' && (
+              <>🔑 Telegram tasdiqlamadi. Mini appni <b>bot ichidagi tugma orqali</b> oching (brauzer havolasi emas) va Verceldagi <b>TELEGRAM_BOT_TOKEN</b> aynan shu botniki ekanini tekshiring.</>
+            )}
+            {diag === 'not_configured' && (
+              <>⚙️ Onlayn server sozlanmagan: Vercel → Settings → Environment Variables da <b>SUPABASE_URL</b>, <b>SUPABASE_SERVICE_ROLE_KEY</b> va <b>TELEGRAM_BOT_TOKEN</b> bo‘lishi kerak, keyin <b>Redeploy</b>.</>
+            )}
+            {diag === 'rate' && <>⏳ Juda ko‘p urinish bo‘ldi — bir daqiqa kutib turing.</>}
+            {diag === 'net' && <>🌐 Serverga ulanib bo‘lmadi — internetni tekshirib, keyinroq urinib ko‘ring.</>}
           </Notice>
         </div>
       )}

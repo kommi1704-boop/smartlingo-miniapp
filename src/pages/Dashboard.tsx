@@ -4,6 +4,8 @@ import { A, navigate } from '../lib/router';
 import { useApp } from '../store/store';
 import { buildPlan, planSummary } from '../lib/plan';
 import { streakOf, xpProgress } from '../lib/gamification';
+import { nameStyleClasses } from '../lib/shop';
+import { isOwnedActive } from '../store/actions';
 import { lastDays, shortDay, today } from '../lib/dates';
 import { Button, Card, LevelBadge, PageHeader, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
@@ -23,6 +25,7 @@ export function Dashboard() {
   const xp = xpProgress(s.xp);
   const t = today();
   const day = s.activity[t];
+  const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
   const totalLessons = Object.values(s.lessons).filter((l) => l.completed).length;
   const totalReviews = Object.values(s.vocab).reduce((a, v) => a + v.reviews, 0);
   const learned = Object.values(s.vocab).filter((v) => v.status === 'learned').length;
@@ -41,7 +44,7 @@ export function Dashboard() {
               {s.shop.equipped.avatar ? <Avatar emoji={s.shop.equipped.avatar} size={62} /> : <Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={62} />}
             </div>
             <div className="min-w-0">
-            <h1 className="text-2xl font-extrabold leading-tight">Salom, {p.name}! 👋</h1>
+            <h1 className={cx('text-2xl font-extrabold leading-tight', nameCls)}>Salom, {p.name}! 👋</h1>
             <p className="mt-1 text-sm text-indigo-100">
               {sum.allDone ? 'Bugungi reja to‘liq bajarildi. Barakalla!' : streak > 0 ? `${streak} kunlik seriya — davom eting!` : 'Bugun birinchi qadamni qo‘ying.'}
             </p>

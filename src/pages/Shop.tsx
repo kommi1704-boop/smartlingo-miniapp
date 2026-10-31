@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useApp } from '../store/store';
-import { buyAvatar, buyFrame, buyFreeze, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame } from '../store/actions';
+import { buyAvatar, buyFrame, buyFreeze, buyNameStyle, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipNameColor, equipNameFx, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame } from '../store/actions';
 import {
-  CHEST_PRICE, FREEZE_PRICE, FRAME_DAYS, FRAMES, FREE_AVATARS, PREMIUM_AVATARS, TITLES, XP_BOOST_HOURS, XP_BOOST_PRICE,
-  chestRewardText, questStateOf, todaysQuests,
-  type ChestReward, type FrameItem,
+  CHEST_PRICE, FREEZE_PRICE, FRAME_DAYS, FRAMES, FREE_AVATARS, NAME_COLORS, NAME_FXS, NAME_STYLE_DAYS, PREMIUM_AVATARS, TITLES, XP_BOOST_HOURS, XP_BOOST_PRICE,
+  chestRewardText, nameColorById, nameFxById, nameStyleClasses, questStateOf, todaysQuests,
+  type ChestReward, type FrameItem, type NameColorItem, type NameFxItem,
 } from '../lib/shop';
 import { pct, cx, fmt } from '../lib/utils';
 import { haptic } from '../lib/telegram';
+import { toast } from '../store/ui';
 import { Button, Card, Modal, PageHeader, Pill, ProgressBar, Section, Tabs } from '../components/ui';
 import { FramedEmoji } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { Confetti } from '../components/Mascot';
 
-type TabId = 'frames' | 'avatars' | 'titles' | 'gifts';
+type TabId = 'frames' | 'avatars' | 'names' | 'titles' | 'gifts';
 
 const REWARD_EMOJI: Record<ChestReward['kind'], string> = { coins: '🪙', xp: '⭐', freeze: '🧊' };
 
@@ -69,6 +70,8 @@ export function Shop() {
 
   const balance = s.coins.balance;
   const avatarEmoji = s.shop.equipped.avatar ?? '🙂';
+  const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
+  const myName = s.profile?.name?.trim() || 'Ismingiz';
   const quests = todaysQuests();
   const qs = questStateOf(s);
   const boosted = isXpBoosted(s);
@@ -150,6 +153,7 @@ export function Shop() {
           tabs={[
             { id: 'frames', label: 'Ramkalar', icon: 'sparkles' },
             { id: 'avatars', label: 'Avatrlar', icon: 'user' },
+            { id: 'names', label: 'Ism uslubi', icon: 'zap' },
             { id: 'titles', label: 'Titullar', icon: 'trophy' },
             { id: 'gifts', label: 'Sovg‘alar', icon: 'gift' },
           ]}
@@ -225,6 +229,102 @@ export function Shop() {
                 })}
               </div>
             </div>
+          </div>
+        )}
+
+        {tab === 'names' && (
+          <div className="mt-4 space-y-4">
+            {/* live preview of the learner's own name */}
+            <Card className="text-center">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">Ko‘rinish</p>
+              <p className={cx('mt-1.5 truncate text-3xl font-extrabold', nameCls)}>{myName}</p>
+              {(s.shop.equipped.nameColor || s.shop.equipped.nameFx) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="mt-2"
+                  onClick={() => { equipNameColor(undefined); equipNameFx(undefined); toast('Ism uslubi yechildi', 'info'); }}
+                >
+                  Hammasini yechish
+                </Button>
+              )}
+            </Card>
+
+            <div>
+              <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-muted">Ranglar</h3>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {NAME_COLORS.map((c) => {
+                  const owned = isOwnedActive(c.id);
+                  const expired = !!s.shop.owned[c.id] && !owned;
+                  const equipped = s.shop.equipped.nameColor === c.id;
+                  const affordable = s.coins.balance >= c.price;
+                  const fx = nameFxById(s.shop.equipped.nameFx);
+                  const preview = cx('nm-grad', c.cls, fx?.cls);
+                  return (
+                    <Card key={c.id} className={cx('!p-3.5 text-center', equipped && '!border-indigo-400')}>
+                      <p className={cx('truncate text-xl font-extrabold', preview)}>{myName}</p>
+                      <p className="mt-1 truncate text-xs font-bold">{c.name}</p>
+                      <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                        <CoinPill price={c.price} />
+                        <Pill tone="neutral">{NAME_STYLE_DAYS} kun</Pill>
+                      </div>
+                      <div className="mt-2.5">
+                        {owned ? (
+                          equipped ? (
+                            <Button size="sm" variant="secondary" disabled icon="check">Taqilgan</Button>
+                          ) : (
+                            <Button size="sm" variant="secondary" onClick={() => { haptic('light'); equipNameColor(c.id); }}>Taqish</Button>
+                          )
+                        ) : (
+                          <Button size="sm" disabled={!affordable} onClick={() => buyNameStyle(c, 'nameColor')}>
+                            {affordable ? (expired ? 'Yangilash' : 'Sotib olish') : <><Icon name="lock" className="h-3.5 w-3.5" /> Yopiq</>}
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-xs font-extrabold uppercase tracking-wide text-muted">Effektlar</h3>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {NAME_FXS.map((f) => {
+                  const owned = isOwnedActive(f.id);
+                  const expired = !!s.shop.owned[f.id] && !owned;
+                  const equipped = s.shop.equipped.nameFx === f.id;
+                  const affordable = s.coins.balance >= f.price;
+                  const color = nameColorById(s.shop.equipped.nameColor);
+                  const preview = cx(color && 'nm-grad', color?.cls, f.cls);
+                  return (
+                    <Card key={f.id} className={cx('!p-3.5 text-center', equipped && '!border-indigo-400')}>
+                      <p className={cx('truncate text-xl font-extrabold', preview)}>{myName}</p>
+                      <p className="mt-1 truncate text-xs font-bold">{f.name}</p>
+                      <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                        <CoinPill price={f.price} />
+                        <Pill tone="neutral">{NAME_STYLE_DAYS} kun</Pill>
+                      </div>
+                      <div className="mt-2.5">
+                        {owned ? (
+                          equipped ? (
+                            <Button size="sm" variant="secondary" disabled icon="check">Taqilgan</Button>
+                          ) : (
+                            <Button size="sm" variant="secondary" onClick={() => { haptic('light'); equipNameFx(f.id); }}>Taqish</Button>
+                          )
+                        ) : (
+                          <Button size="sm" disabled={!affordable} onClick={() => buyNameStyle(f, 'nameFx')}>
+                            {affordable ? (expired ? 'Yangilash' : 'Sotib olish') : <><Icon name="lock" className="h-3.5 w-3.5" /> Yopiq</>}
+                          </Button>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted">Ism effektlari {NAME_STYLE_DAYS} kun davom etadi — muddati tugasa, bir xil narxga “Yangilash” mumkin. Ushbu uslub sizning ismingiz har joyda ko‘rinadi: Profil, Dashboard va jang maydonida.</p>
           </div>
         )}
 

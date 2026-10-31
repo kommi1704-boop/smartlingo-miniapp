@@ -206,6 +206,7 @@ export interface Profile {
   selfLevel: Level;
   estimatedLevel: Level;
   targetLevel: Level;
+  photoAvatar?: string; // data URL of an uploaded profile photo (small, square, device-made)
   placementScores?: {
     vocabulary: number;
     grammar: number;
@@ -232,7 +233,7 @@ export interface OwnedItem {
 
 export interface ShopState {
   owned: Record<string, OwnedItem>; // item id -> ownership
-  equipped: { frame?: string; avatar?: string; title?: string };
+  equipped: { frame?: string; avatar?: string; title?: string; nameColor?: string; nameFx?: string };
   chestsOpened: number;
   streakFreezes: number; // stored "muzlatgich" items ready to auto-protect the streak
   xpBoostUntil?: string; // ISO datetime — 2x XP active until

@@ -5,9 +5,13 @@ import { READING } from '../data/reading';
 import { LISTENING } from '../data/listening';
 import { SPEAKING } from '../data/speaking';
 import { WRITING } from '../data/writing';
-import { dayOfYear, today } from './dates';
+import { GAMES } from './games';
+import { RESOURCES } from '../data/resources';
+import { questStateOf } from './shop';
+import { seededRng } from './games';
+import { dayOfYear, lastDays, today } from './dates';
 
-export type PlanType = 'vocab' | 'grammar' | 'reading' | 'listening' | 'speaking' | 'writing' | 'tutor';
+export type PlanType = 'vocab' | 'grammar' | 'reading' | 'listening' | 'speaking' | 'writing' | 'game' | 'resource' | 'tutor';
 
 export interface PlanItem {
   id: string;
@@ -24,9 +28,70 @@ export interface PlanItem {
 
 export const emptyDay = (): DayActivity => ({ xp: 0, words: 0, grammar: 0, reading: 0, listening: 0, speaking: 0, writing: 0, tutor: 0, quizzes: 0 });
 
-const WEIGHT: Record<PlanType, number> = { vocab: 1, grammar: 1.4, reading: 1.2, listening: 1, speaking: 0.9, writing: 1.3, tutor: 1 };
+const WEIGHT: Record<PlanType, number> = {
+  vocab: 1, grammar: 1.4, reading: 1.2, listening: 1, speaking: 0.9, writing: 1.3, tutor: 1, game: 0.8, resource: 0.6,
+};
 
 const li = (l: Level) => LEVELS.indexOf(l);
+
+/** Recent accuracy (0..1) for a quiz-measured skill, or null when there is not enough history. */
+function skillAccuracy(s: PersistedState, t: 'vocab' | 'grammar' | 'reading' | 'listening'): number | null {
+  const kinds: Record<string, string[]> = {
+    vocab: ['vocab-quiz', 'matching'], grammar: ['grammar'], reading: ['reading'], listening: ['listening'],
+  };
+  const want = kinds[t];
+  const items = s.quizHistory.filter((q) => want.includes(q.kind)).slice(-20);
+  const total = items.reduce((a, b) => a + b.total, 0);
+  if (total < 8) return null;
+  const score = items.reduce((a, b) => a + b.score, 0);
+  return score / total;
+}
+
+/**
+ * Picks 2 rotating skills for today, randomly but with a bias towards the learner's
+ * weaker skills (low quiz accuracy or skills untouched this week). Seeded -> stable all day,
+ * different every day.
+ */
+function adaptiveRotation(s: PersistedState, date: string, rnd: () => number): Array<'reading' | 'listening' | 'speaking' | 'writing'> {
+  const pool: Array<'reading' | 'listening' | 'speaking' | 'writing'> = ['reading', 'listening', 'speaking', 'writing'];
+  const week = lastDays(7, date);
+  const weights = pool.map((t) => {
+    if (t === 'reading' || t === 'listening') {
+      const acc = skillAccuracy(s, t);
+      if (acc !== null) return Math.min(1.35, Math.max(0.45, 1.25 - acc)); // weaker skill -> bigger weight
+    }
+    const counter = t as 'speaking' | 'writing';
+    const didThisWeek = week.some((k) => (s.activity[k]?.[counter] ?? 0) > 0);
+    return didThisWeek ? 0.85 : 1.3; // untouched this week -> bigger weight
+  });
+  const picked: typeof pool = [];
+  let left = pool.map((t, i) => ({ t, w: weights[i] }));
+  for (let k = 0; k < 2 && left.length; k++) {
+    const total = left.reduce((a, x) => a + x.w, 0);
+    let roll = rnd() * total;
+    let idx = 0;
+    for (let i = 0; i < left.length; i++) {
+      roll -= left[i].w;
+      if (roll <= 0) {
+        idx = i;
+        break;
+      }
+    }
+    picked.push(left[idx].t);
+    left = left.filter((_, i) => i !== idx);
+  }
+  return picked;
+}
+
+function composition(minutes: number, s: PersistedState, date: string, rnd: () => number): PlanType[] {
+  const rot = adaptiveRotation(s, date, rnd);
+  if (minutes <= 5) return ['vocab'];
+  if (minutes <= 10) return ['vocab', 'grammar', rot[0]];
+  if (minutes <= 15) return ['vocab', 'grammar', rot[0], rot[1]];
+  if (minutes <= 20) return ['vocab', 'grammar', rot[0], rot[1], 'game'];
+  if (minutes <= 30) return ['vocab', 'grammar', rot[0], rot[1], 'game', 'resource'];
+  return ['vocab', 'grammar', rot[0], rot[1], 'game', 'resource', 'tutor'];
+}
 
 function pickBy<T extends { id: string; level: Level }>(
   items: T[],
@@ -50,33 +115,17 @@ function pickBy<T extends { id: string; level: Level }>(
   return { item: weakest, revisit: true };
 }
 
-function rotationPool(activities: string[]): PlanType[] {
-  const base: PlanType[] = ['reading', 'listening', 'speaking', 'writing'];
-  const pref = base.filter((t) => activities.includes(t));
-  return pref.length ? pref : base;
-}
-
-function composition(minutes: number, activities: string[], date: string): PlanType[] {
-  const pool = rotationPool(activities);
-  const d = dayOfYear(date);
-  const rot = (k: number) => pool[(d + k) % pool.length];
-  if (minutes <= 5) return ['vocab'];
-  if (minutes <= 10) return ['vocab', rot(0)];
-  if (minutes <= 15) return ['vocab', 'grammar', rot(0)];
-  if (minutes <= 20) return ['vocab', 'grammar', 'reading', 'listening'];
-  if (minutes <= 30) return ['vocab', 'grammar', 'reading', 'listening', rot(0) === 'reading' || rot(0) === 'listening' ? 'speaking' : rot(0)];
-  return ['vocab', 'grammar', 'reading', 'listening', 'speaking', 'writing', 'tutor'];
-}
-
 export function buildPlan(s: PersistedState, date: string = today()): PlanItem[] {
   const p = s.profile;
   if (!p) return [];
   const act = s.activity[date] ?? emptyDay();
-  const types = composition(p.dailyMinutes, p.activities, date);
+  const rnd = seededRng(`plan:${date}:${p.name}`); // stable during the day, fresh tomorrow, per learner
+  const types = composition(p.dailyMinutes, s, date, rnd);
   const totalW = types.reduce((a, t) => a + WEIGHT[t], 0);
   const minutesFor = (t: PlanType) => Math.max(3, Math.round((p.dailyMinutes * WEIGHT[t]) / totalW));
   const est = p.estimatedLevel;
   const goal = s.settings.dailyWordGoal;
+  const q = questStateOf(s);
 
   return types.map((t): PlanItem => {
     const minutes = minutesFor(t);
@@ -136,6 +185,34 @@ export function buildPlan(s: PersistedState, date: string = today()): PlanItem[]
           id: 'writing', type: t, emoji: '✍️', title: `Yozish: ${pick.title}`,
           desc: `Kamida ${pick.minWords} ta so‘z`, minutes, route: `/writing/${pick.id}`,
           done: act.writing >= 1, progress: act.writing >= 1 ? 1 : 0,
+        };
+      }
+      case 'game': {
+        const g = GAMES[Math.floor(rnd() * GAMES.length)];
+        const played = q.progress.games ?? 0;
+        return {
+          id: 'game', type: t, emoji: g.emoji,
+          title: `Interaktiv o‘yin: ${g.title}`,
+          desc: g.tagline,
+          minutes, route: `/games/${g.id}`,
+          done: played >= 1, progress: Math.min(1, played), progressLabel: played >= 1 ? undefined : '1 marta o‘ynang',
+        };
+      }
+      case 'resource': {
+        // a verified video/article that matches the learner's level (random every day)
+        const fits = RESOURCES.filter((r) => r.level.includes(est) || r.level.includes('Barcha'));
+        const poolR = fits.length ? fits : RESOURCES;
+        const videos = poolR.filter((r) => r.category === 'youtube');
+        const from = rnd() < 0.65 && videos.length ? videos : poolR;
+        const r = from[Math.floor(rnd() * from.length)];
+        const visited = q.progress.resources ?? 0;
+        const isVideo = r.category === 'youtube';
+        return {
+          id: 'resource', type: t, emoji: isVideo ? '🎬' : '📚',
+          title: isVideo ? `Video dars: ${r.title}` : `Foydali resurs: ${r.title}`,
+          desc: r.desc.length > 90 ? `${r.desc.slice(0, 90)}…` : r.desc,
+          minutes, route: '/resources',
+          done: visited >= 1, progress: Math.min(1, visited), progressLabel: visited >= 1 ? undefined : 'Resursni oching',
         };
       }
       case 'tutor':

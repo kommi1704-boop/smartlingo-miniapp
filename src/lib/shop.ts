@@ -138,7 +138,7 @@ export function chestRewardText(r: ChestReward): string {
 
 // ===== Daily quests ("Kunlik vazifalar") =====
 
-export type QuestCounter = 'words' | 'xp' | 'games' | 'lessons' | 'tutor' | 'speaking' | 'writing';
+export type QuestCounter = 'words' | 'xp' | 'games' | 'lessons' | 'tutor' | 'speaking' | 'writing' | 'resources';
 
 export interface QuestDef {
   id: string;
@@ -204,4 +204,57 @@ export function frameClassFor(frameId: string | undefined, isOwnedActive: (id: s
     return rating !== undefined && rating < tier.min ? 'frame-none' : tier.ring;
   }
   return isOwnedActive(frameId) ? (frameById(frameId)?.cls ?? 'frame-none') : 'frame-none';
+}
+
+// ===== Name styles ("Ism effektlari") — colors + effects for the learner's name =====
+// Same rental model as frames: 7 days, renewable.
+
+export const NAME_STYLE_DAYS = 7;
+
+export interface NameColorItem {
+  id: string; // "nc-fire"
+  name: string; // Uzbek display name
+  price: number; // Coins
+  cls: string; // CSS gradient-text class (index.css)
+}
+
+export const NAME_COLORS: NameColorItem[] = [
+  { id: 'nc-fire', name: 'Olov', price: 75, cls: 'nc-fire' },
+  { id: 'nc-ocean', name: 'Okean', price: 75, cls: 'nc-ocean' },
+  { id: 'nc-neon', name: 'Neon', price: 75, cls: 'nc-neon' },
+  { id: 'nc-gold', name: 'Oltin', price: 75, cls: 'nc-gold' },
+  { id: 'nc-rainbow', name: 'Kamalak', price: 100, cls: 'nc-rainbow' },
+];
+
+export interface NameFxItem {
+  id: string; // "nfx-outline"
+  name: string; // Uzbek display name
+  price: number; // Coins
+  cls: string; // CSS effect class (index.css)
+}
+
+export const NAME_FXS: NameFxItem[] = [
+  { id: 'nfx-outline', name: 'Kontur', price: 75, cls: 'nfx-outline' },
+  { id: 'nfx-shadow', name: 'Uzun soya', price: 75, cls: 'nfx-shadow' },
+  { id: 'nfx-underline', name: 'Chizgi', price: 75, cls: 'nfx-underline' },
+  { id: 'nfx-neon', name: 'Neon nur', price: 75, cls: 'nfx-neon' },
+];
+
+export const nameColorById = (id?: string): NameColorItem | undefined => NAME_COLORS.find((c) => c.id === id);
+export const nameFxById = (id?: string): NameFxItem | undefined => NAME_FXS.find((f) => f.id === id);
+
+/**
+ * CSS classes for the learner's own name: one gradient color + one effect.
+ * Items must have an active rental to display (pure — takes the check function).
+ */
+export function nameStyleClasses(
+  equipped: { nameColor?: string; nameFx?: string },
+  isOwnedActive: (id: string) => boolean,
+): string {
+  const color = equipped.nameColor && isOwnedActive(equipped.nameColor) ? nameColorById(equipped.nameColor)?.cls : undefined;
+  const fx = equipped.nameFx && isOwnedActive(equipped.nameFx) ? nameFxById(equipped.nameFx)?.cls : undefined;
+  const parts: string[] = [];
+  if (color) parts.push('nm-grad', color); // nm-grad switches to background-clip:text
+  if (fx) parts.push(fx);
+  return parts.join(' ');
 }
