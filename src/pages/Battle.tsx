@@ -271,7 +271,11 @@ export function Battle() {
       outcome.result === 'win'
         ? `⚔️ Do‘stona jangda g‘aliba qozondim: ${outcome.you}:${outcome.them} (${outcome.opponent})! Reytingim oshdi 📈`
         : `⚔️ Do‘stona jang: ${outcome.you}:${outcome.them} (${outcome.opponent}). Keyingi safar g‘aliba meniki! 💪`;
-    shareToTelegram(window.location.href, text);
+    // Share the bot's Telegram deep link (opens the bot + launches the Mini App),
+    // NOT window.location.href (that is the vercel.app URL which opens in a browser).
+    const bot = (import.meta.env?.VITE_BOT_USERNAME as string | undefined)?.trim();
+    const link = bot ? `https://t.me/${bot}?startapp=battle` : window.location.href;
+    shareToTelegram(link, text);
   }, [outcome]);
 
   // ===== Render =====
