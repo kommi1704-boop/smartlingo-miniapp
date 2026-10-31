@@ -3,9 +3,10 @@
 //  GET /api/leaderboard  (valid initData) -> { me: string, list: LeaderRow[] }
 //
 // Only safe, minimal fields leave the server: first name, avatar emoji, active frame id,
-// rating pieces and battle W/L. Ages, goals and other progress stay private.
-// The rating formula mirrors ratingOf() in src/lib/gamification.ts:
-//   1000 + XP/3 + stars*5 + badges*5 + battle Elo delta (never below 900).
+// rating and battle W/L. Ages, goals, XP and other progress stay private.
+// Rating mirrors ratingOf() in src/lib/gamification.ts: 1000 + battle Elo delta (never below 900).
+// XP, stars and badges do NOT count. Only players with at least one battle are listed, and the
+// client-reported delta is clamped to what their W/L/D record could plausibly have produced.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
 
@@ -26,9 +27,9 @@ interface LeaderRow {
   avatar?: string;
   frame?: string;
   rating: number;
-  xp: number;
   wins: number;
   losses: number;
+  draws: number;
   delta: number; // accumulated battle Elo
 }
 
@@ -86,15 +87,19 @@ function supa(): { url: string; key: string } | null {
 
 const sbHeaders = (key: string) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' });
 
-/** Mirrors ratingOf() in src/lib/gamification.ts. */
-function ratingFromState(s: Record<string, unknown>): number {
-  const xp = Math.max(0, Number(s.xp) || 0);
-  const games = (s.games ?? {}) as { best?: Record<string, { stars?: number }> };
-  const stars = Object.values(games.best ?? {}).reduce((a, b) => a + (Number(b?.stars) || 0), 0);
-  const badges = Object.keys((s.badges ?? {}) as Record<string, unknown>).length;
-  const battle = (s.battle ?? {}) as { ratingDelta?: number };
-  const delta = Number(battle.ratingDelta) || 0;
-  return Math.max(900, 1000 + Math.floor(xp / 3) + stars * 5 + badges * 5 + delta);
+const MAX_WIN = 24; // largest single-battle gain (PvP K)
+const MAX_LOSS = 24;
+// Rating frames (rf-<tier>) need this rating; keep in sync with RANK_TIERS in src/lib/shop.ts.
+const RF_MIN: Record<string, number> = {
+  specialist: 1600, expert: 1700, cm: 1800, master: 2000, im: 2200, gm: 2400, igm: 2700, lgm: 3000,
+};
+
+/** Mirrors ratingOf(): duel-only, with the delta clamped to a plausible range for the W/L/D record. */
+function ratingFromBattle(b: { wins: number; losses: number; draws: number; delta: number }): number {
+  const maxUp = b.wins * MAX_WIN + b.draws * MAX_WIN;
+  const maxDown = (b.losses + b.draws) * MAX_LOSS;
+  const d = Math.min(maxUp, Math.max(-maxDown, b.delta));
+  return Math.max(900, 1000 + Math.round(d));
 }
 
 function rowFromState(id: string, raw: unknown): LeaderRow | null {
@@ -102,7 +107,13 @@ function rowFromState(id: string, raw: unknown): LeaderRow | null {
   const s = raw as Record<string, unknown>;
   const profile = (s.profile ?? null) as { name?: string } | null;
   const shop = (s.shop ?? {}) as { equipped?: { avatar?: string; frame?: string }; owned?: Record<string, { expiresAt?: string }> };
-  const battle = (s.battle ?? {}) as { wins?: number; losses?: number; ratingDelta?: number };
+  const battle = (s.battle ?? {}) as { wins?: number; losses?: number; draws?: number; ratingDelta?: number };
+  const wins = Math.max(0, Math.floor(Number(battle.wins) || 0));
+  const losses = Math.max(0, Math.floor(Number(battle.losses) || 0));
+  const draws = Math.max(0, Math.floor(Number(battle.draws) || 0));
+  if (wins + losses + draws === 0) return null; // not listed until the first battle
+  const delta = Math.round(Number(battle.ratingDelta) || 0);
+  const rating = ratingFromBattle({ wins, losses, draws, delta });
 
   const rawName = (profile?.name ?? '').trim();
   const name = (rawName.split(/\s+/)[0] || 'O‘quvchi').slice(0, 24);
@@ -110,7 +121,8 @@ function rowFromState(id: string, raw: unknown): LeaderRow | null {
   let frame: string | undefined;
   if (equippedFrame && typeof equippedFrame === 'string') {
     const owned = shop.owned?.[equippedFrame];
-    const active = equippedFrame.startsWith('rf-') || !owned || !owned.expiresAt || new Date(owned.expiresAt).getTime() > Date.now();
+    const need = equippedFrame.startsWith('rf-') ? RF_MIN[equippedFrame.slice(3)] : undefined;
+    const active = equippedFrame.startsWith('rf-') ? need !== undefined && rating >= need : !owned || !owned.expiresAt || new Date(owned.expiresAt).getTime() > Date.now();
     if (active) frame = equippedFrame;
   }
   return {
@@ -118,11 +130,11 @@ function rowFromState(id: string, raw: unknown): LeaderRow | null {
     name,
     avatar: typeof shop.equipped?.avatar === 'string' ? shop.equipped.avatar.slice(0, 8) : undefined,
     frame,
-    rating: ratingFromState(s),
-    xp: Math.max(0, Number(s.xp) || 0),
-    wins: Math.max(0, Number(battle.wins) || 0),
-    losses: Math.max(0, Number(battle.losses) || 0),
-    delta: Math.round(Number(battle.ratingDelta) || 0),
+    rating,
+    wins,
+    losses,
+    draws,
+    delta,
   };
 }
 
@@ -161,7 +173,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const list = rows
       .map((x) => rowFromState(String(x.telegram_user_id), x.state))
       .filter((x): x is LeaderRow => x !== null)
-      .sort((a, b) => b.rating - a.rating || b.xp - a.xp)
+      .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses)
       .slice(0, LIMIT);
     res.status(200).json({ me: auth.userId, list });
   } catch (e) {

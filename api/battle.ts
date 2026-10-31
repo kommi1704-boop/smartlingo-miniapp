@@ -9,7 +9,7 @@
 //
 // The challenger generates the 7 questions from the app's own content; both players answer the
 // SAME questions on their own devices; when both scores are in, the server computes the winner
-// and the Elo deltas (K=32) so both clients see a consistent result.
+// and the Elo deltas (K=24) so both clients see a consistent result.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
 
@@ -74,7 +74,7 @@ interface Res {
 const OPEN_LIST_TTL_MS = 10 * 60 * 1000; // open challenges are listed for 10 minutes
 const ROW_TTL_MS = 2 * 60 * 60 * 1000; // all rows are garbage-collected after 2 hours
 const MAX_QUESTIONS = 12;
-const MAX_DELTA = 60; // safety clamp per battle
+const MAX_DELTA = 24; // safety clamp per battle (= K)
 const hits = new Map<string, { n: number; reset: number }>();
 
 function header(req: Req, name: string): string {
@@ -328,8 +328,8 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         const opp = mine ? row.p2_rating ?? row.p1_rating : row.p1_rating;
         const result = p1Score === p2Score ? 0.5 : p1Score > p2Score ? 1 : 0;
         const winner = p1Score === p2Score ? 0 : p1Score > p2Score ? row.p1 : row.p2;
-        const raw1 = Math.round(32 * (result - expectedScore(row.p1_rating, opp)));
-        const raw2 = Math.round(32 * (1 - result - expectedScore(row.p2_rating ?? row.p1_rating, row.p1_rating)));
+        const raw1 = Math.round(24 * (result - expectedScore(row.p1_rating, opp)));
+        const raw2 = Math.round(24 * (1 - result - expectedScore(row.p2_rating ?? row.p1_rating, row.p1_rating)));
         patched.p1_score = p1Score;
         patched.p2_score = p2Score;
         patched.status = 'finished';
