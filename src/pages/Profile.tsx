@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useApp } from '../store/store';
 import { equipAvatar, equipFrame, isOwnedActive, renewFrame, updateProfile } from '../store/actions';
 import { BADGES, rankInfo, ratingOf, streakOf, xpProgress } from '../lib/gamification';
+import { INTEREST_CHIPS, MAX_INTERESTS } from '../lib/aiUsage';
 import { DEFAULT_AVATAR, FREE_AVATARS, FRAMES, PREMIUM_AVATARS, RATING_FRAMES, nameStyleClasses, titleById } from '../lib/shop';
 import { cx, fileToAvatarDataUrl, fmt } from '../lib/utils';
 import { haptic } from '../lib/telegram';
@@ -194,6 +195,42 @@ export function Profile() {
           <p className="mt-2.5 text-xs text-muted">
             Do‘konda yana {PREMIUM_AVATARS.filter((a) => !isOwnedActive(a.id)).length} ta premium avatar bor — ajdar, bir shox va boshqalar!
           </p>
+        </Card>
+      </Section>
+
+      {/* Interests (device-only) — used by the AI reading-text generator */}
+      <Section title="🎯 Qiziqishlarim">
+        <Card>
+          <p className="text-sm text-muted">Tanlangan mavzular bo‘yicha AI siz uchun maxsus o‘qish matnlari yozadi (O‘qish bo‘limida «Men uchun matn»). Ko‘pi bilan {MAX_INTERESTS} ta.</p>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {INTEREST_CHIPS.map((chip) => {
+              const active = !!p.interests?.includes(chip);
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    const cur = p.interests ?? [];
+                    if (active) updateProfile({ interests: cur.filter((c) => c !== chip) });
+                    else if (cur.length >= MAX_INTERESTS) {
+                      toast(`Ko‘pi bilan ${MAX_INTERESTS} ta mavzu tanlash mumkin`, 'warn');
+                    } else {
+                      haptic('light');
+                      updateProfile({ interests: [...cur, chip] });
+                    }
+                  }}
+                  className={cx(
+                    'rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition',
+                    active ? 'border-violet-500 bg-violet-500 text-white' : 'border-line hover:border-violet-400',
+                  )}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2.5 text-xs text-muted">Qiziqishlaringiz faqat shu telefonida saqlanadi va hech qayerga yuborilmaydi.</p>
         </Card>
       </Section>
 

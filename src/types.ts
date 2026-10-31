@@ -119,7 +119,7 @@ export interface LessonResult {
   lastDate: string;
 }
 
-export type ContentKind = 'grammar' | 'reading' | 'listening' | 'vocab-quiz' | 'matching' | 'placement';
+export type ContentKind = 'grammar' | 'reading' | 'listening' | 'vocab-quiz' | 'matching' | 'placement' | 'writing';
 
 export interface QuizHistoryItem {
   id: string;
@@ -206,6 +206,8 @@ export interface Profile {
   selfLevel: Level;
   estimatedLevel: Level;
   targetLevel: Level;
+  /** Device-only: topic chips for AI-generated reading texts. Never uploaded (stripped by sync). */
+  interests?: string[];
   photoAvatar?: string; // data URL of an uploaded profile photo (small, square, device-made)
   placementScores?: {
     vocabulary: number;

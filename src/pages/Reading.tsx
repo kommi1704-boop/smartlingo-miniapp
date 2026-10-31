@@ -1,14 +1,220 @@
 import { useEffect, useMemo, useState } from 'react';
 import { READING } from '../data/reading';
+import { VOCAB } from '../data/vocab';
 import { useApp } from '../store/store';
+import { markForReview } from '../store/actions';
 import { navigate } from '../lib/router';
+import { aiErrorHint, aiLeftToday, aiPost, aiUsedToday } from '../lib/aiUsage';
+import { today } from '../lib/dates';
 import { ContentList, type ListItem } from '../components/ContentList';
 import { QuizRunner } from '../components/QuizRunner';
 import { Button, Card, Empty, LevelBadge, PageHeader, Pill, Section } from '../components/ui';
 import { Highlightable } from '../components/Highlightable';
 import { VoicePicker, SpeedChips, useVoices } from '../components/VoicePicker';
 import { playLines, setPrefs, stopSpeaking, ttsAvailable } from '../lib/tts';
-import { wordCount } from '../lib/utils';
+import { haptic } from '../lib/telegram';
+import { toast } from '../store/ui';
+import type { Quiz } from '../types';
+import { cx, wordCount } from '../lib/utils';
+
+// ===== "Men uchun matn" — AI text about the child's interests (Feature 3) =====
+
+interface AiWordItem {
+  en: string;
+  uz: string;
+}
+interface AiQuestionItem {
+  q: string;
+  options: string[];
+  answerIndex: number;
+}
+interface AiTextData {
+  title: string;
+  text: string;
+  questions: AiQuestionItem[];
+  words: AiWordItem[];
+}
+
+const genKey = (interest: string) => `sl.gentext:${today()}:${interest}`;
+
+function loadGen(interest: string): AiTextData | null {
+  try {
+    const raw = window.localStorage.getItem(genKey(interest));
+    return raw ? (JSON.parse(raw) as AiTextData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveGen(interest: string, d: AiTextData): void {
+  try {
+    window.localStorage.setItem(genKey(interest), JSON.stringify(d));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearGen(interest: string): void {
+  try {
+    window.localStorage.removeItem(genKey(interest));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function AiReadingCard() {
+  const s = useApp();
+  const interests = s.profile?.interests ?? [];
+  const [open, setOpen] = useState(false);
+  const [interest, setInterest] = useState('');
+  const [data, setData] = useState<AiTextData | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const [quiz, setQuiz] = useState(false);
+  const left = aiLeftToday('generate-text');
+  const used = aiUsedToday('generate-text');
+
+  function pick(chip: string) {
+    if (busy) return;
+    setInterest(chip);
+    setQuiz(false);
+    setNote('');
+    setData(loadGen(chip)); // same day + same interest -> no second API call
+  }
+
+  async function generate() {
+    if (busy || !interest || left <= 0) return;
+    setBusy(true);
+    setNote('');
+    try {
+      const j = await aiPost<{ result: AiTextData }>('generate-text', '/api/generate-text', {
+        interest,
+        level: s.profile?.estimatedLevel ?? 'A1',
+      });
+      saveGen(interest, j.result);
+      setData(j.result);
+      setQuiz(false);
+      haptic('success');
+    } catch (e) {
+      setNote(aiErrorHint(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function report() {
+    if (interest) clearGen(interest);
+    setData(null);
+    setQuiz(false);
+    setOpen(false);
+    toast('Xabaringiz uchun rahmat — matn yashirildi', 'info');
+  }
+
+  const paras = useMemo(() => (data ? data.text.split(/\n\n+/) : []), [data]);
+  const terms = useMemo(() => (data ? data.words.map((w) => w.en) : []), [data]);
+  const questions: Quiz[] = (data?.questions ?? []).map((q, i) => ({ id: `ai-${i}`, q: q.q, options: q.options, answer: q.answerIndex, explain: '' }));
+
+  return (
+    <div className="mb-4 overflow-hidden rounded-3xl border-2 border-violet-300/60 bg-violet-50/50 dark:border-violet-400/30 dark:bg-violet-500/10">
+      <button type="button" className="flex w-full items-center gap-3 p-4 text-left" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-2xl dark:bg-violet-500/20">🎯</span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-extrabold">Men uchun matn</span>
+          <span className="block truncate text-xs text-muted">AI qiziqishingiz bo‘yicha matn yozadi · bugun {Math.min(used, 3)}/3 ishlatilgan</span>
+        </span>
+        <span className="shrink-0 text-lg text-muted" aria-hidden>{open ? '▾' : '▸'}</span>
+      </button>
+
+      {open && (
+        <div className="slide-up px-4 pb-4">
+          {interests.length === 0 ? (
+            <div className="rounded-2xl bg-surface p-3.5 text-sm">
+              <p className="font-semibold">Avval qiziqishlaringizni tanlang</p>
+              <p className="mt-1 text-muted">Profil sahifasida «Qiziqishlarim» bo‘limida 5 tagacha mavzu tanlaysiz — AI shular bo‘yicha matn yozadi.</p>
+              <Button className="mt-2.5" size="sm" onClick={() => navigate('/profile')}>Profilga o‘tish</Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {interests.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => pick(chip)}
+                    aria-pressed={interest === chip}
+                    className={cx(
+                      'rounded-full border-2 px-3 py-1.5 text-sm font-semibold transition',
+                      interest === chip ? 'border-violet-500 bg-violet-500 text-white' : 'border-line bg-surface hover:border-violet-400',
+                    )}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+              {interest && !data && (
+                <Button className="mt-3" full icon="sparkles" disabled={busy || left <= 0} onClick={generate}>
+                  {busy ? 'AI yozmoqda…' : left > 0 ? 'Matn yaratish' : 'Bugungi limit tugadi (3/3)'}
+                </Button>
+              )}
+              {note && <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">{note}</p>}
+
+              {data && !quiz && (
+                <div className="mt-3">
+                  <p className="text-lg font-extrabold leading-snug">{data.title}</p>
+                  <p className="mt-0.5 text-xs text-muted">{wordCount(data.text)} ta so‘z · mavzu: {interest} · daraja: {s.profile?.estimatedLevel ?? 'A1'}</p>
+                  <Card className="mt-2">
+                    <Highlightable storeKey={`gentext:${today()}:${interest}`} paragraphs={paras} terms={terms} className="space-y-2.5 text-[16px] leading-relaxed" />
+                  </Card>
+                  <Section title="🔤 So‘zlar yordami">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {data.words.map((w) => {
+                        const inVocab = VOCAB.find((v) => v.en.toLowerCase() === w.en.toLowerCase());
+                        return (
+                          <div key={w.en} className="flex items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-sm">
+                            <span className="min-w-0"><b className="truncate">{w.en}</b> <span className="text-muted">— {w.uz}</span></span>
+                            {inVocab ? (
+                              <Button size="sm" variant="secondary" icon="plus" onClick={() => markForReview(inVocab.id)}>Lug‘atga</Button>
+                            ) : (
+                              <span className="shrink-0 text-[11px] text-muted">lug‘atda yo‘q</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Section>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <Button icon="play" onClick={() => setQuiz(true)}>Savollarga o‘tish ({questions.length})</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setData(null)}>Yangi matn yozish</Button>
+                  </div>
+                </div>
+              )}
+
+              {data && quiz && (
+                <div className="mt-3">
+                  <QuizRunner
+                    title={`Men uchun matn: ${data.title}`}
+                    kind="reading"
+                    lessonKey={`reading:ai-${interest}`}
+                    questions={questions}
+                    exitLabel="Matnga qaytish"
+                    onExit={() => setQuiz(false)}
+                  />
+                </div>
+              )}
+
+              {data && (
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-[11px] text-muted">Bu matn AI tomonidan qiziqishingiz asosida yaratiladi va faqat telefoningizda saqlanadi.</p>
+                  <button type="button" className="shrink-0 text-xs font-semibold text-muted underline" onClick={report}>Xato bor</button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ReadingList() {
   const s = useApp();
@@ -28,6 +234,7 @@ export function ReadingList() {
   return (
     <div>
       <PageHeader emoji="📖" title="O‘qish" subtitle={`${READING.length} ta matn · ${done} tasi tugatilgan`} />
+      <AiReadingCard />
       <ContentList items={items} base="/reading" />
     </div>
   );

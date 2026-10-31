@@ -10,19 +10,65 @@ import { READING } from '../data/reading';
 import { LISTENING } from '../data/listening';
 import { SPEAKING } from '../data/speaking';
 import { WRITING } from '../data/writing';
+import { aiErrorHint, aiLeftToday, aiPost } from '../lib/aiUsage';
 import { Button, Card, Chip, Empty, PageHeader, Pill, ProgressBar, Section, StatTile } from '../components/ui';
 import { PathMap } from '../components/PathMap';
 import { BarChart } from '../components/BarChart';
 import { cx, fmt, pct } from '../lib/utils';
 import { haptic } from '../lib/telegram';
+import { toast } from '../store/ui';
 
 const KIND_LABEL: Record<string, string> = {
-  grammar: 'Grammatika', reading: 'O‘qish', listening: 'Tinglash', 'vocab-quiz': 'So‘zlar testi', matching: 'Juftlash', placement: 'Daraja testi',
+  grammar: 'Grammatika', reading: 'O‘qish', listening: 'Tinglash', 'vocab-quiz': 'So‘zlar testi', matching: 'Juftlash', placement: 'Daraja testi', writing: 'Yozish',
 };
 
-function MistakeCard({ m }: { m: Mistake }) {
+// ===== "Nega xato?" — AI explanation for one mistake (Feature 2) =====
+
+interface AiPracticeItem {
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explain_uz: string;
+}
+interface AiExplainData {
+  why_uz: string;
+  tip_uz: string;
+  practice: AiPracticeItem[];
+}
+
+const expKey = (id: string) => `sl.exp:${id}`;
+
+function loadExp(id: string): AiExplainData | null {
+  try {
+    const raw = window.localStorage.getItem(expKey(id));
+    return raw ? (JSON.parse(raw) as AiExplainData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveExp(id: string, d: AiExplainData): void {
+  try {
+    window.localStorage.setItem(expKey(id), JSON.stringify(d));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Maps the notebook source to the API's source enum. */
+function sourceForAi(m: Mistake): 'grammar' | 'reading' | 'listening' | 'vocab' {
+  if (m.source === 'vocab-quiz' || m.source === 'matching') return 'vocab';
+  if (m.source === 'reading' || m.source === 'listening') return m.source;
+  return 'grammar';
+}
+
+function MistakeCard({ m, level }: { m: Mistake; level: string }) {
   const [retry, setRetry] = useState(false);
   const [picked, setPicked] = useState<number | null>(null);
+  const [exp, setExp] = useState<AiExplainData | null>(null);
+  const [expBusy, setExpBusy] = useState(false);
+  const [expNote, setExpNote] = useState('');
+  const [picks, setPicks] = useState<Record<number, number>>({}); // practice item index -> picked option
 
   function choose(i: number) {
     if (picked !== null) return;
@@ -31,6 +77,56 @@ function MistakeCard({ m }: { m: Mistake }) {
     haptic(ok ? 'success' : 'error');
     if (ok && !m.corrected) toggleMistake(m.id);
   }
+
+  /** Loads the cached explanation or asks the AI once (the same mistake never costs a second call). */
+  async function askWhy() {
+    if (expBusy) return;
+    const cached = exp ?? loadExp(m.id);
+    if (cached) {
+      setExp(cached);
+      return;
+    }
+    setExpBusy(true);
+    setExpNote('');
+    try {
+      const j = await aiPost<{ result: AiExplainData }>('explain-mistake', '/api/explain-mistake', {
+        question: m.question,
+        userAnswer: m.options[m.yourAnswer] ?? '',
+        correctAnswer: m.options[m.correctAnswer] ?? '',
+        source: sourceForAi(m),
+        level,
+      });
+      saveExp(m.id, j.result);
+      setExp(j.result);
+      haptic('light');
+    } catch (e) {
+      setExpNote(aiErrorHint(e));
+    } finally {
+      setExpBusy(false);
+    }
+  }
+
+  /** Inline mini-quiz: only when BOTH practice items are answered right the mistake is marked corrected. */
+  function choosePractice(pi: number, oi: number) {
+    if (!exp || picks[pi] !== undefined) return;
+    const item = exp.practice[pi];
+    if (!item) return;
+    const ok = oi === item.answerIndex;
+    haptic(ok ? 'success' : 'error');
+    const next = { ...picks, [pi]: oi };
+    setPicks(next);
+    const bothRight =
+      exp.practice.every((it, k) => {
+        const p = next[k];
+        return p !== undefined && p === it.answerIndex;
+      });
+    if (bothRight && !m.corrected) {
+      toggleMistake(m.id);
+      toast('Ikkala mashq ham to‘g‘ri — xato to‘g‘rilandi ✅', 'success');
+    }
+  }
+
+  const expLeft = aiLeftToday('explain-mistake');
 
   return (
     <li className={cx('rounded-3xl border p-4', m.corrected ? 'border-emerald-300/60 bg-emerald-50/50 dark:bg-emerald-500/5' : 'border-line bg-surface')}>
@@ -70,10 +166,70 @@ function MistakeCard({ m }: { m: Mistake }) {
         </div>
       )}
 
+      {exp && (
+        <div className="slide-up mt-3 rounded-2xl bg-indigo-50/70 p-3.5 dark:bg-indigo-500/10">
+          <p className="text-sm font-bold">🤖 Nega xato?</p>
+          <p className="mt-1 text-sm leading-snug">{exp.why_uz}</p>
+          {exp.tip_uz && <p className="mt-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">💡 Yodda tutash: {exp.tip_uz}</p>}
+          <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted">Mashqlar ({exp.practice.length}) — ikkalasi ham to‘g‘ri bo‘lsa, xato yopiladi</p>
+          <div className="mt-2 space-y-3">
+            {exp.practice.map((p, pi) => {
+              const my = picks[pi];
+              return (
+                <div key={pi} className="rounded-xl border border-line bg-surface p-3">
+                  <p className="text-sm font-semibold leading-snug">{pi + 1}. {p.question}</p>
+                  <div className="mt-2 grid gap-1.5">
+                    {p.options.map((o, oi) => {
+                      const show = my !== undefined;
+                      const isRight = oi === p.answerIndex;
+                      const isMine = my === oi;
+                      return (
+                        <button
+                          key={oi}
+                          type="button"
+                          disabled={show}
+                          onClick={() => choosePractice(pi, oi)}
+                          className={cx(
+                            'rounded-lg border-2 px-2.5 py-1.5 text-left text-sm transition',
+                            !show && 'border-line hover:border-indigo-400',
+                            show && isRight && 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15',
+                            show && isMine && !isRight && 'border-rose-500 bg-rose-50 dark:bg-rose-500/15',
+                            show && !isRight && !isMine && 'border-line opacity-50',
+                          )}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {my !== undefined && (
+                    <p className={cx('mt-2 text-xs font-semibold', my === p.answerIndex ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300')}>
+                      {my === p.answerIndex ? '✅ To‘g‘ri!' : `❌ To‘g‘ri javob: ${p.options[p.answerIndex]}`}
+                      {p.explain_uz && <span className="font-normal text-muted"> {p.explain_uz}</span>}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {expNote && <p className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-300">{expNote}</p>}
+
       <div className="mt-3 flex flex-wrap gap-2">
         {!m.corrected && (
           <Button size="sm" variant="secondary" onClick={() => { setRetry(!retry); setPicked(null); }}>{retry ? 'Yopish' : 'Qayta urinib ko‘rish'}</Button>
         )}
+        <Button
+          size="sm"
+          variant="secondary"
+          icon="bulb"
+          disabled={expBusy || (!exp && expLeft === 0)}
+          onClick={askWhy}
+          title={exp ? undefined : `Kuniga 10 marta · bugun ${expLeft} ta qoldi`}
+        >
+          {expBusy ? 'AI tushuntiryapti…' : 'Nega xato? 🤖'}
+        </Button>
         <Button size="sm" variant={m.corrected ? 'ghost' : 'success'} icon={m.corrected ? 'refresh' : 'check'} onClick={() => toggleMistake(m.id)}>
           {m.corrected ? 'Qayta ochish' : 'To‘g‘rilandi deb belgilash'}
         </Button>
@@ -196,7 +352,7 @@ export function Progress() {
             text={filter === 'open' ? 'Testlarda xato qilgan savollaringiz shu yerda saqlanadi.' : 'Xatolarni qayta yechib, shu yerga o‘tkazing.'}
           />
         ) : (
-          <ul className="space-y-3">{list.map((m) => <MistakeCard key={m.id} m={m} />)}</ul>
+          <ul className="space-y-3">{list.map((m) => <MistakeCard key={m.id} m={m} level={s.profile?.estimatedLevel ?? 'A1'} />)}</ul>
         )}
       </Section>
     </div>

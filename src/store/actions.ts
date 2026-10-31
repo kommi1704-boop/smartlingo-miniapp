@@ -332,6 +332,23 @@ export function toggleMistake(id: string): void {
   }
 }
 
+/** Adds AI-checked writing mistakes to the notebook (deduped by question + source). Returns how many were added. */
+export function addMistakes(items: Mistake[]): number {
+  if (!items.length) return 0;
+  let added = 0;
+  setState((s) => {
+    let mistakes = s.mistakes;
+    for (const m of items) {
+      const dup = mistakes.some((x) => x.source === m.source && x.question === m.question && x.sourceTitle === m.sourceTitle);
+      if (dup) continue;
+      mistakes = [m, ...mistakes];
+      added++;
+    }
+    return { ...s, mistakes: mistakes.slice(0, 300) };
+  });
+  return added;
+}
+
 // ---------- Speaking / Writing ----------
 
 export function completeSpeaking(promptId: string, checked: number, total: number): number {

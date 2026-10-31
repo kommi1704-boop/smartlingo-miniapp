@@ -107,17 +107,13 @@ export function Leaderboard() {
           {!inList && (
             <div className="mt-3">
               <Notice>
-                {s.battle.wins + s.battle.losses + s.battle.draws === 0 ? (
-                  <>Jadvalga tushish uchun kamida <b>1 ta jang</b> o‘ynang. Reyting faqat janglardan oshadi.</>
-                ) : (
-                  <>Siz hali onlayn ro‘yxatdasiz emas — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, natijangiz jadvalga tushadi.</>
-                )}
+                <>Siz hali onlayn ro‘yxatda emassiz — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, profilingiz jadvalga tushadi (1000 reytingdan boshlanadi).</>
               </Notice>
             </div>
           )}
           <Section title={`Top ${Math.min(rows.length, 100)} o‘quvchi`}>
             {rows.length === 0 ? (
-              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing: kamida 1 ta do‘stona jang o‘ynang!" />
+              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing — profil yaratganingizdan so‘ng ismingiz shu yerda paydo bo‘ladi!" />
             ) : (
               <div className="space-y-2">
                 {rows.map((r, i) => {
@@ -169,7 +165,7 @@ export function Leaderboard() {
 
       <div className="mt-4 flex items-center gap-2 text-xs text-muted">
         <Icon name="info" className="h-4 w-4 shrink-0" />
-        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Reyting = 1000 + janglar natijasi (XP va darslar hisobga olinmaydi). Jadvalda kamida 1 ta jang o‘ynaganlar ko‘rinadi.</p>
+        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Reyting = 1000 + janglar natijasi (XP va darslar hisobga olinmaydi). Jadvalda barcha o‘quvchilar ko‘rinadi: yangi qo‘shilganlar 1000 reytingdan boshlaydi va faqat janglar orqali o‘sadi.</p>
       </div>
     </div>
   );

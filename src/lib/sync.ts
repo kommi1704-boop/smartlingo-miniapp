@@ -54,7 +54,13 @@ function payload(s: PersistedState): string {
   const { conversations: _c, writing: _w, ...rest } = s;
   void _c;
   void _w;
-  return JSON.stringify({ state: rest });
+  // profile.interests is device-only (privacy): it never leaves the phone.
+  const { profile } = rest;
+  const cleanProfile = profile ? (({ interests: _i, ...p }: NonNullable<typeof profile>) => {
+    void _i;
+    return p;
+  })(profile) : profile;
+  return JSON.stringify({ state: { ...rest, profile: cleanProfile } });
 }
 
 async function push(): Promise<void> {
@@ -83,18 +89,28 @@ function schedule() {
 /** Merge rule: a fresh device (no profile) takes the online copy; otherwise the copy with more XP wins. */
 function adopt(remote: Partial<PersistedState>) {
   const base = defaultState();
-  setState((s) => ({
-    ...base,
-    ...remote,
-    settings: { ...base.settings, ...(remote.settings ?? {}) },
-    games: { ...base.games, ...(remote.games ?? {}) },
-    coins: { ...base.coins, ...(remote.coins ?? {}) },
-    shop: { ...base.shop, ...(remote.shop ?? {}) },
-    quests: { ...base.quests, ...(remote.quests ?? {}) },
-    conversations: s.conversations,
-    writing: s.writing,
-    battle: { ...base.battle, ...(remote.battle ?? {}) },
-  }));
+  setState((s) => {
+    // profile.interests is device-only and never synced, so the online copy cannot know it —
+    // carry the local chips over when adopting a profile from another device.
+    const interests = s.profile?.interests;
+    const remoteProfile = remote.profile ?? null;
+    const profile = remoteProfile
+      ? (interests?.length ? { ...remoteProfile, interests } : remoteProfile)
+      : s.profile;
+    return {
+      ...base,
+      ...remote,
+      profile,
+      settings: { ...base.settings, ...(remote.settings ?? {}) },
+      games: { ...base.games, ...(remote.games ?? {}) },
+      coins: { ...base.coins, ...(remote.coins ?? {}) },
+      shop: { ...base.shop, ...(remote.shop ?? {}) },
+      quests: { ...base.quests, ...(remote.quests ?? {}) },
+      conversations: s.conversations,
+      writing: s.writing,
+      battle: { ...base.battle, ...(remote.battle ?? {}) },
+    };
+  });
 }
 
 export async function initSync(): Promise<void> {
