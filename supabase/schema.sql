@@ -51,3 +51,49 @@ alter table public.battles enable row level security;
 drop trigger if exists battles_touch on public.battles;
 create trigger battles_touch before update on public.battles
   for each row execute function public.touch_updated_at();
+
+-- AI feature quotas (writing check, mistake explanation, generated reading texts).
+-- The table stores ONLY an anonymous per-user-per-day counter: no texts, no names, no content.
+-- Security model identical to progress/battles: RLS on, NO policies — anon/authenticated users
+-- cannot touch it; the Vercel server functions use the service-role key (bypasses RLS).
+create table if not exists public.ai_usage (
+  telegram_user_id bigint      not null,
+  day              date         not null,             -- UTC date the counter belongs to
+  kind             text         not null,             -- 'writing-check' | 'explain-mistake' | 'generate-text'
+  count            int          not null default 0,
+  updated_at       timestamptz  not null default now(),
+  primary key (telegram_user_id, day, kind)
+);
+
+alter table public.ai_usage enable row level security;
+
+drop trigger if exists ai_usage_touch on public.ai_usage;
+create trigger ai_usage_touch before update on public.ai_usage
+  for each row execute function public.touch_updated_at();
+
+-- Atomic increment used by the api/*.ts endpoints. SECURITY DEFINER + empty search_path so it
+-- runs as the table owner; the service-role key calls it through PostgREST RPC.
+-- The same function is NOT callable through the anon key for INSERTs? It is callable, but it
+-- only returns a count and writes to ai_usage — the client's anon key cannot read ai_usage
+-- (RLS), so the count it receives leaks nothing sensitive. For defence in depth we revoke
+-- EXECUTE from anon/authenticated below, leaving the service role unaffected.
+create or replace function public.bump_ai_usage(p_uid bigint, p_day date, p_kind text)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v int;
+begin
+  insert into public.ai_usage (telegram_user_id, day, kind, count)
+  values (p_uid, p_day, p_kind, 1)
+  on conflict (telegram_user_id, day, kind)
+  do update set count = public.ai_usage.count + 1, updated_at = now();
+  select count into v from public.ai_usage
+    where telegram_user_id = p_uid and day = p_day and kind = p_kind;
+  return v;
+end;
+$$;
+
+revoke execute on function public.bump_ai_usage(bigint, date, text) from anon, authenticated;

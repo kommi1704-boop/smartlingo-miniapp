@@ -5,8 +5,9 @@
 // Only safe, minimal fields leave the server: first name, avatar emoji, active frame id,
 // rating and battle W/L. Ages, goals, XP and other progress stay private.
 // Rating mirrors ratingOf() in src/lib/gamification.ts: 1000 + battle Elo delta (never below 900).
-// XP, stars and badges do NOT count. Only players with at least one battle are listed, and the
-// client-reported delta is clamped to what their W/L/D record could plausibly have produced.
+// XP, stars and badges do NOT count. EVERY learner who synced their progress at least once is listed:
+// a fresh learner appears right after signing in with the base rating 1000 and moves up only via
+// duels. The client-reported delta is clamped to what their W/L/D record could plausibly have produced.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
 
@@ -111,7 +112,6 @@ function rowFromState(id: string, raw: unknown): LeaderRow | null {
   const wins = Math.max(0, Math.floor(Number(battle.wins) || 0));
   const losses = Math.max(0, Math.floor(Number(battle.losses) || 0));
   const draws = Math.max(0, Math.floor(Number(battle.draws) || 0));
-  if (wins + losses + draws === 0) return null; // not listed until the first battle
   const delta = Math.round(Number(battle.ratingDelta) || 0);
   const rating = ratingFromBattle({ wins, losses, draws, delta });
 
@@ -173,7 +173,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const list = rows
       .map((x) => rowFromState(String(x.telegram_user_id), x.state))
       .filter((x): x is LeaderRow => x !== null)
-      .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses)
+      .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name))
       .slice(0, LIMIT);
     res.status(200).json({ me: auth.userId, list });
   } catch (e) {
