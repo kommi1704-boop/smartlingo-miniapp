@@ -25,6 +25,12 @@ async function tg(token: string, method: string, payload: unknown): Promise<void
   });
 }
 
+// ====== EDIT THESE TWO LINES ======
+const NEWS_CHANNEL_URL = 'https://t.me/YOUR_CHANNEL'; // "Yangiliklar" button under /start
+const HELP_PROFILE_URL = 'https://t.me/YOUR_USERNAME'; // /help opens this Telegram profile
+// ==================================
+const isSet = (u: string) => !/YOUR_/.test(u);
+
 const SHORTCUTS: Record<string, { go: string; text: string; button: string }> = {
   '/plan': { go: 'plan', text: '📅 Bugungi kunlik rejangiz tayyor. Ochamizmi?', button: '📅 Kunlik reja' },
   '/battle': { go: 'battle', text: '⚔️ Do‘stona jangga tayyormisiz? Reytingni ko‘taring!', button: '⚔️ Jangga kirish' },
@@ -64,11 +70,27 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         text: shortcut.text,
         reply_markup: { inline_keyboard: [[{ text: shortcut.button, web_app: { url: `${url.replace(/\/$/, '')}/?go=${shortcut.go}` } }]] },
       });
-    } else if (msg.text.startsWith('/start') || msg.text.startsWith('/help')) {
+    } else if (cmd === '/help') {
+      await tg(token, 'sendMessage', {
+        chat_id: msg.chat.id,
+        text: 'Savol, taklif yoki muammo bo‘lsa, bevosita yozing 👇',
+        reply_markup: {
+          inline_keyboard: [
+            ...(isSet(HELP_PROFILE_URL) ? [[{ text: '💬 Muallifga yozish', url: HELP_PROFILE_URL }]] : []),
+            [{ text: '🚀 Ilovani ochish', web_app: { url } }],
+          ],
+        },
+      });
+    } else if (cmd === '/start') {
       await tg(token, 'sendMessage', {
         chat_id: msg.chat.id,
         text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
-        reply_markup: { inline_keyboard: [[{ text: '🚀 O‘rganishni boshlash', web_app: { url } }]] },
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🚀 O‘rganishni boshlash', web_app: { url } }],
+            ...(isSet(NEWS_CHANNEL_URL) ? [[{ text: '📢 Yangiliklar', url: NEWS_CHANNEL_URL }]] : []),
+          ],
+        },
       });
     } else {
       await tg(token, 'sendMessage', {
