@@ -14,6 +14,16 @@ setHapticsEnabled(st.settings.haptics);
 
 void initSync();
 
+// Bot shortcuts (/plan, /battle, ...) open the app as  <url>/?go=<page>  — jump straight to that page.
+try {
+  const go = new URLSearchParams(window.location.search).get('go');
+  if (go && ['plan', 'battle', 'leaderboard', 'games', 'profile', 'vocab'].includes(go) && st.profile) {
+    window.location.hash = `/${go}`;
+  }
+} catch {
+  /* ignore */
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
