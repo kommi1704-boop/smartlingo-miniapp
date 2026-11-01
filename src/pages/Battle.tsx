@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Quiz } from '../types';
+import type { Level, Quiz } from '../types';
 import { useApp } from '../store/store';
 import { addCoins, isOwnedActive, recordBattleResult } from '../store/actions';
 import { toast } from '../store/ui';
 import { rankInfo, ratingOf } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import {
-  AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiCorrectFor, aiRatedLeft, aiThinkMs,
-  battleResultOf, buildBattleQuestions, eloDelta, scoreOf,
+  AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiAccFor, aiCorrectFor, aiRatedLeft,
+  aiThinkMs, battleResultOf, buildBattleQuestions, eloDelta, levelIdx, scoreOf, timeForQuestion,
+  type BattleQuiz,
 } from '../lib/battle';
 import {
   battleAvailable, cancelChallenge, getBattle, joinChallenge, listChallenges, notConfigured,
@@ -78,7 +79,7 @@ export function Battle() {
 
   const [phase, setPhase] = useState<Phase>('lobby');
   const [online, setOnline] = useState<boolean | null>(null); // null = probing
-  const [questions, setQuestions] = useState<Quiz[]>([]);
+  const [questions, setQuestions] = useState<BattleQuiz[]>([]);
   const [mode, setMode] = useState<'ai' | 'pvp'>('ai');
   const [searchBattle, setSearchBattle] = useState<BattleView | null>(null);
   const [outcome, setOutcome] = useState<BattleOutcome | null>(null);
@@ -95,6 +96,12 @@ export function Battle() {
   const myAvatar = s.shop.equipped.avatar ?? '🙂';
   const myPhoto = s.profile?.photoAvatar;
   const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
+  const level: Level = s.profile?.estimatedLevel ?? s.profile?.selfLevel ?? 'A2';
+  /** Server-stored PvP questions may lack the level tag (it is client-side only). */
+  const withLevels = useCallback(
+    (qs: Quiz[]): BattleQuiz[] => qs.map((q) => ({ ...q, level: (q as BattleQuiz).level ?? level })),
+    [level],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -111,13 +118,12 @@ export function Battle() {
     const seed = uid('b');
     aiSeedRef.current = seed;
     accRef.current = aiAccuracy(s.quizHistory);
-    const level = s.profile?.estimatedLevel ?? s.profile?.selfLevel ?? 'A2';
     setMode('ai');
     setQuestions(buildBattleQuestions(level, seed));
     setSearchBattle(null);
     setPhase('duel');
     haptic('light');
-  }, [s.quizHistory, s.profile]);
+  }, [s.quizHistory, level]);
 
   const leaveWaiting = useCallback(() => {
     waitRunRef.current++;
@@ -137,7 +143,7 @@ export function Battle() {
           if (joined.questions?.length) {
             setSearchBattle(joined);
             setMode('pvp');
-            setQuestions(joined.questions);
+            setQuestions(withLevels(joined.questions));
             battleIdRef.current = joined.id;
             setPhase('duel');
             haptic('success');
@@ -151,7 +157,6 @@ export function Battle() {
       const seed = uid('b');
       aiSeedRef.current = seed;
       accRef.current = aiAccuracy(s.quizHistory);
-      const level = s.profile?.estimatedLevel ?? s.profile?.selfLevel ?? 'A2';
       const qs = buildBattleQuestions(level, seed);
       const opened = await openChallenge(qs, me);
       setSearchBattle(opened);
@@ -164,7 +169,7 @@ export function Battle() {
             if (pollRef.current) clearInterval(pollRef.current);
             setSearchBattle(b);
             setMode('pvp');
-            setQuestions(b.questions);
+            setQuestions(withLevels(b.questions));
             setPhase('duel');
             haptic('success');
           }
@@ -187,7 +192,7 @@ export function Battle() {
       );
       startAi();
     }
-  }, [rating, myName, myAvatar, s.quizHistory, s.profile, startAi]);
+  }, [rating, myName, myAvatar, s.quizHistory, level, startAi, withLevels]);
 
   const cancelSearch = useCallback(async () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -224,13 +229,10 @@ export function Battle() {
   );
 
   const onDuelFinish = useCallback(
-    (you: number) => {
+    (you: number, them: number | null) => {
       if (mode === 'ai') {
-        // Lingo answers with the same accuracy the learner usually shows -> evenly matched
-        const acc = accRef.current;
-        const seed = aiSeedRef.current;
-        const them = questions.reduce((a, _q, i) => a + (aiCorrectFor(seed, i, acc) ? 1 : 0), 0);
-        finish(you, them, 'ai', 'Lingo (AI)');
+        // Lingo's score was counted live, question by question, during the race.
+        finish(you, them ?? 0, 'ai', 'Lingo (AI)');
         return;
       }
       // PvP: submit my score and wait for the opponent's
@@ -262,7 +264,7 @@ export function Battle() {
         }
       })();
     },
-    [finish, mode, questions],
+    [finish, mode],
   );
 
   const shareResult = useCallback(() => {
@@ -274,7 +276,7 @@ export function Battle() {
     // Share the bot's Telegram deep link (opens the bot + launches the Mini App),
     // NOT window.location.href (that is the vercel.app URL which opens in a browser).
     const bot = (import.meta.env?.VITE_BOT_USERNAME as string | undefined)?.trim();
-    const link = bot ? `https://t.me/${bot}` : window.location.href;
+    const link = bot ? `https://t.me/${bot}?startapp=battle` : window.location.href;
     shareToTelegram(link, text);
   }, [outcome]);
 
@@ -292,6 +294,7 @@ export function Battle() {
           oppAvatar={mode === 'ai' ? '🤖' : searchBattle?.oppAvatar ?? '🙂'}
           seed={aiSeedRef.current}
           accuracy={accRef.current}
+          userLevel={level}
           onFinish={onDuelFinish}
         />
       </div>
@@ -462,13 +465,13 @@ export function Battle() {
         >
           <div className="text-3xl">🤖</div>
           <p className="mt-1.5 font-extrabold">Lingo AI bilan jang</p>
-          <p className="mt-0.5 text-xs text-muted">Lingo aynan sizning darajangizda o‘ynaydi — ham kuchli, ham kuchsiz emas.</p>
+          <p className="mt-0.5 text-xs text-muted">Lingo sizning darajangizda o‘ynaydi va ba’zan adashadi — tez hamda to‘g‘ri javob bilan uni yutishingiz mumkin.</p>
         </button>
       </div>
 
       <div className="mt-3">
         <Notice>
-          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol — kim ko‘p to‘g‘ri javob bersa, g‘olib. G‘aliba reytingni oshiradi, mag‘lubiyat kamaytiradi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
+          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol, har biri uchun ~15 soniya. Kim birinchi to‘g‘ri javob bersa — ochko shunga va savol darhol keyingisiga almashadi! Noto‘g‘ri javob esa sizni savoldan chiqaradi. G‘aliba reytingni oshiradi, mag‘lubiyat kamaytiradi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
         </Notice>
       </div>
 
@@ -524,67 +527,157 @@ export function Battle() {
   );
 }
 
-// ===== The live quiz duel =====
+// ===== The live quiz duel (race mode) =====
+// Report fix: a per-question clock now decides everything. Whoever answers
+// CORRECTLY first takes the point and the next question appears right away —
+// a wrong pick locks you out of the current question, and the buzzer ends it.
 
 interface DuelProps {
-  questions: Quiz[];
+  questions: BattleQuiz[];
   mode: 'ai' | 'pvp';
   oppName: string;
   oppAvatar: string;
   seed: string;
-  accuracy: number; // Lingo's accuracy — mirrors the learner's own skill
-  onFinish: (you: number) => void;
+  accuracy: number; // Lingo's base accuracy — mirrors the learner's own skill
+  userLevel: Level;
+  onFinish: (you: number, them: number | null) => void; // them: AI score in ai mode, null in pvp
 }
 
-function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, onFinish }: DuelProps) {
-  const [idx, setIdx] = useState(0);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [aiReveal, setAiReveal] = useState<boolean | null>(null);
-  const [aiScore, setAiScore] = useState(0);
-  const [myScore, setMyScore] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+/** How a duel question ended. 'you' / 'ai' = the first correct answer won the point. */
+type ResolveKind = 'you' | 'ai' | 'nobody' | 'timeout';
 
+function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, onFinish }: DuelProps) {
+  const [idx, setIdx] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null); // my pick (a wrong pick locks me out of this question)
+  const [aiDone, setAiDone] = useState<boolean | null>(null); // null = Lingo has not answered yet
+  const [res, setRes] = useState<ResolveKind | null>(null); // non-null = question over (flash phase)
+  const [myScore, setMyScore] = useState(0);
+  const [aiScore, setAiScore] = useState(0);
+  const [tenth, setTenth] = useState(() => (questions[0] ? timeForQuestion(questions[0]) / 100 : 0));
+
+  // Refs mirror state inside timers so nothing reads stale values.
+  const myScoreRef = useRef(0);
+  const aiScoreRef = useRef(0);
+  const pickedRef = useRef<number | null>(null);
+  const aiDoneRef = useRef<boolean | null>(null);
+  const resRef = useRef<ResolveKind | null>(null);
+  const aiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tick = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const q = questions[idx];
+
+  /** Go to the next question (or finish) — used by the auto-timer and the skip button. */
+  function advance() {
+    if (goTimer.current) clearTimeout(goTimer.current);
+    if (idx + 1 < questions.length) setIdx(idx + 1);
+    else onFinish(myScoreRef.current, mode === 'ai' ? aiScoreRef.current : null);
+  }
+
+  /** Ends the question: stop the clocks, show the flash, auto-advance. */
+  function end(kind: ResolveKind) {
+    if (resRef.current) return; // already over
+    resRef.current = kind;
+    if (aiTimer.current) clearTimeout(aiTimer.current);
+    if (tick.current) clearInterval(tick.current);
+    setRes(kind);
+    goTimer.current = setTimeout(() => advance(), kind === 'you' ? 1600 : 2600);
+  }
+
+  // Per-question lifecycle: reset, countdown, and Lingo's independent answer.
+  useEffect(() => {
+    const cur = questions[idx];
+    if (!cur) return;
+    pickedRef.current = null;
+    aiDoneRef.current = null;
+    resRef.current = null;
+    setPicked(null);
+    setAiDone(null);
+    setRes(null);
+    setTenth(timeForQuestion(cur) / 100);
+
+    if (mode === 'ai') {
+      const challenge = levelIdx(cur.level) - levelIdx(userLevel) === 1;
+      const ok = aiCorrectFor(seed, idx, aiAccFor(accuracy, cur.level, userLevel));
+      aiTimer.current = setTimeout(() => {
+        aiDoneRef.current = ok;
+        setAiDone(ok);
+        if (ok) {
+          aiScoreRef.current += 1;
+          setAiScore(aiScoreRef.current);
+          haptic('light');
+          playSfx('wrong');
+          end('ai'); // Lingo answered first — the race is over
+        } else if (pickedRef.current !== null) {
+          end('nobody'); // both missed
+        }
+        // Lingo missed and I have not answered yet: my pick or the buzzer decides.
+      }, aiThinkMs(seed, idx, challenge));
+    }
+
+    tick.current = setInterval(() => setTenth((v) => Math.max(0, v - 1)), 100);
+    return () => {
+      if (aiTimer.current) clearTimeout(aiTimer.current);
+      if (tick.current) clearInterval(tick.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
+
+  // The buzzer.
+  useEffect(() => {
+    if (tenth <= 0 && resRef.current === null && questions[idx]) end('timeout');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenth]);
+
+  // Safety net on unmount.
   useEffect(
     () => () => {
-      if (timer.current) clearTimeout(timer.current);
+      if (aiTimer.current) clearTimeout(aiTimer.current);
+      if (goTimer.current) clearTimeout(goTimer.current);
+      if (tick.current) clearInterval(tick.current);
     },
     [],
   );
 
-  const q = questions[idx];
-
   function choose(i: number) {
-    if (picked !== null || !q) return;
+    if (!q || resRef.current !== null || pickedRef.current !== null) return;
+    pickedRef.current = i;
     setPicked(i);
-    const ok = i === q.answer;
-    setMyScore((v) => v + (ok ? 1 : 0));
-    haptic(ok ? 'success' : 'error');
-    playSfx(ok ? 'correct' : 'wrong');
-    if (mode === 'ai') {
-      const aiOk = aiCorrectFor(seed, idx, accuracy);
-      timer.current = setTimeout(() => {
-        setAiReveal(aiOk);
-        setAiScore((v) => v + (aiOk ? 1 : 0));
-        haptic('light');
-      }, aiThinkMs(seed, idx));
-    }
-  }
-
-  function next() {
-    if (picked === null) return;
-    if (mode === 'ai' && aiReveal === null) return; // wait for Lingo's answer
-    if (idx + 1 < questions.length) {
-      setIdx(idx + 1);
-      setPicked(null);
-      setAiReveal(null);
+    if (i === q.answer) {
+      myScoreRef.current += 1;
+      setMyScore(myScoreRef.current);
+      haptic('success');
+      playSfx('correct');
+      end('you'); // first correct answer wins the point — Lingo's guess no longer matters
     } else {
-      onFinish(myScore);
+      haptic('error');
+      playSfx('wrong');
+      if (mode === 'ai' && aiDoneRef.current === false) end('nobody'); // both missed
+      // otherwise: wait for Lingo or the buzzer
     }
   }
 
   if (!q) return null;
 
-  const waitingAi = mode === 'ai' && picked !== null && aiReveal === null;
+  const frac = Math.min(1, tenth / (timeForQuestion(q) / 100));
+  const revealed = picked !== null || res !== null;
+
+  const hint =
+    res === 'you'
+      ? 'To‘g‘ri javob birinchi bo‘ldi — ochko sizniki! ⚡'
+      : res === 'ai'
+        ? 'Lingo oldin to‘g‘ri javob berdi — ochko raqibniki 🤖'
+        : res === 'nobody'
+          ? 'Hech kim to‘g‘ri javob topmadi 🤝'
+          : res === 'timeout'
+            ? 'Vaqt tugadi — ochko hech kimga emas ⏰'
+            : picked !== null
+              ? 'Noto‘g‘ri tanlov — bu savolda siz chiqdingiz'
+              : mode === 'ai' && aiDone === false
+                ? 'Lingo xato qildi — siz hali ochko olasiz!'
+                : mode === 'ai'
+                  ? 'Kim birinchi to‘g‘ri javob bersa — ochko shunga. Lingo o‘ylanyapti…'
+                  : `${oppName} ham shu savolga javob beryapti…`;
 
   return (
     <div className="slide-up">
@@ -606,20 +699,42 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, onFinish }:
           <span className="text-2xl">{oppAvatar}</span>
         </div>
       </div>
-      <p className="mb-2 text-center text-[11px] text-muted" aria-live="polite">
-        {waitingAi ? 'Lingo o‘ylanyapti…' : mode === 'ai' ? 'Lingo sizning darajangizda o‘ynaydi' : `${oppName} ham shu savollarga javob bermoqda…`}
-      </p>
 
-      <ProgressBar value={((idx + (picked !== null ? 1 : 0)) / questions.length) * 100} label="Jang jarayoni" />
+      <p className="mb-2 text-center text-[11px] text-muted" aria-live="polite">{hint}</p>
+
+      <ProgressBar value={((idx + (res !== null ? 1 : 0)) / questions.length) * 100} label="Jang jarayoni" />
 
       <Card className="mt-3">
-        <p className="text-sm font-semibold text-muted">Savol {idx + 1}/{questions.length}</p>
-        <p className="mt-1 whitespace-pre-line text-lg font-bold leading-snug">{q.q}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-muted">Savol {idx + 1}/{questions.length}</p>
+          <span
+            className={cx(
+              'rounded-full px-2 py-0.5 text-xs font-extrabold tabular-nums',
+              frac > 0.5
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                : frac > 0.25
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                  : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300',
+            )}
+          >
+            ⏱ {Math.ceil(tenth / 10)}s
+          </span>
+        </div>
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface2" role="timer" aria-label="Qolgan vaqt">
+          <div
+            className={cx(
+              'h-full rounded-full transition-[width] duration-100 ease-linear',
+              frac > 0.5 ? 'bg-emerald-500' : frac > 0.25 ? 'bg-amber-500' : 'bg-rose-500',
+            )}
+            style={{ width: `${Math.round(frac * 100)}%` }}
+          />
+        </div>
+        <p className="mt-2 whitespace-pre-line text-lg font-bold leading-snug">{q.q}</p>
         <div className="mt-4 grid gap-2.5" role="group" aria-label="Javob variantlari">
           {q.options.map((o, i) => {
             const isCorrect = i === q.answer;
             const isPicked = picked === i;
-            const show = picked !== null;
+            const show = revealed;
             return (
               <button
                 key={i}
@@ -643,26 +758,35 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, onFinish }:
             );
           })}
         </div>
-        {picked !== null && (
-          <div className={cx('slide-up mt-4 rounded-2xl p-3.5 text-sm', picked === q.answer ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-100' : 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100')} aria-live="polite">
-            <p className="font-bold">{picked === q.answer ? 'To‘g‘ri! ✅' : `Noto‘g‘ri. To‘g‘ri javob: ${q.options[q.answer]}`}</p>
+        {revealed && (
+          <div className={cx('slide-up mt-4 rounded-2xl p-3.5 text-sm', res === 'you' ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-100' : 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100')} aria-live="polite">
+            <p className="font-bold">{res === 'you' ? 'To‘g‘ri! ✅' : `To‘g‘ri javob: ${q.options[q.answer]}`}</p>
             <p className="mt-1">{q.explain}</p>
           </div>
         )}
       </Card>
 
-      {mode === 'ai' && picked !== null && aiReveal !== null && (
+      {mode === 'ai' && (res !== null || aiDone !== null) && (
         <div className="mt-3 flex justify-center">
-          <Pill tone={aiReveal ? 'rose' : 'green'} className="pop-in !px-3 !py-1.5">
-            🤖 Lingo {aiReveal ? 'to‘g‘ri javob berdi ✓' : 'xato qildi ✗'} — hisob {myScore} : {aiScore}
-          </Pill>
+          {res === 'you' ? (
+            <Pill tone="green" className="pop-in !px-3 !py-1.5">⚡ Siz oldinda javob berdingiz — {myScore} : {aiScore}</Pill>
+          ) : res === 'ai' ? (
+            <Pill tone="rose" className="pop-in !px-3 !py-1.5">🤖 Lingo oldinda javob berdi — {myScore} : {aiScore}</Pill>
+          ) : res !== null ? (
+            <Pill tone="neutral" className="pop-in !px-3 !py-1.5">{res === 'nobody' ? '🤝 Ikkala javob ham xato' : '⏰ Vaqt tugadi'} — {myScore} : {aiScore}</Pill>
+          ) : (
+            <Pill tone="amber" className="pop-in !px-3 !py-1.5">🤖 Lingo xato qildi ✗ — {myScore} : {aiScore}</Pill>
+          )}
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
-        <Button onClick={next} disabled={picked === null || waitingAi}>
-          {idx + 1 < questions.length ? 'Keyingi savol' : 'Natijani ko‘rish'}
-        </Button>
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <p className="text-xs text-muted">
+          {res !== null ? (idx + 1 < questions.length ? 'Keyingi savol…' : 'Natija tayyorlanmoqda…') : 'Birinchi to‘g‘ri javob ochko oladi'}
+        </p>
+        {res !== null && (
+          <Button onClick={advance}>{idx + 1 < questions.length ? 'Keyingi →' : 'Natijani ko‘rish'}</Button>
+        )}
       </div>
     </div>
   );
