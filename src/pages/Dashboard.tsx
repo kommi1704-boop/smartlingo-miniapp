@@ -103,7 +103,7 @@ export function Dashboard() {
         <span className="min-w-0 flex-1">
           <span className="block text-xs font-bold uppercase tracking-wide text-rose-100">Do‘stona jang</span>
           <span className="block font-extrabold">Raqibni yutib reytingni oshir!</span>
-          <span className="block text-xs text-rose-100">{s.battle.wins} g‘aliba · {s.battle.losses} mag‘lubiyat · Lingo darajangizda o‘ynaydi</span>
+          <span className="block text-xs text-rose-100">{s.battle.wins} g‘alaba · {s.battle.losses} mag‘lubiyat · Lingo darajangizda o‘ynaydi</span>
         </span>
         <Icon name="right" className="h-5 w-5 shrink-0" />
       </A>
