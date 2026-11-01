@@ -276,7 +276,7 @@ export function Profile() {
       <div className="mt-6 grid grid-cols-2 gap-3">
         <StatTile icon="flame" tone="amber" label="Kunlik seriya" value={`${streak} kun`} />
         <StatTile icon="trophy" tone="violet" label="Nishonlar" value={`${Object.keys(s.badges).length}/${BADGES.length}`} />
-        <StatTile icon="swords" tone="emerald" label="Jang g‘alibalari" value={s.battle.wins} hint={`${s.battle.losses} mag‘lubiyat · ${s.battle.draws} durrang`} />
+        <StatTile icon="swords" tone="emerald" label="Jang g‘alabalari" value={s.battle.wins} hint={`${s.battle.losses} mag‘lubiyat · ${s.battle.draws} durrang`} />
         <StatTile icon="chart" tone="indigo" label="Janglar reytingi" value={`${s.battle.ratingDelta >= 0 ? '+' : ''}${fmt(s.battle.ratingDelta)}`} hint="do‘stona janglardan" />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
