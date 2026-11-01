@@ -271,8 +271,8 @@ export function Battle() {
     if (!outcome) return;
     const text =
       outcome.result === 'win'
-        ? `⚔️ Do‘stona jangda g‘aliba qozondim: ${outcome.you}:${outcome.them} (${outcome.opponent})! Reytingim oshdi 📈`
-        : `⚔️ Do‘stona jang: ${outcome.you}:${outcome.them} (${outcome.opponent}). Keyingi safar g‘aliba meniki! 💪`;
+        ? `⚔️ Do‘stona jangda g‘alaba qozondim: ${outcome.you}:${outcome.them} (${outcome.opponent})! Reytingim oshdi 📈`
+        : `⚔️ Do‘stona jang: ${outcome.you}:${outcome.them} (${outcome.opponent}). Keyingi safar g‘alaba meniki! 💪`;
     // Share the bot's Telegram deep link (opens the bot + launches the Mini App),
     // NOT window.location.href (that is the vercel.app URL which opens in a browser).
     const bot = (import.meta.env?.VITE_BOT_USERNAME as string | undefined)?.trim();
@@ -354,7 +354,7 @@ export function Battle() {
         <Card className="pop-in relative text-center">
           {win && <Confetti count={44} />}
           <div className="flex justify-center"><Mascot mood={win ? 'cheer' : draw ? 'happy' : 'think'} size={92} /></div>
-          <p className="mt-1 text-2xl font-extrabold">{win ? '🏆 G‘aliba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}</p>
+          <p className="mt-1 text-2xl font-extrabold">{win ? '🏆 G‘alaba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}</p>
           <p className="mt-1 text-sm text-muted">{outcome.opponent}ga qarshi</p>
           <div className="mt-4 flex items-center justify-center gap-4">
             <div className="text-center">
@@ -412,7 +412,7 @@ export function Battle() {
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full bg-white/20 px-2.5 py-1">🏆 {s.battle.wins} g‘aliba</span>
+          <span className="rounded-full bg-white/20 px-2.5 py-1">🏆 {s.battle.wins} g‘alaba</span>
           <span className="rounded-full bg-white/20 px-2.5 py-1">💔 {s.battle.losses} mag‘lubiyat</span>
           <span className="rounded-full bg-white/20 px-2.5 py-1">🤝 {s.battle.draws} durrang</span>
         </div>
@@ -471,7 +471,7 @@ export function Battle() {
 
       <div className="mt-3">
         <Notice>
-          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol, har biri uchun ~15 soniya. Kim birinchi to‘g‘ri javob bersa — ochko shunga va savol darhol keyingisiga almashadi! Noto‘g‘ri javob esa sizni savoldan chiqaradi. G‘aliba reytingni oshiradi, mag‘lubiyat kamaytiradi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
+          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol, har biri uchun ~15 soniya. Kim birinchi to‘g‘ri javob bersa — ochko shunga va savol darhol keyingisiga almashadi! Noto‘g‘ri javob esa sizni savoldan chiqaradi. G‘alaba reytingni oshiradi, mag‘lubiyat kamaytiradi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
         </Notice>
       </div>
 
@@ -490,7 +490,7 @@ export function Battle() {
 
       <Section title="📜 Oxirgi janglar">
         {s.battle.history.length === 0 ? (
-          <p className="text-sm text-muted">Hali jang bo‘lmagan — birinchi g‘alibangizni qo‘lga kiritng!</p>
+          <p className="text-sm text-muted">Hali jang bo‘lmagan — birinchi g‘alabangizni qo‘lga kiritng!</p>
         ) : (
           <div className="space-y-2">
             {s.battle.history.slice(0, 8).map((h) => (
