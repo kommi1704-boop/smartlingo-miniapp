@@ -271,8 +271,11 @@ export interface BattleState {
   history: BattleRecord[]; // latest first, capped at 20
 }
 
+export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid';
+
 export interface Settings {
   theme: 'auto' | 'light' | 'dark';
+  bg: BgStyle; // app backdrop style (Settings → "Orqa fon")
   dailyWordGoal: number;
   haptics: boolean;
   sound: boolean; // short feedback sounds (correct / wrong / level-up)

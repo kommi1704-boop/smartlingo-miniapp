@@ -7,14 +7,14 @@ import { rankInfo, ratingOf } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import {
   AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiAccFor, aiCorrectFor, aiRatedLeft,
-  aiThinkMs, battleResultOf, buildBattleQuestions, eloDelta, levelIdx, scoreOf, timeForQuestion,
+  aiThinkMs, battleResultOf, buildBattleQuestions, eloDelta, levelIdx, PVP_ELO_K, scoreOf, timeForQuestion,
   type BattleQuiz,
 } from '../lib/battle';
 import {
-  battleAvailable, cancelChallenge, getBattle, joinChallenge, listChallenges, notConfigured,
-  openChallenge, submitScore, type BattleView,
+  answerPvp, battleAvailable, cancelChallenge, forfeitPvp, getBattle, isLegacySync, joinChallenge, listChallenges,
+  notConfigured, openChallenge, submitScore, syncPvp, type BattleView, type LiveSync, type SyncResult,
 } from '../lib/battleApi';
-import { Button, Card, Notice, Pill, ProgressBar, Section } from '../components/ui';
+import { Button, Card, Modal, Notice, Pill, ProgressBar, Section } from '../components/ui';
 import { Confetti, Mascot } from '../components/Mascot';
 import { Icon } from '../components/Icon';
 import { haptic, shareToTelegram } from '../lib/telegram';
@@ -91,6 +91,13 @@ export function Battle() {
   const aiSeedRef = useRef(uid('b'));
   const accRef = useRef(0.6);
   const waitRunRef = useRef(0);
+  const resolvedRef = useRef(true); // false while a battle is in progress — leaving mid-battle forfeits
+  const liveScoreRef = useRef({ you: 0, them: 0 }); // latest duel scores (for the forfeit record)
+  const modeRef = useRef<'ai' | 'pvp'>('ai');
+  const oppRatingRef = useRef<number | null>(null);
+  const oppNameRef = useRef('Raqib');
+  const [confirmQuit, setConfirmQuit] = useState(false);
+  const [legacyPvp, setLegacyPvp] = useState(false); // pre-live battle row -> old async flow
 
   const myName = (s.profile?.name ?? 'O‘quvchi').trim().split(/\s+/)[0] || 'O‘quvchi';
   const myAvatar = s.shop.equipped.avatar ?? '🙂';
@@ -114,6 +121,32 @@ export function Battle() {
 
   // ===== Battle starters =====
 
+  /** Leaving mid-battle counts as a loss (user report: quitters escaped the -rating). */
+  const applyForfeit = useCallback(() => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    const vs = modeRef.current;
+    const oppRating = oppRatingRef.current ?? rating;
+    const { you, them } = liveScoreRef.current;
+    const delta = eloDelta(rating, oppRating, 0, vs === 'ai' ? aiK(rating) : PVP_ELO_K);
+    recordBattleResult({
+      id: uid('bt'),
+      date: new Date().toISOString(),
+      vs: vs === 'ai' ? 'ai' : 'player',
+      opponent: oppNameRef.current,
+      you,
+      them,
+      total: BATTLE_QUESTIONS,
+      result: 'loss',
+      delta,
+    });
+    if (vs === 'pvp' && battleIdRef.current) void forfeitPvp(battleIdRef.current);
+    toast('Jangni tark etdingiz — mag‘lubiyat hisoblandi', 'warn');
+  }, [rating]);
+
+  // Leaving the page mid-battle (bottom nav, back gesture, app close) = forfeit.
+  useEffect(() => () => { applyForfeit(); }, [applyForfeit]);
+
   const startAi = useCallback(() => {
     const seed = uid('b');
     aiSeedRef.current = seed;
@@ -121,9 +154,15 @@ export function Battle() {
     setMode('ai');
     setQuestions(buildBattleQuestions(level, seed));
     setSearchBattle(null);
+    setLegacyPvp(false);
+    modeRef.current = 'ai';
+    oppNameRef.current = 'Lingo (AI)';
+    oppRatingRef.current = rating;
+    liveScoreRef.current = { you: 0, them: 0 };
+    resolvedRef.current = false;
     setPhase('duel');
     haptic('light');
-  }, [s.quizHistory, level]);
+  }, [s.quizHistory, level, rating]);
 
   const leaveWaiting = useCallback(() => {
     waitRunRef.current++;
@@ -145,6 +184,12 @@ export function Battle() {
             setMode('pvp');
             setQuestions(withLevels(joined.questions));
             battleIdRef.current = joined.id;
+            setLegacyPvp(false);
+            modeRef.current = 'pvp';
+            oppNameRef.current = c.name;
+            oppRatingRef.current = c.rating ?? null;
+            liveScoreRef.current = { you: 0, them: 0 };
+            resolvedRef.current = false;
             setPhase('duel');
             haptic('success');
             return;
@@ -170,6 +215,12 @@ export function Battle() {
             setSearchBattle(b);
             setMode('pvp');
             setQuestions(withLevels(b.questions));
+            setLegacyPvp(false);
+            modeRef.current = 'pvp';
+            oppNameRef.current = b.oppName;
+            oppRatingRef.current = b.oppRating ?? null;
+            liveScoreRef.current = { you: 0, them: 0 };
+            resolvedRef.current = false;
             setPhase('duel');
             haptic('success');
           }
@@ -205,6 +256,7 @@ export function Battle() {
 
   const finish = useCallback(
     (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
+      resolvedRef.current = true; // battle resolved normally — leaving now is free
       const result = battleResultOf(you, them);
       const rated = vs === 'player' || ratedLeft > 0;
       const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), aiK(rating)) : serverDelta ?? 0;
@@ -267,6 +319,19 @@ export function Battle() {
     [finish, mode],
   );
 
+  const onScoreCb = useCallback((you: number, them: number) => {
+    liveScoreRef.current = { you, them };
+  }, []);
+
+  const onLiveFinish = useCallback(
+    (you: number, them: number, delta: number) => {
+      finish(you, them, 'player', oppNameRef.current, delta);
+    },
+    [finish],
+  );
+
+  const onLegacyCb = useCallback(() => setLegacyPvp(true), []);
+
   const shareResult = useCallback(() => {
     if (!outcome) return;
     const text =
@@ -286,17 +351,40 @@ export function Battle() {
     return (
       <div>
         <Bar emoji="⚔️" title="Do‘stona jang" />
-        <Duel
-          key={questions.map((q) => q.id).join('|')}
-          questions={questions}
-          mode={mode}
-          oppName={mode === 'ai' ? 'Lingo (AI)' : searchBattle?.oppName ?? 'Raqib'}
-          oppAvatar={mode === 'ai' ? '🤖' : searchBattle?.oppAvatar ?? '🙂'}
-          seed={aiSeedRef.current}
-          accuracy={accRef.current}
-          userLevel={level}
-          onFinish={onDuelFinish}
-        />
+        {mode === 'pvp' && battleIdRef.current && !legacyPvp ? (
+          <LiveDuel
+            battleId={battleIdRef.current}
+            me={searchBattle?.me ?? 'p1'}
+            questions={questions}
+            oppName={searchBattle?.oppName ?? oppNameRef.current}
+            oppAvatar={searchBattle?.oppAvatar ?? '🙂'}
+            onFinish={onLiveFinish}
+            onScore={onScoreCb}
+            onQuitRequest={() => setConfirmQuit(true)}
+            onLegacy={onLegacyCb}
+          />
+        ) : (
+          <Duel
+            key={questions.map((q) => q.id).join('|')}
+            questions={questions}
+            mode={mode}
+            oppName={mode === 'ai' ? 'Lingo (AI)' : searchBattle?.oppName ?? 'Raqib'}
+            oppAvatar={mode === 'ai' ? '🤖' : searchBattle?.oppAvatar ?? '🙂'}
+            seed={aiSeedRef.current}
+            accuracy={accRef.current}
+            userLevel={level}
+            onFinish={onDuelFinish}
+            onScore={onScoreCb}
+            onQuitRequest={() => setConfirmQuit(true)}
+          />
+        )}
+        <Modal open={confirmQuit} onClose={() => setConfirmQuit(false)} title="Jangni tark etamizmi?">
+          <p className="text-sm text-muted">Jangni tark etsangiz, bu mag‘lubiyat hisoblanadi va reytingdan ochko ayiriladi.</p>
+          <div className="mt-4 flex gap-2">
+            <Button variant="secondary" full onClick={() => setConfirmQuit(false)}>Davom etish</Button>
+            <Button variant="danger" full onClick={() => { setConfirmQuit(false); applyForfeit(); setPhase('lobby'); }}>Tark etish</Button>
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -471,7 +559,7 @@ export function Battle() {
 
       <div className="mt-3">
         <Notice>
-          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol, har biri uchun ~15 soniya. Kim birinchi to‘g‘ri javob bersa — ochko shunga va savol darhol keyingisiga almashadi! Noto‘g‘ri javob esa sizni savoldan chiqaradi. G‘alaba reytingni oshiradi, mag‘lubiyat kamaytiradi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
+          <b>Qoidalar:</b> {BATTLE_QUESTIONS} ta savol, har biri uchun ~15 soniya. Kim birinchi to‘g‘ri javob bersa — ochko shunga va savol darhol keyingisiga almashadi! Noto‘g‘ri javob — raqibning javobi kutiladi, ikkalasi ham xato bo‘lsa keyingi savol. <b>Jangni o‘rtada tark etish mag‘lubiyat hisoblanadi.</b> G‘alaba ≈ +{Math.round(PVP_ELO_K / 2)}…+{PVP_ELO_K} reyting, mag‘lubiyat shunga qarab ayiriladi. Kuniga {AI_BATTLES_PER_DAY} ta AI jangi reytingli (bugun: {ratedLeft}/{AI_BATTLES_PER_DAY}), keyingilari mashq bo‘ladi.
         </Notice>
       </div>
 
@@ -490,7 +578,7 @@ export function Battle() {
 
       <Section title="📜 Oxirgi janglar">
         {s.battle.history.length === 0 ? (
-          <p className="text-sm text-muted">Hali jang bo‘lmagan — birinchi g‘alabangizni qo‘lga kiritng!</p>
+          <p className="text-sm text-muted">Hali jang bo‘lmagan — birinchi g‘alabangizni qo‘lga kiriting!</p>
         ) : (
           <div className="space-y-2">
             {s.battle.history.slice(0, 8).map((h) => (
@@ -541,12 +629,14 @@ interface DuelProps {
   accuracy: number; // Lingo's base accuracy — mirrors the learner's own skill
   userLevel: Level;
   onFinish: (you: number, them: number | null) => void; // them: AI score in ai mode, null in pvp
+  onScore: (you: number, them: number) => void; // live score feed for the forfeit record
+  onQuitRequest: () => void;
 }
 
 /** How a duel question ended. 'you' / 'ai' = the first correct answer won the point. */
 type ResolveKind = 'you' | 'ai' | 'nobody' | 'timeout';
 
-function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, onFinish }: DuelProps) {
+function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, onFinish, onScore, onQuitRequest }: DuelProps) {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null); // my pick (a wrong pick locks me out of this question)
   const [aiDone, setAiDone] = useState<boolean | null>(null); // null = Lingo has not answered yet
@@ -581,7 +671,7 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, 
     if (aiTimer.current) clearTimeout(aiTimer.current);
     if (tick.current) clearInterval(tick.current);
     setRes(kind);
-    goTimer.current = setTimeout(() => advance(), kind === 'you' ? 1600 : 2600);
+    goTimer.current = setTimeout(() => advance(), kind === 'you' ? 1300 : 2300);
   }
 
   // Per-question lifecycle: reset, countdown, and Lingo's independent answer.
@@ -605,6 +695,7 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, 
         if (ok) {
           aiScoreRef.current += 1;
           setAiScore(aiScoreRef.current);
+          onScore(myScoreRef.current, aiScoreRef.current);
           haptic('light');
           playSfx('wrong');
           end('ai'); // Lingo answered first — the race is over
@@ -646,6 +737,7 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, 
     if (i === q.answer) {
       myScoreRef.current += 1;
       setMyScore(myScoreRef.current);
+      onScore(myScoreRef.current, aiScoreRef.current);
       haptic('success');
       playSfx('correct');
       end('you'); // first correct answer wins the point — Lingo's guess no longer matters
@@ -787,6 +879,268 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, 
         {res !== null && (
           <Button onClick={advance}>{idx + 1 < questions.length ? 'Keyingi →' : 'Natijani ko‘rish'}</Button>
         )}
+      </div>
+
+      <div className="mt-3 flex justify-center">
+        <Button variant="ghost" onClick={onQuitRequest}>⏹ Jangni tark etish</Button>
+      </div>
+    </div>
+  );
+}
+
+// ===== Live PvP duel — both players see the same question at the same time =====
+// The server (api/battle.ts action=sync) is the clock and the referee: the first correct
+// answer takes the point and advances the round for BOTH players, a wrong answer waits
+// for the opponent, both wrong / the buzzer advances with no point. Polling (~1.2s)
+// doubles as the presence heartbeat — a player who disappears forfeits the battle.
+
+interface LiveDuelProps {
+  battleId: string;
+  me: 'p1' | 'p2';
+  questions: BattleQuiz[];
+  oppName: string;
+  oppAvatar: string;
+  onFinish: (you: number, them: number, delta: number) => void;
+  onScore: (you: number, them: number) => void;
+  onQuitRequest: () => void;
+  onLegacy: () => void; // battle row predates live duels -> fall back to the async flow
+}
+
+function LiveDuel({ battleId, me, questions, oppName, oppAvatar, onFinish, onScore, onQuitRequest, onLegacy }: LiveDuelProps) {
+  const [sync, setSync] = useState<LiveSync | null>(null);
+  const [pick, setPick] = useState<number | null>(null); // my optimistic pick for this round
+  const [now, setNow] = useState(() => Date.now());
+  const [errs, setErrs] = useState(0);
+  const [banner, setBanner] = useState(''); // round-result flash (shown while the next question counts in)
+
+  const finishedRef = useRef(false);
+  const syncRef = useRef<LiveSync | null>(null);
+  const pickRef = useRef<number | null>(null);
+  const inflightRef = useRef(false);
+  const offsetRef = useRef(0); // serverNow - clientNow, for a shared clock
+  const prevRef = useRef<{ round: number; mine: number; theirs: number } | null>(null);
+
+  const nowS = useCallback(() => Date.now() + offsetRef.current, []);
+
+  const apply = useCallback(
+    (v: SyncResult) => {
+      if (isLegacySync(v)) {
+        onLegacy();
+        return;
+      }
+      offsetRef.current = v.serverNow - Date.now();
+      syncRef.current = v;
+      setSync(v);
+      setErrs(0);
+      const mine = me === 'p1' ? v.s1 : v.s2;
+      const theirs = me === 'p1' ? v.s2 : v.s1;
+      onScore(mine, theirs);
+      if (v.status === 'finished') {
+        if (!finishedRef.current) {
+          finishedRef.current = true;
+          onFinish(mine, theirs, v.myDelta ?? 0);
+        }
+        return;
+      }
+      const prev = prevRef.current;
+      if (prev && v.round > prev.round) {
+        // the server advanced the round — flash who took the point (+ the correct answer)
+        const pq = questions[prev.round];
+        const corr = pq ? `To‘g‘ri javob: ${pq.options[pq.answer]}` : '';
+        if (mine > prev.mine) {
+          setBanner(`⚡ Siz oldin to‘g‘ri javob berdingiz — ochko sizniki! ${corr}`);
+          haptic('success');
+          playSfx('correct');
+        } else if (theirs > prev.theirs) {
+          setBanner(`🗡️ ${oppName} oldin javob berdi — ochko uniki. ${corr}`);
+          haptic('light');
+          playSfx('wrong');
+        } else {
+          setBanner(`⏰ Vaqt tugadi yoki ikkala javob ham xato — ochko yo‘q. ${corr}`);
+          playSfx('wrong');
+        }
+        pickRef.current = null;
+        setPick(null);
+      }
+      prevRef.current = { round: v.round, mine, theirs };
+    },
+    [me, onFinish, onScore, onLegacy, oppName, questions],
+  );
+
+  // Round-state poll — also the heartbeat that keeps me "online" on the server.
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      if (inflightRef.current || finishedRef.current) return;
+      inflightRef.current = true;
+      try {
+        const v = await syncPvp(battleId);
+        if (alive) apply(v);
+      } catch {
+        if (alive) setErrs((e) => e + 1);
+      } finally {
+        inflightRef.current = false;
+      }
+    };
+    void run();
+    const poll = setInterval(() => void run(), 1200);
+    const tick = setInterval(() => setNow(Date.now()), 100);
+    return () => {
+      alive = false;
+      clearInterval(poll);
+      clearInterval(tick);
+    };
+  }, [battleId, apply]);
+
+  const q = sync ? questions[Math.min(sync.round, questions.length - 1)] : undefined;
+
+  function choose(i: number) {
+    const v = syncRef.current;
+    if (!q || !v || v.status !== 'active' || pickRef.current !== null || v.mine) return;
+    if (v.roundStart == null || nowS() >= v.roundStart + timeForQuestion(q)) return;
+    pickRef.current = i;
+    setPick(i);
+    const correct = i === q.answer;
+    if (correct) {
+      haptic('success');
+      playSfx('correct');
+    } else {
+      haptic('error');
+      playSfx('wrong');
+    }
+    const t = Math.max(0, Math.round(nowS() - (v.roundStart ?? nowS())));
+    void answerPvp(battleId, v.round, correct, t)
+      .then((r) => {
+        if (!finishedRef.current) apply(r);
+      })
+      .catch(() => setErrs((e) => e + 1));
+  }
+
+  if (!sync || !q) {
+    return (
+      <Card className="text-center">
+        <div className="flex justify-center"><Mascot mood="think" size={96} /></div>
+        <p className="mt-2 text-lg font-extrabold">Jangga ulanmoqda…</p>
+        <p className="mt-1 text-sm text-muted">Server savolni tayyorlamoqda — bir necha soniya.</p>
+      </Card>
+    );
+  }
+
+  const myScore = me === 'p1' ? sync.s1 : sync.s2;
+  const oppScore = me === 'p1' ? sync.s2 : sync.s1;
+  const total = timeForQuestion(q);
+  const preStart = sync.roundStart != null && nowS() < sync.roundStart; // countdown / reveal pause
+  const remainMs = sync.roundStart != null ? Math.max(0, sync.roundStart + total - nowS()) : 0;
+  const frac = Math.min(1, remainMs / total);
+  const locked = preStart || sync.status !== 'active' || pick !== null || !!sync.mine || remainMs <= 0;
+
+  const hint =
+    sync.status === 'finished'
+      ? 'Jang yakunlandi'
+      : preStart && sync.round === 0
+        ? `Jang boshlanadi: ${Math.max(1, Math.ceil(((sync.roundStart ?? nowS()) - nowS()) / 1000))}…`
+        : preStart
+          ? banner || 'Keyingi savol…'
+          : sync.mine?.c === 1
+            ? 'To‘g‘ri javob — ochko sizniki! ⚡'
+            : pick !== null
+              ? 'Noto‘g‘ri tanlov — raqibning javobi kutilmoqda…'
+              : sync.opp
+                ? `${oppName} xato qildi — siz javob bering!`
+                : remainMs <= 0
+                  ? 'Vaqt tugadi — server keyingi savolga o‘tkazmoqda…'
+                  : 'Kim birinchi to‘g‘ri javob bersa — ochko shunga!';
+
+  return (
+    <div className="slide-up">
+      {/* Scoreboard */}
+      <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-3xl border border-line bg-surface p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🙂</span>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold">Siz</p>
+            <p className="text-xl font-extrabold leading-none text-indigo-600 dark:text-indigo-300">{myScore}</p>
+          </div>
+        </div>
+        <div className="text-center text-xs font-extrabold text-muted">VS</div>
+        <div className="flex items-center justify-end gap-2 text-right">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-bold">{oppName}</p>
+            <p className="text-xl font-extrabold leading-none text-rose-500">{oppScore}</p>
+          </div>
+          <span className="text-2xl">{oppAvatar}</span>
+        </div>
+      </div>
+
+      <p className="mb-2 text-center text-[11px] text-muted" aria-live="polite">{hint}</p>
+      {errs >= 3 && (
+        <p className="mb-2 text-center text-[11px] font-semibold text-amber-600 dark:text-amber-300">🌐 Ulanish sekin — javoblar kechikishi mumkin…</p>
+      )}
+
+      <ProgressBar value={(sync.round / questions.length) * 100} label="Jang jarayoni" />
+
+      <Card className="mt-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-muted">Savol {Math.min(sync.round + 1, questions.length)}/{questions.length}</p>
+          <span
+            className={cx(
+              'rounded-full px-2 py-0.5 text-xs font-extrabold tabular-nums',
+              frac > 0.5
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                : frac > 0.25
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
+                  : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300',
+            )}
+          >
+            {preStart ? '⏳' : `⏱ ${Math.ceil(remainMs / 1000)}s`}
+          </span>
+        </div>
+        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface2" role="timer" aria-label="Qolgan vaqt">
+          <div
+            className={cx(
+              'h-full rounded-full transition-[width] duration-100 ease-linear',
+              frac > 0.5 ? 'bg-emerald-500' : frac > 0.25 ? 'bg-amber-500' : 'bg-rose-500',
+            )}
+            style={{ width: `${Math.round(frac * 100)}%` }}
+          />
+        </div>
+        <p className="mt-2 whitespace-pre-line text-lg font-bold leading-snug">{q.q}</p>
+        <div className="mt-4 grid gap-2.5" role="group" aria-label="Javob variantlari">
+          {q.options.map((o, i) => {
+            const isCorrect = sync.mine?.c === 1 && i === q.answer; // reveal only my own correct answer
+            const isPicked = pick === i;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={locked}
+                onClick={() => choose(i)}
+                aria-pressed={isPicked}
+                className={cx(
+                  'flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-[15px] font-medium transition',
+                  !locked && 'border-line bg-surface hover:border-indigo-400 hover:bg-surface2',
+                  locked && !isCorrect && !isPicked && 'border-line opacity-60',
+                  isCorrect && 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
+                  isPicked && !isCorrect && 'shake-x border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
+                )}
+              >
+                <span className={cx('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold', isCorrect ? 'bg-emerald-500 text-white' : isPicked ? 'bg-rose-500 text-white' : 'bg-surface2 text-muted')}>
+                  {isCorrect ? <Icon name="check" className="h-4 w-4" /> : isPicked ? <Icon name="x" className="h-4 w-4" /> : LETTERS[i]}
+                </span>
+                <span className="min-w-0 flex-1">{o}</span>
+              </button>
+            );
+          })}
+        </div>
+        {preStart && banner && (
+          <div className="slide-up mt-4 rounded-2xl bg-indigo-50 p-3.5 text-sm text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-100" aria-live="polite">
+            <p className="font-bold">{banner}</p>
+          </div>
+        )}
+      </Card>
+
+      <div className="mt-3 flex justify-center">
+        <Button variant="ghost" onClick={onQuitRequest}>⏹ Jangni tark etish</Button>
       </div>
     </div>
   );

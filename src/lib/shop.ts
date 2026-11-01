@@ -44,19 +44,21 @@ export interface RankTier {
   text: string; // tailwind text color class for the rank name
 }
 
+// User report: with the old thresholds (Specialist 1600 …) and small K the top tiers were
+// unreachable. Thresholds lowered AND Elo K raised together (see src/lib/battle.ts).
 export const RANK_TIERS: RankTier[] = [
   { id: 'newbie', name: 'Newbie', min: 0, ring: 'frame-none', text: 'text-slate-500 dark:text-slate-400' },
-  { id: 'specialist', name: 'Specialist', min: 1600, ring: 'frame-specialist', text: 'text-emerald-600 dark:text-emerald-400' },
-  { id: 'expert', name: 'Expert', min: 1700, ring: 'frame-expert', text: 'text-amber-500 dark:text-amber-300' },
-  { id: 'cm', name: 'Candidate Master', min: 1800, ring: 'frame-cm', text: 'text-orange-600 dark:text-orange-400' },
-  { id: 'master', name: 'Master', min: 2000, ring: 'frame-master', text: 'text-rose-600 dark:text-rose-400' },
-  { id: 'im', name: 'International Master', min: 2200, ring: 'frame-im', text: 'text-cyan-600 dark:text-cyan-300' },
-  { id: 'gm', name: 'Grandmaster', min: 2400, ring: 'frame-gm', text: 'text-blue-600 dark:text-blue-300' },
-  { id: 'igm', name: 'International Grandmaster', min: 2700, ring: 'frame-igm', text: 'text-pink-600 dark:text-pink-300' },
-  { id: 'lgm', name: 'Legendary Grandmaster', min: 3000, ring: 'frame-lgm', text: 'text-purple-600 dark:text-purple-300' },
+  { id: 'specialist', name: 'Specialist', min: 1400, ring: 'frame-specialist', text: 'text-emerald-600 dark:text-emerald-400' },
+  { id: 'expert', name: 'Expert', min: 1600, ring: 'frame-expert', text: 'text-amber-500 dark:text-amber-300' },
+  { id: 'cm', name: 'Candidate Master', min: 1700, ring: 'frame-cm', text: 'text-orange-600 dark:text-orange-400' },
+  { id: 'master', name: 'Master', min: 1850, ring: 'frame-master', text: 'text-rose-600 dark:text-rose-400' },
+  { id: 'im', name: 'International Master', min: 2050, ring: 'frame-im', text: 'text-cyan-600 dark:text-cyan-300' },
+  { id: 'gm', name: 'Grandmaster', min: 2250, ring: 'frame-gm', text: 'text-blue-600 dark:text-blue-300' },
+  { id: 'igm', name: 'International Grandmaster', min: 2500, ring: 'frame-igm', text: 'text-pink-600 dark:text-pink-300' },
+  { id: 'lgm', name: 'Legendary Grandmaster', min: 2750, ring: 'frame-lgm', text: 'text-purple-600 dark:text-purple-300' },
 ];
 
-export const RATING_FRAMES = RANK_TIERS.filter((t) => t.min >= 1600);
+export const RATING_FRAMES = RANK_TIERS.filter((t) => t.min >= 1400);
 
 // ===== Avatars =====
 

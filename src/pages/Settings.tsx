@@ -7,6 +7,7 @@ import { tutorIsLive } from '../lib/api';
 import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/sync';
 import { isTelegram, shareToTelegram } from '../lib/telegram';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
+import { BACKGROUNDS } from '../lib/theme';
 import { VoicePicker } from '../components/VoicePicker';
 import { MINUTES } from '../data/options';
 import { toast } from '../store/ui';
@@ -137,6 +138,28 @@ export function Settings() {
               ))}
             </div>
             <p className="mt-1 text-xs text-muted">“Avto” Telegram yoki qurilma mavzusiga mos keladi.</p>
+          </div>
+          <div className="py-2.5">
+            <p className="font-semibold">Orqa fon</p>
+            <p className="mt-0.5 text-xs text-muted">Ilova fon uslubi — yorug‘ va tun rejimida alohida ko‘rinishga ega.</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {BACKGROUNDS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => updateSettings({ bg: b.id })}
+                  aria-pressed={s.settings.bg === b.id}
+                  aria-label={b.name}
+                  className={cx(
+                    'flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2 transition',
+                    s.settings.bg === b.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-line hover:border-indigo-300',
+                  )}
+                >
+                  <span className="h-10 w-full rounded-xl border border-line" style={{ background: b.preview }} />
+                  <span className="text-xs font-semibold">{b.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <Row title="Tarjima doim ko‘rinsin" hint="Kartochkalarda o‘zbekcha ma’no darhol ochiladi">
             <Switch checked={s.settings.showTranslation} onChange={(v) => updateSettings({ showTranslation: v })} label="Tarjima doim ko‘rinsin" />

@@ -40,9 +40,9 @@ export function App() {
 
   // theme (re-apply when the setting changes; follow Telegram/OS in "auto")
   useEffect(() => {
-    applyTheme(s.settings.theme);
-    return watchTheme(() => getState().settings.theme);
-  }, [s.settings.theme]);
+    applyTheme(s.settings.theme, s.settings.bg);
+    return watchTheme(() => getState().settings);
+  }, [s.settings.theme, s.settings.bg]);
 
   // daily upkeep: streak freeze auto-use, weekly streak bonus (safe to call any number of times)
   useEffect(() => {

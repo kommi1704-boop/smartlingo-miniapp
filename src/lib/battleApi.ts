@@ -102,6 +102,52 @@ export async function cancelChallenge(id: string): Promise<void> {
   await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'cancel', id }) }).catch(() => undefined);
 }
 
+// ===== Live duel (real-time rounds) =====
+
+/** Compact per-round state from the server (action=sync / answer / forfeit). */
+export interface LiveSync {
+  round: number; // current question index
+  roundStart: number | null; // server epoch ms when this question opened (future = countdown/reveal)
+  serverNow: number;
+  s1: number;
+  s2: number;
+  mine: { c: 0 | 1; t: number } | null; // my answer for the current round
+  opp: { c: 0 | 1; t: number } | null; // opponent's answer (c=1 never lingers: a correct answer ends the round)
+  status: 'open' | 'active' | 'finished';
+  winner: 'me' | 'opp' | 'draw' | null;
+  myDelta?: number;
+  left: 'me' | 'opp' | null; // who abandoned the battle
+}
+
+export type SyncResult = LiveSync | { legacy: true };
+
+export const isLegacySync = (r: SyncResult): r is { legacy: true } => (r as { legacy?: boolean }).legacy === true;
+
+/** Polls the round state (~1.2 s during a duel). Doubles as a presence heartbeat. */
+export async function syncPvp(id: string): Promise<SyncResult> {
+  const j = await json<{ live: SyncResult }>(
+    await fetch(`${BASE}/api/battle?action=sync&id=${encodeURIComponent(id)}`, { headers: headers() }),
+  );
+  return j.live;
+}
+
+/** Sends my answer for the current round; the server decides the point and advances the round. */
+export async function answerPvp(id: string, round: number, correct: boolean, t: number): Promise<SyncResult> {
+  const j = await json<{ live: SyncResult }>(
+    await fetch(`${BASE}/api/battle`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ action: 'answer', id, round, correct: correct ? 1 : 0, t }),
+    }),
+  );
+  return j.live;
+}
+
+/** Leaves an active battle — counts as a loss, the opponent gets the win. */
+export async function forfeitPvp(id: string): Promise<void> {
+  await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'forfeit', id }), keepalive: true }).catch(() => undefined);
+}
+
 // ===== Leaderboard =====
 
 export interface LeaderRow {

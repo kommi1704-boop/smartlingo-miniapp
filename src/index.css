@@ -364,6 +364,86 @@ body::after {
   from { opacity: 0.78; }
   to { opacity: 1; }
 }
+
+/* ===== Alternate backdrops (Settings → "Orqa fon") =====
+   The default "doodle" style above stays on body / .dark body. Every other style is
+   selected via html[data-bg=…]; light and dark variants are separate rules. */
+html:not([data-bg='doodle']) body::before,
+html:not([data-bg='doodle']) body::after {
+  content: none !important;
+}
+
+/* Minimal — calm flat gradients, nothing else */
+html[data-bg='plain'] body {
+  background: linear-gradient(180deg, #f7f8fd 0%, #eef1fa 55%, #f5f3fc 100%);
+  background-attachment: fixed;
+}
+html.dark[data-bg='plain'] body {
+  background: linear-gradient(180deg, #0a0c1e 0%, #0f1230 55%, #131638 100%);
+  background-attachment: fixed;
+}
+
+/* Modern — bright colour-mesh blobs */
+html[data-bg='mesh'] body {
+  background-color: #eef2ff;
+  background-image:
+    radial-gradient(42rem 30rem at 12% 8%, rgba(129, 140, 248, 0.4), transparent 60%),
+    radial-gradient(40rem 28rem at 88% 12%, rgba(34, 211, 238, 0.36), transparent 60%),
+    radial-gradient(44rem 30rem at 82% 78%, rgba(244, 114, 182, 0.32), transparent 60%),
+    radial-gradient(38rem 26rem at 8% 86%, rgba(251, 191, 36, 0.3), transparent 60%),
+    linear-gradient(180deg, #f4f6ff, #eef0ff);
+  background-attachment: fixed;
+}
+html.dark[data-bg='mesh'] body {
+  background-color: #070a1c;
+  background-image:
+    radial-gradient(42rem 30rem at 12% 8%, rgba(99, 102, 241, 0.4), transparent 60%),
+    radial-gradient(40rem 28rem at 88% 12%, rgba(6, 182, 212, 0.3), transparent 60%),
+    radial-gradient(44rem 30rem at 82% 78%, rgba(217, 70, 239, 0.28), transparent 60%),
+    radial-gradient(38rem 26rem at 8% 86%, rgba(59, 130, 246, 0.25), transparent 60%),
+    linear-gradient(180deg, #080b20, #0d1030);
+  background-attachment: fixed;
+}
+
+/* Aesthetic — warm pastel sunset */
+html[data-bg='sunset'] body {
+  background: linear-gradient(180deg, #ffe9d6 0%, #ffd7e0 34%, #e6d6ff 68%, #dcd7ff 100%);
+  background-attachment: fixed;
+}
+html.dark[data-bg='sunset'] body {
+  background: linear-gradient(180deg, #1b1035 0%, #2a1440 40%, #3b1a3f 72%, #4a2333 100%);
+  background-attachment: fixed;
+}
+
+/* Sea — fresh mint/sky */
+html[data-bg='mint'] body {
+  background: linear-gradient(180deg, #e8fbf4 0%, #d9f3ff 55%, #eaf7ff 100%);
+  background-attachment: fixed;
+}
+html.dark[data-bg='mint'] body {
+  background: linear-gradient(180deg, #031e1a 0%, #062a33 55%, #04222e 100%);
+  background-attachment: fixed;
+}
+
+/* Notebook — classic squared paper / blueprint */
+html[data-bg='grid'] body {
+  background-color: #f6f7ef;
+  background-image:
+    linear-gradient(rgba(99, 102, 241, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.09) 1px, transparent 1px),
+    linear-gradient(180deg, #fafaf3, #f1f2e9);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  background-attachment: fixed;
+}
+html.dark[data-bg='grid'] body {
+  background-color: #0a0f24;
+  background-image:
+    linear-gradient(rgba(96, 165, 250, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, #0a0f26, #0b122e);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  background-attachment: fixed;
+}
 /* the Shell no longer paints its own background */
 .app-bg {
   background: transparent;

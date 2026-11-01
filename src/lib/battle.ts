@@ -11,8 +11,8 @@ import { seededRng } from './games';
 
 export const BATTLE_QUESTIONS = 7; // questions per battle
 export const AI_BATTLES_PER_DAY = 3; // only the first N AI battles per day change the rating
-export const AI_ELO_K = 16; // AI battles move the rating less than real duels
-export const PVP_ELO_K = 24; // Elo K-factor for player vs player (the server in api/battle.ts uses the same value)
+export const AI_ELO_K = 40; // AI battles move the rating a bit less than real duels (user report: +8..16 per win felt too slow)
+export const PVP_ELO_K = 48; // Elo K-factor for player vs player (the server in api/battle.ts uses the same value)
 export const QUESTION_TIME_MS = 15_000; // default time per duel question
 
 const PASSAGE_LEN = 160; // questions longer than this (mini-passage items) get extra reading time
@@ -22,9 +22,9 @@ export function timeForQuestion(q: Quiz): number {
   return q.q.length > PASSAGE_LEN ? 22_000 : QUESTION_TIME_MS;
 }
 
-/** Climbing gets slower the higher you are: the same win is worth less at 1500 than at 1000. */
+/** Climbing gets slower the higher you are: the same win is worth less at 1800 than at 1000. */
 export function kScale(rating: number): number {
-  return rating < 1100 ? 1 : rating < 1250 ? 0.8 : rating < 1400 ? 0.65 : rating < 1600 ? 0.5 : 0.4;
+  return rating < 1300 ? 1 : rating < 1500 ? 0.85 : rating < 1700 ? 0.7 : rating < 1900 ? 0.55 : 0.45;
 }
 export const aiK = (rating: number): number => Math.max(4, Math.round(AI_ELO_K * kScale(rating)));
 
