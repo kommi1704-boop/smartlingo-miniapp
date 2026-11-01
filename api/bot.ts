@@ -26,8 +26,8 @@ async function tg(token: string, method: string, payload: unknown): Promise<void
 }
 
 // ====== EDIT THESE TWO LINES ======
-const NEWS_CHANNEL_URL = 'https://t.me/YOUR_CHANNEL'; // "Yangiliklar" button under /start
-const HELP_PROFILE_URL = 'https://t.me/YOUR_USERNAME'; // /help opens this Telegram profile
+const NEWS_CHANNEL_URL = 'https://t.me/smartLingoUp'; // "Yangiliklar" button under /start
+const HELP_PROFILE_URL = 'https://t.me/bakhtiyorrvc'; // /help opens this Telegram profile
 // ==================================
 const isSet = (u: string) => !/YOUR_/.test(u);
 
