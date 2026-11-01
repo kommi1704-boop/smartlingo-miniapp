@@ -88,11 +88,11 @@ function supa(): { url: string; key: string } | null {
 
 const sbHeaders = (key: string) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' });
 
-const MAX_WIN = 24; // largest single-battle gain (PvP K)
-const MAX_LOSS = 24;
+const MAX_WIN = 64; // largest single-battle gain (PvP K=48 + underdog upset) — keep in sync with src/lib/battle.ts
+const MAX_LOSS = 64;
 // Rating frames (rf-<tier>) need this rating; keep in sync with RANK_TIERS in src/lib/shop.ts.
 const RF_MIN: Record<string, number> = {
-  specialist: 1600, expert: 1700, cm: 1800, master: 2000, im: 2200, gm: 2400, igm: 2700, lgm: 3000,
+  specialist: 1400, expert: 1600, cm: 1700, master: 1850, im: 2050, gm: 2250, igm: 2500, lgm: 2750,
 };
 
 /** Mirrors ratingOf(): duel-only, with the delta clamped to a plausible range for the W/L/D record. */

@@ -48,6 +48,15 @@ create table if not exists public.battles (
 
 alter table public.battles enable row level security;
 
+-- Live-duel state (real-time rounds): current round, round start (server clock),
+-- both players' answers, running scores and heartbeats. Added after the first
+-- release — safe to re-run: "add column if not exists" keeps existing rows.
+-- seen1/seen2 (heartbeats) are separate columns so a heartbeat write can never
+-- clobber a concurrent `live` answer write.
+alter table public.battles add column if not exists live jsonb;
+alter table public.battles add column if not exists seen1 bigint;
+alter table public.battles add column if not exists seen2 bigint;
+
 drop trigger if exists battles_touch on public.battles;
 create trigger battles_touch before update on public.battles
   for each row execute function public.touch_updated_at();
