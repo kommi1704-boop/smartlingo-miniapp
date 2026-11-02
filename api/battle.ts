@@ -21,7 +21,8 @@
 // - a player who stops polling for 25s (closed the app / left the page) FORFEITS: the battle
 //   finishes, the opponent gets the win and both Elo deltas are applied — quitting no longer
 //   escapes the rating loss.
-// - Elo: K=48 for both sides (user report: climbing was too slow), clamped to ±64.
+// - Elo: K=64 for both sides (user report: climbing was too slow) — a win between equals is
+//   +32, an underdog upset up to the ±64 clamp. Must match PVP_ELO_K in src/lib/battle.ts.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Schema: supabase/schema.sql adds `alter table battles add column if not exists live jsonb`.
 import crypto from 'node:crypto';
@@ -117,7 +118,7 @@ interface Res {
 const OPEN_LIST_TTL_MS = 10 * 60 * 1000; // open challenges are listed for 10 minutes
 const ROW_TTL_MS = 2 * 60 * 60 * 1000; // all rows are garbage-collected after 2 hours
 const MAX_QUESTIONS = 12;
-const PVP_K = 48; // must match PVP_ELO_K in src/lib/battle.ts
+const PVP_K = 64; // must match PVP_ELO_K in src/lib/battle.ts
 const MAX_DELTA = 64; // safety clamp per battle
 const PASSAGE_LEN = 160;
 const ROUND_GRACE_MS = 3000; // extra time on the server clock for network latency

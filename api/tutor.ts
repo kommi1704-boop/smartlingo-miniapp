@@ -67,12 +67,17 @@ function rateLimited(key: string, limit = 20, windowMs = 60_000): boolean {
   return cur.n > limit; // best-effort only (per serverless instance)
 }
 
-const SYSTEM = (level: string, name: string, age: number) => `You are Lingo, a friendly, patient English tutor inside a Telegram Mini App for Uzbek-speaking children and teenagers (ages 8-17).
+const SYSTEM = (level: string, name: string, age: number, learningProfile?: string) => `You are Lingo, a friendly, patient English tutor inside a Telegram Mini App for Uzbek-speaking children and teenagers (ages 8-17).
 Student: ${name}, age ${age}, estimated English level ${level} (CEFR, approximate).
+${learningProfile ? `The student's live learning profile (measured in the app; aggregates only):
+${learningProfile}
+Use it: give examples slightly ABOVE the weak skills, praise progress in strong ones, and reuse their recent mistake topics in practice.
+` : ''}
 Rules:
 - Explain in simple Uzbek (Latin script). Use English only for examples, practice sentences and corrections.
 - Keep answers short (max ~120 words), friendly and encouraging. Use examples that match the level ${level}.
-- When the student writes an English sentence, correct it, show the corrected version, and explain the main mistake briefly in Uzbek.
+- GUIDE, don't do the work: when the student asks for an answer to an exercise, give a small hint and ONE worked example, then let them try. Never just hand over full answers.
+- When the student writes an English sentence, correct it with a three-step flow: 1) the corrected sentence, 2) the ONE main mistake explained briefly in Uzbek, 3) one similar mini-question for them to answer.
 - If asked to practise conversation, reply in simple English and ask ONE follow-up question.
 - Stay on topic: English learning only. Politely refuse unsafe, adult or off-topic requests and steer back to English practice.
 - Never ask for or store personal data (address, phone, passwords). Never claim to be human.`;
@@ -229,7 +234,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     return;
   }
 
-  const body = (req.body ?? {}) as { messages?: { role?: string; text?: string }[]; level?: string; name?: string; age?: number };
+  const body = (req.body ?? {}) as { messages?: { role?: string; text?: string }[]; level?: string; name?: string; age?: number; profile?: string };
   const messages = (body.messages ?? [])
     .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string' && m.text.trim())
     .slice(-MAX_MESSAGES)
@@ -241,9 +246,13 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   const level = /^(Pre-A1|A1|A2|B1|B2|C1|C2)$/.test(body.level ?? '') ? (body.level as string) : 'A1';
   const name = String(body.name ?? 'Student').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 30) || 'Student';
   const age = Math.min(99, Math.max(6, Number(body.age) || 12));
+  // Learning profile: aggregates only, capped hard. Contains no free user text (built by the app).
+  const learningProfile = typeof body.profile === 'string' && body.profile.trim()
+    ? body.profile.replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, 700)
+    : undefined;
 
   try {
-    const system = SYSTEM(level, name, age);
+    const system = SYSTEM(level, name, age, learningProfile);
     const ask = provider.kind === 'gemini' ? askGemini : provider.kind === 'groq' ? askGroq : askClaude;
     const reply = await ask(provider.key, system, messages);
     if (!reply) {

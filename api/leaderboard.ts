@@ -88,7 +88,7 @@ function supa(): { url: string; key: string } | null {
 
 const sbHeaders = (key: string) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' });
 
-const MAX_WIN = 64; // largest single-battle gain (PvP K=48 + underdog upset) — keep in sync with src/lib/battle.ts
+const MAX_WIN = 64; // largest single-battle gain (PvP K=64, between-equals win is +32) — keep in sync with src/lib/battle.ts
 const MAX_LOSS = 64;
 // Rating frames (rf-<tier>) need this rating; keep in sync with RANK_TIERS in src/lib/shop.ts.
 const RF_MIN: Record<string, number> = {
