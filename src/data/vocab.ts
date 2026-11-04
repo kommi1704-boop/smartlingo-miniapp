@@ -1,6 +1,7 @@
 import type { VocabWord } from '../types';
 import { VOCAB_B1 } from './vocab-b1';
 import { VOCAB_B2 } from './vocab-b2';
+import { VOCAB_EXTRA } from './vocab-extra';
 
 const VOCAB_BASE: VocabWord[] = [
   { id: "v001", en: "hello", uz: "salom", ipa: "/həˈləʊ/", exEn: "Hello, my name is Ali.", exUz: "Salom, mening ismim Ali.", level: "Pre-A1", topic: "Salomlashish" },
@@ -135,4 +136,4 @@ const VOCAB_BASE: VocabWord[] = [
   { id: "v130", en: "cybersecurity", uz: "kiberxavfsizlik", ipa: "/ˌsaɪbəsɪˈkjʊərəti/", exEn: "Cybersecurity protects our personal data online.", exUz: "Kiberxavfsizlik shaxsiy ma‘lumotlarimizni onlayn himoya qiladi.", level: "C1", topic: "Texnologiya" },
 ];
 
-export const VOCAB: VocabWord[] = [...VOCAB_BASE, ...VOCAB_B1, ...VOCAB_B2];
+export const VOCAB: VocabWord[] = [...VOCAB_BASE, ...VOCAB_B1, ...VOCAB_B2, ...VOCAB_EXTRA];
