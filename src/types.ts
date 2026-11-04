@@ -104,11 +104,17 @@ export type VocabStatus = 'new' | 'learning' | 'learned' | 'review';
 
 export interface VocabProgress {
   status: VocabStatus;
-  box: number; // Leitner box 0..5
+  box: number; // 0..5, derived from the interval (kept for the star UI and older code)
   due: string; // YYYY-MM-DD next review date
   reviews: number;
   correct: number;
   lastReviewed?: string; // YYYY-MM-DD
+  // --- SM-2-lite scheduling (added in the adaptive phase; optional so saved state keeps loading) ---
+  ease?: number; // recall difficulty factor 1.3 (hard) .. 2.8 (easy)
+  interval?: number; // current review interval in days
+  lapses?: number; // how many times the word was forgotten
+  streak?: number; // consecutive correct answers
+  firstSeen?: string; // YYYY-MM-DD the word was first studied
 }
 
 export interface LessonResult {
@@ -120,6 +126,46 @@ export interface LessonResult {
 }
 
 export type ContentKind = 'grammar' | 'reading' | 'listening' | 'vocab-quiz' | 'matching' | 'placement' | 'writing';
+
+// ---------- Skill-based proficiency model (adaptive learning phase) ----------
+
+/** How a skill estimate was produced. `usage` = merged from everyday exercises, never persisted. */
+export type SkillSource = 'placement' | 'probe' | 'self' | 'usage';
+
+export type Confidence = 'none' | 'low' | 'medium' | 'high';
+
+/** One skill's current estimate. `level === null` means: not measured yet — the app never invents one. */
+export interface SkillAssessment {
+  level: Level | null;
+  confidence: Confidence;
+  source: SkillSource;
+  updatedAt?: string; // ISO date of the last measurement
+  /** 0..1 accuracy of the underlying evidence when available. */
+  accuracy?: number;
+}
+
+export type SkillLevels = Partial<Record<Skill, SkillAssessment>>;
+
+// ---------- AI roadmap (generated server-side; personal, but contains no private text) ----------
+
+export interface AiRoadmapStage {
+  level: Level;
+  focus: string;
+  weeks: number;
+  objectives: string[];
+  topics: string[];
+  outcomes: string[];
+  checkpoint: string;
+  criteria: string;
+}
+
+export interface AiRoadmap {
+  stages: AiRoadmapStage[];
+  note: string;
+  createdAt: string; // ISO datetime
+  /** Hash of the learner inputs the roadmap was generated from (to detect "profile changed"). */
+  inputsHash: string;
+}
 
 export interface QuizHistoryItem {
   id: string;
@@ -216,6 +262,8 @@ export interface Profile {
     total: number;
     max: number;
     askedBy?: { vocabulary: number; grammar: number; reading: number };
+    /** How much evidence the placement estimate rests on (1 group asked = low … 3+ = high). */
+    confidence?: 'low' | 'medium' | 'high';
   };
   createdAt: string;
 }
@@ -313,4 +361,8 @@ export interface PersistedState {
   shop: ShopState;
   quests: QuestState;
   battle: BattleState;
+  /** Per-skill CEFR estimates from the placement/probes; everyday exercise evidence is merged on read. */
+  skills?: SkillLevels;
+  /** AI-generated roadmap (null until the learner generates one; optional field keeps old saves loading). */
+  aiRoadmap?: AiRoadmap | null;
 }

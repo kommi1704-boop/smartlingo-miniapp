@@ -50,10 +50,49 @@ export interface OpenChallenge {
   createdAt: string;
 }
 
+/** What the client may send about itself. The RATING is never sent — the server owns it. */
 export interface BattleMe {
-  rating: number;
   name: string;
   avatar?: string;
+}
+
+/** My rating as stored on the server (the only source of truth; the app just displays it). */
+export interface MyRating {
+  rating: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  aiLeft: number; // rated Lingo-AI duels still available today
+}
+
+export async function fetchMyRating(): Promise<MyRating> {
+  const j = await json<{ me: MyRating }>(await fetch(`${BASE}/api/battle?action=me`, { headers: headers() }));
+  return j.me;
+}
+
+export interface AiStart extends MyRating {
+  rated: boolean; // false = the daily rated quota is used up -> practice only
+}
+
+/** A rated Lingo-AI duel begins (the server counts it against the daily quota). */
+export async function aiStart(): Promise<AiStart> {
+  const j = await json<{ ai: AiStart }>(
+    await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'ai_start' }) }),
+  );
+  return j.ai;
+}
+
+export interface AiResult extends MyRating {
+  rated: boolean;
+  delta: number; // rating change the SERVER applied
+}
+
+/** The Lingo-AI duel is over; the server computes and applies the rating change. */
+export async function aiResult(result: 'win' | 'loss' | 'draw', keepalive = false): Promise<AiResult> {
+  const j = await json<{ ai: AiResult }>(
+    await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'ai_result', result }), keepalive }),
+  );
+  return j.ai;
 }
 
 let probeCache: boolean | null = null;
@@ -131,13 +170,13 @@ export async function syncPvp(id: string): Promise<SyncResult> {
   return j.live;
 }
 
-/** Sends my answer for the current round; the server decides the point and advances the round. */
-export async function answerPvp(id: string, round: number, correct: boolean, t: number): Promise<SyncResult> {
+/** Sends the option I picked; the server checks it against the stored question, decides the point and advances the round. */
+export async function answerPvp(id: string, round: number, pick: number, t: number): Promise<SyncResult> {
   const j = await json<{ live: SyncResult }>(
     await fetch(`${BASE}/api/battle`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ action: 'answer', id, round, correct: correct ? 1 : 0, t }),
+      body: JSON.stringify({ action: 'answer', id, round, pick, t }),
     }),
   );
   return j.live;

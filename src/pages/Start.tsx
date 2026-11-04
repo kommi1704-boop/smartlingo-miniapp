@@ -1,12 +1,20 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import type { Level, Profile } from '../types';
+import type { Level, Profile, Skill, SkillAssessment } from '../types';
 import { LEVELS } from '../types';
 import { ACTIVITY_OPTIONS, GOALS, LEVEL_DESC, MINUTES, SELF_LEVELS } from '../data/options';
-import { evaluate, levelGroup, placementOrder, PASS_MARK, sectionLabel, type PlacementAnswer, type Section } from '../lib/assessment';
+import {
+  LISTENING_PROBES, SPEAKING_STATEMENTS, WRITING_PROBES,
+  listeningProbeResult, speakingSelfResult, writingProbeResult,
+} from '../data/placement-skills';
+import { evaluate, levelGroup, placementOrderFor, PASS_MARK, sectionLabel, type PlacementAnswer, type Section } from '../lib/assessment';
+import { computeSkillLevels, SKILL_EMOJI, SKILL_LABEL, confidenceLabel, sourceLabel } from '../lib/skills';
+import { checkText } from '../lib/writingCheck';
+import { parseTranscript, playLines, stopSpeaking, ttsAvailable } from '../lib/tts';
 import { defaultTarget, generateRoadmap, profileSummary } from '../lib/roadmap';
 import { navigate } from '../lib/router';
+import { today } from '../lib/dates';
 import { getState, useApp } from '../store/store';
-import { recordPlacement, saveProfile } from '../store/actions';
+import { recordPlacement, saveProfile, saveSkillLevels } from '../store/actions';
 import { Button, Card, LevelBadge, Notice, ProgressBar, ProgressRing } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { cx } from '../lib/utils';
@@ -254,7 +262,8 @@ export function Assessment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const order = useMemo(() => placementOrder(), []);
+  // Adaptive: the test starts one group below the self-declared level and climbs until a group fails.
+  const order = useMemo(() => placementOrderFor(draft?.selfLevel ?? 'A2'), [draft]);
   const [idx, setIdx] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
   const [answers, setAnswers] = useState<PlacementAnswer[]>([]);
@@ -274,10 +283,20 @@ export function Assessment() {
     const lastInGroup = done.length === group.length;
     const failed = lastInGroup && done.filter((a) => a.picked === a.q.answer).length < PASS_MARK;
     if (failed || idx + 1 >= order.length) {
-      const r = evaluate(all);
+      const r = evaluate(all, draft!.selfLevel);
       const askedBy = { vocabulary: r.bySection.vocabulary.asked, grammar: r.bySection.grammar.asked, reading: r.bySection.reading.asked };
       recordPlacement(r.total, r.asked, r.level);
-      saveProfile(buildProfile(draft!, r.level, { vocabulary: r.bySection.vocabulary.correct, grammar: r.bySection.grammar.correct, reading: r.bySection.reading.correct, total: r.total, max: r.asked, askedBy }));
+      saveProfile(buildProfile(draft!, r.level, { vocabulary: r.bySection.vocabulary.correct, grammar: r.bySection.grammar.correct, reading: r.bySection.reading.correct, total: r.total, max: r.asked, askedBy, confidence: r.confidence }));
+      // per-skill estimates: the MCQ placement measures vocabulary, grammar and reading;
+      // listening / writing / speaking stay unmeasured until the optional probes are taken.
+      const perSkill = (sec: Section): SkillAssessment => ({
+        level: r.level,
+        confidence: r.bySection[sec].asked >= 2 ? 'medium' : 'low',
+        source: 'placement',
+        accuracy: r.bySection[sec].asked ? r.bySection[sec].correct / r.bySection[sec].asked : undefined,
+        updatedAt: today(),
+      });
+      saveSkillLevels({ vocabulary: perSkill('vocabulary'), grammar: perSkill('grammar'), reading: perSkill('reading') });
       navigate('/result', { replace: true });
       return;
     }
@@ -324,6 +343,303 @@ export function Assessment() {
   );
 }
 
+// ---------------------------------------------------------------- Skill probes (extended assessment)
+//
+// Measures the three skills the MCQ placement cannot: listening (device TTS speaks, transcript
+// hidden until answered), writing (local rule-based check) and speaking (structured self-report).
+// Everything is optional and every result is saved with an honest confidence label.
+
+function probeFor<T extends { level: Level }>(list: T[], est: Level): T {
+  const i = LEVELS.indexOf(est);
+  const want = i <= 2 ? 'A2' : i === 3 ? 'B1' : 'B2';
+  return list.find((x) => x.level === want) ?? list[0];
+}
+
+export function SkillProbes() {
+  const [phase, setPhase] = useState<'intro' | 'listen' | 'write' | 'speak'>('intro');
+  const skipAll = () => {
+    stopSpeaking();
+    navigate('/result');
+  };
+  return (
+    <Frame title="Qo‘shimcha ko‘nikmalarni baholash" subtitle="Tinglash, yozish va gaplashish · 2–3 daqiqa · ixtiyoriy" onBack={skipAll}>
+      {phase === 'intro' && <ProbesIntro onNext={() => setPhase('listen')} onSkip={skipAll} />}
+      {phase === 'listen' && <ListenProbe onDone={() => setPhase('write')} />}
+      {phase === 'write' && <WriteProbe onDone={() => setPhase('speak')} />}
+      {phase === 'speak' && <SpeakProbe onDone={() => navigate('/result', { replace: true })} />}
+    </Frame>
+  );
+}
+
+function ProbesIntro({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <p className="font-bold">Nima baholanadi?</p>
+        <ul className="mt-2 space-y-2 text-sm text-muted">
+          <li>🎧 <b>Tinglash</b> — qisqa suhbat qurilma ovozida o‘qiladi, so‘ng 2 ta savol beriladi.</li>
+          <li>✍️ <b>Yozish</b> — qisqa matn yozasiz, xatolar avtomatik tekshiriladi.</li>
+          <li>🗣️ <b>Gaplashish</b> — «men buni qila olaman» ro‘yxati bilan o‘zingizni baholaysiz.</li>
+        </ul>
+      </Card>
+      <Notice tone="warn">
+        Bu — <b>taxminiy baho</b>, rasmiy imtihon emas. Gapiringan nutq tahlil qilinmaydi (buning uchun texnologiya yo‘q),
+        shuning uchun gaplashish baho faqat sizning javobingizga asoslanadi.
+      </Notice>
+      <Button size="lg" full onClick={onNext}>Boshlash</Button>
+      <button type="button" className="w-full text-center text-sm font-semibold text-muted underline" onClick={onSkip}>
+        O‘tkazib yuborish (faqat test natijasi bilan)
+      </button>
+    </div>
+  );
+}
+
+function ListenProbe({ onDone }: { onDone: () => void }) {
+  const p = useApp().profile!;
+  const probe = useMemo(() => probeFor(LISTENING_PROBES, p.estimatedLevel), [p.estimatedLevel]);
+  const [step, setStep] = useState(0); // 0 = play, 1.. = questions, last = mini result
+  const [playing, setPlaying] = useState(false);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [sel, setSel] = useState<number | null>(null);
+  const [result, setResult] = useState<SkillAssessment | null>(null);
+  const tts = ttsAvailable();
+  const totalQ = probe.questions.length;
+
+  if (step === 0 || step > totalQ) {
+    // play screen or mini-result
+    return (
+      <div className="space-y-4">
+        {step === 0 && (
+          <>
+            <Card>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">🎧 Tinglash · {probe.level}</p>
+              <p className="mt-1.5 font-bold">{probe.situationUz}</p>
+              <p className="mt-2 text-sm text-muted">
+                Ovoz qurilmaning sun’iy ovozi (yozuv emas). Tinglang va 2 ta savolga javob bering. Matnni javoblardan keyin ko‘rasiz.
+              </p>
+              {!tts && <p className="mt-2 text-sm font-semibold text-rose-500">Bu qurilmada ovoz ishlamaydi — bu bo‘limni o‘tkazib yuborish tavsiya etiladi.</p>}
+            </Card>
+            <Button
+              size="lg"
+              full
+              disabled={!tts}
+              onClick={() => {
+                if (playing) {
+                  stopSpeaking();
+                  setPlaying(false);
+                  return;
+                }
+                setPlaying(true);
+                const ok = playLines(
+                  parseTranscript(probe.transcript).map((l) => ({ text: l.speak, role: l.role })),
+                  {
+                    onEnd: () => {
+                      setPlaying(false);
+                      setStep(1);
+                    },
+                  },
+                );
+                if (!ok) setPlaying(false);
+              }}
+            >
+              {playing ? 'To‘xtatish' : '▶ Ovozni ijro etish'}
+            </Button>
+          </>
+        )}
+        {step > totalQ && result && (
+          <Card className="text-center">
+            <p className="text-sm font-semibold text-muted">Tinglash bo‘yicha taxminiy daraja</p>
+            <div className="mt-2 flex justify-center"><LevelBadge level={result.level ?? 'A1'} /></div>
+            <p className="mt-2 text-xs text-muted">{confidenceLabel(result.confidence)} · {sourceLabel(result.source)} · 2 ta savol asosida</p>
+          </Card>
+        )}
+        {step === 0 && (
+          <button type="button" className="w-full text-center text-sm font-semibold text-muted underline" onClick={onDone}>
+            Bu bo‘limni o‘tkazib yuborish
+          </button>
+        )}
+        {step > 0 && (
+          <Button size="lg" full variant={step > totalQ ? 'primary' : 'secondary'} onClick={onDone}>
+            {step > totalQ ? 'Davom etish: yozish' : 'Bu bo‘limni o‘tkazib yuborish'}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const q = probe.questions[step - 1];
+  return (
+    <div className="slide-up space-y-4" key={q.id}>
+      <p className="text-xs font-bold uppercase tracking-wide text-muted">Savol {step}/{totalQ}</p>
+      <p className="text-lg font-bold leading-snug">{q.q}</p>
+      <div className="grid gap-2.5" role="radiogroup" aria-label="Javob variantlari">
+        {q.options.map((o, i) => (
+          <button
+            key={i}
+            type="button"
+            role="radio"
+            aria-checked={sel === i}
+            onClick={() => setSel(i)}
+            className={cx(
+              'rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-medium transition',
+              sel === i ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+            )}
+          >
+            {o}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <Button variant="secondary" onClick={() => commit(-1)}>Bilmayman</Button>
+        <Button className="flex-1" disabled={sel === null} onClick={() => sel !== null && commit(sel)}>{step === totalQ ? 'Yakunlash' : 'Keyingi'}</Button>
+      </div>
+      {step === totalQ && (
+        <button type="button" className="w-full text-center text-sm text-muted underline" onClick={onDone}>Bu bo‘limni o‘tkazib yuborish</button>
+      )}
+    </div>
+  );
+
+  function commit(picked: number) {
+    const all = [...answers, picked];
+    setAnswers(all);
+    setSel(null);
+    if (all.length >= totalQ) {
+      const correct = probe.questions.filter((qq, i) => all[i] === qq.answer).length;
+      const res = listeningProbeResult(probe.level, correct);
+      const saved: SkillAssessment = { level: res.level, confidence: res.confidence, source: 'probe', accuracy: correct / totalQ, updatedAt: today() };
+      saveSkillLevels({ listening: saved });
+      setResult(saved);
+    }
+    setStep(all.length + 1);
+  }
+}
+
+function WriteProbe({ onDone }: { onDone: () => void }) {
+  const p = useApp().profile!;
+  const probe = useMemo(() => probeFor(WRITING_PROBES, p.estimatedLevel), [p.estimatedLevel]);
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<{ saved: SkillAssessment; issues: { found: string; suggestion: string }[] } | null>(null);
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  if (result) {
+    return (
+      <div className="space-y-4">
+        <Card className="text-center">
+          <p className="text-sm font-semibold text-muted">Yozish bo‘yicha taxminiy daraja</p>
+          <div className="mt-2 flex justify-center"><LevelBadge level={result.saved.level ?? 'A1'} /></div>
+          <p className="mt-2 text-xs text-muted">{confidenceLabel(result.saved.confidence)} · {sourceLabel(result.saved.source)} · qoidalar asosidagi tekshiruv</p>
+        </Card>
+        <Card>
+          <p className="text-sm font-bold">Topilgan xatolar: {result.issues.length}</p>
+          {result.issues.length === 0 ? (
+            <p className="mt-1 text-sm text-muted">Katta xato topilmadi — zo‘r!</p>
+          ) : (
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {result.issues.slice(0, 3).map((i, k) => (
+                <li key={k}>• <s className="text-rose-500">{i.found}</s> → <b>{i.suggestion || '…'}</b></li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-muted">To‘liq tahlil + AI tavsiyalari Yozish bo‘limida mavjud.</p>
+        </Card>
+        <Button size="lg" full onClick={onDone}>Davom etish: gaplashish</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted">✍️ Yozish · {probe.level}</p>
+        <p className="mt-1.5 font-bold">{probe.promptEn}</p>
+        <p className="mt-1 text-sm text-muted">{probe.promptUz}</p>
+        <p className="mt-2 text-xs text-muted">Kamida {probe.minWords} ta so‘z yozing. Buning uchun AI ishlatilmaydi — matn faqat sizning qurilmangizda tekshiriladi va hech qayerga yuborilmaydi.</p>
+      </Card>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={6}
+        maxLength={1200}
+        placeholder="Write in English…"
+        className="w-full resize-none rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-indigo-500"
+        aria-label="Inglizcha matn"
+      />
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>{words} ta so‘z (kamida {probe.minWords})</span>
+      </div>
+      <Button
+        size="lg"
+        full
+        disabled={words < 8}
+        onClick={() => {
+          const c = checkText(text);
+          const res = writingProbeResult(words, c.issues.length, p.selfLevel);
+          const saved: SkillAssessment = {
+            level: res.level,
+            confidence: res.confidence,
+            source: 'probe',
+            accuracy: Math.max(0, Math.min(1, 1 - (c.issues.length / Math.max(1, words)) * 2.5)),
+            updatedAt: today(),
+          };
+          saveSkillLevels({ writing: saved });
+          setResult({ saved, issues: c.issues.map((i) => ({ found: i.found, suggestion: i.suggestion })) });
+        }}
+      >
+        Tekshirish va davom etish
+      </Button>
+      <button type="button" className="w-full text-center text-sm font-semibold text-muted underline" onClick={onDone}>Bu bo‘limni o‘tkazib yuborish</button>
+    </div>
+  );
+}
+
+function SpeakProbe({ onDone }: { onDone: () => void }) {
+  const [yes, setYes] = useState<Set<number>>(new Set());
+  const done = yes.size > 0;
+  return (
+    <div className="space-y-4">
+      <Card>
+        <p className="text-xs font-bold uppercase tracking-wide text-muted">🗣️ Gaplashish · o‘z bahoingiz</p>
+        <p className="mt-1.5 text-sm text-muted">Ovoz chiqarib aytib ko‘ring, so‘ng qaysi gaplarni erkin aytayotganingizni belgilang. Ilova nutqni yozib olmaydi va tahlil qilmaydi — bu sizning o‘z bahoingiz.</p>
+      </Card>
+      <div className="space-y-2">
+        {SPEAKING_STATEMENTS.map((st, i) => {
+          const active = yes.has(i);
+          return (
+            <button
+              key={i}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                const next = new Set(yes);
+                if (active) next.delete(i);
+                else next.add(i);
+                setYes(next);
+              }}
+              className={cx(
+                'w-full rounded-2xl border-2 px-4 py-3 text-left transition',
+                active ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+              )}
+            >
+              <span className="block text-sm font-semibold text-indigo-700 dark:text-indigo-300">{st.en}</span>
+              <span className="mt-0.5 block text-xs text-muted">{st.uz}</span>
+            </button>
+          );
+        })}
+      </div>
+      <Notice tone="warn">Bu baho «o‘z bahoingiz» deb belgilanadi va past ishonch bilan saqlanadi.</Notice>
+      <Button size="lg" full disabled={!done} onClick={() => {
+        const level = speakingSelfResult(yes.size);
+        const saved: SkillAssessment = { level, confidence: 'low', source: 'self', updatedAt: today() };
+        saveSkillLevels({ speaking: saved });
+        onDone();
+      }}>
+        Yakunlash va natijani ko‘rish
+      </Button>
+      <button type="button" className="w-full text-center text-sm font-semibold text-muted underline" onClick={onDone}>Bu bo‘limni o‘tkazib yuborish</button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- Result
 export function Result() {
   const s = useApp();
@@ -346,7 +662,18 @@ export function Result() {
         <p className="mt-3 font-bold">{LEVEL_DESC[p.estimatedLevel].title}</p>
         <p className="text-sm text-muted">{LEVEL_DESC[p.estimatedLevel].desc}</p>
         {sc ? (
-          <p className="mt-3 text-sm">To‘g‘ri javoblar: <b>{sc.total}</b> / {sc.max}</p>
+          <>
+            <p className="mt-3 text-sm">To‘g‘ri javoblar: <b>{sc.total}</b> / {sc.max}</p>
+            {sc.confidence && (
+              <p className="mt-1.5 text-xs text-muted">
+                {sc.confidence === 'high'
+                  ? '🎯 Ishonch darajasi: yuqori — natija barqaror asosga ega.'
+                  : sc.confidence === 'medium'
+                    ? '🧭 Ishonch darajasi: o‘rtacha — bir-ikki guruh savol bilan aniqlik oshadi.'
+                    : '❓ Ishonch darajasi: past — test juda erta tugadi; Sozlamalardan qayta topshirsangiz, natija aniqroq bo‘ladi.'}
+              </p>
+            )}
+          </>
         ) : (
           <p className="mt-3 text-sm text-muted">Test o‘tkazilmadi: daraja siz o‘zingiz tanlagan baho asosida qo‘yildi.</p>
         )}
@@ -377,6 +704,8 @@ export function Result() {
         </Card>
       )}
 
+      <SkillProfileCard showCta />
+
       <Card className="mt-3">
         <p className="font-bold">Shaxsiy profilingiz</p>
         <ul className="mt-2 space-y-1.5 text-sm text-muted">
@@ -401,5 +730,53 @@ export function Result() {
         <Button variant="secondary" full onClick={() => navigate('/roadmap')}>To‘liq yo‘l xaritasini ko‘rish</Button>
       </div>
     </Frame>
+  );
+}
+
+// ---------------------------------------------------------------- Shared: per-skill profile card
+//
+// Shows all six skills honestly: measured ones with level + confidence + source; unmeasured ones
+// as "baholanmagan" with a path to measure them (never a guessed level).
+
+const SKILL_ORDER: Skill[] = ['vocabulary', 'grammar', 'reading', 'listening', 'speaking', 'writing'];
+
+export function SkillProfileCard({ showCta = false }: { showCta?: boolean }) {
+  const s = useApp();
+  const levels = useMemo(() => computeSkillLevels(s), [s]);
+  const unmeasured = SKILL_ORDER.filter((k) => !levels[k]?.level);
+
+  return (
+    <Card className="mt-3">
+      <p className="font-bold">🌍 Ko‘nikmalar profilingiz</p>
+      <p className="mt-1 text-xs text-muted">Har bir ko‘nikma alohida baholanadi. Baholanmagan ko‘nikma uchun daraja o‘ylab topilmaydi.</p>
+      <div className="mt-3 space-y-2">
+        {SKILL_ORDER.map((k) => {
+          const a = levels[k];
+          const acc = a?.accuracy;
+          return (
+            <div key={k} className="flex items-center gap-3 rounded-2xl bg-surface2 px-3 py-2.5">
+              <span className="text-lg" aria-hidden>{SKILL_EMOJI[k]}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{SKILL_LABEL[k]}</p>
+                <p className="truncate text-[11px] text-muted">
+                  {a?.level
+                    ? `${confidenceLabel(a.confidence)} · ${sourceLabel(a.source)}${acc !== undefined ? ` · ${Math.round(acc * 100)}%` : ''}`
+                    : 'Hali baholanmagan'}
+                </p>
+              </div>
+              {a?.level ? <LevelBadge level={a.level} /> : <span className="text-xs font-semibold text-muted">—</span>}
+            </div>
+          );
+        })}
+      </div>
+      {showCta && unmeasured.length > 0 && (
+        <>
+          <p className="mt-3 text-xs text-muted">Baholanmagan: {unmeasured.map((k) => SKILL_LABEL[k]).join(', ')}.</p>
+          <Button className="mt-2" full onClick={() => navigate('/assessment-extra')}>
+            Qo‘shimcha ko‘nikmalarni baholash (2–3 daqiqa)
+          </Button>
+        </>
+      )}
+    </Card>
   );
 }

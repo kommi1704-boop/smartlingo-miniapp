@@ -677,4 +677,4 @@ The situation is serious but not hopeless. Researchers are studying which corals
       },
     ],
   },
-  ];
+];

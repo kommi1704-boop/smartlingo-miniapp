@@ -11,8 +11,10 @@ import { seededRng } from './games';
 
 export const BATTLE_QUESTIONS = 7; // questions per battle
 export const AI_BATTLES_PER_DAY = 3; // only the first N AI battles per day change the rating
-export const AI_ELO_K = 40; // AI battles move the rating a bit less than real duels (user report: +8..16 per win felt too slow)
-export const PVP_ELO_K = 48; // Elo K-factor for player vs player (the server in api/battle.ts uses the same value)
+export const AI_ELO_K = 48; // AI battles move the rating a bit less than real duels (user report: climbing was too slow)
+export const PVP_ELO_K = 64; // Elo K-factor for player vs player (the server in api/battle.ts uses the same value).
+// A win between equals is now +32 (was +24) and an underdog upset up to +64, so reaching
+// Specialist/Expert/Grandmaster no longer takes forever (user report: "+32 qo'shaversa unda qachon...").
 export const QUESTION_TIME_MS = 15_000; // default time per duel question
 
 const PASSAGE_LEN = 160; // questions longer than this (mini-passage items) get extra reading time
@@ -22,7 +24,7 @@ export function timeForQuestion(q: Quiz): number {
   return q.q.length > PASSAGE_LEN ? 22_000 : QUESTION_TIME_MS;
 }
 
-/** Climbing gets slower the higher you are: the same win is worth less at 1800 than at 1000. */
+/** Climbing gets slower the higher you are — applies to AI battles only (PvP stays at the full K=64). */
 export function kScale(rating: number): number {
   return rating < 1300 ? 1 : rating < 1500 ? 0.85 : rating < 1700 ? 0.7 : rating < 1900 ? 0.55 : 0.45;
 }

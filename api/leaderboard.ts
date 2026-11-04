@@ -1,13 +1,14 @@
-// Vercel serverless function: the rating leaderboard, built from the saved progress rows.
+// Vercel serverless function: the rating leaderboard.
 //  GET /api/leaderboard  (no auth)        -> { enabled: boolean }
 //  GET /api/leaderboard  (valid initData) -> { me: string, list: LeaderRow[] }
 //
-// Only safe, minimal fields leave the server: first name, avatar emoji, active frame id,
-// rating and battle W/L. Ages, goals, XP and other progress stay private.
-// Rating mirrors ratingOf() in src/lib/gamification.ts: 1000 + battle Elo delta (never below 900).
-// XP, stars and badges do NOT count. EVERY learner who synced their progress at least once is listed:
-// a fresh learner appears right after signing in with the base rating 1000 and moves up only via
-// duels. The client-reported delta is clamped to what their W/L/D record could plausibly have produced.
+// THE NUMBERS COME FROM public.ratings, which only the server writes (see api/battle.ts and
+// supabase/schema.sql): rating, wins, losses, draws. Nothing the browser reports can change them.
+// From the learner's saved progress only cosmetic fields are read: first name, avatar emoji and the
+// equipped frame. Ages, goals, XP and other progress stay private.
+// XP, stars and badges do NOT count. Every learner with a ratings row is listed: a fresh learner
+// appears with the base rating 1000 and moves up only via duels.
+// No logging (privacy): errors become a generic 502.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
 
@@ -88,53 +89,42 @@ function supa(): { url: string; key: string } | null {
 
 const sbHeaders = (key: string) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' });
 
-const MAX_WIN = 64; // largest single-battle gain (PvP K=64, between-equals win is +32) — keep in sync with src/lib/battle.ts
-const MAX_LOSS = 64;
 // Rating frames (rf-<tier>) need this rating; keep in sync with RANK_TIERS in src/lib/shop.ts.
 const RF_MIN: Record<string, number> = {
   specialist: 1400, expert: 1600, cm: 1700, master: 1850, im: 2050, gm: 2250, igm: 2500, lgm: 2750,
 };
 
-/** Mirrors ratingOf(): duel-only, with the delta clamped to a plausible range for the W/L/D record. */
-function ratingFromBattle(b: { wins: number; losses: number; draws: number; delta: number }): number {
-  const maxUp = b.wins * MAX_WIN + b.draws * MAX_WIN;
-  const maxDown = (b.losses + b.draws) * MAX_LOSS;
-  const d = Math.min(maxUp, Math.max(-maxDown, b.delta));
-  return Math.max(900, 1000 + Math.round(d));
+interface RatingRow { telegram_user_id: number; rating: number; wins: number; losses: number; draws: number }
+interface CosmeticRow {
+  telegram_user_id: number;
+  name: string | null;
+  equipped: { avatar?: string; frame?: string } | null;
+  owned: Record<string, { expiresAt?: string }> | null;
 }
 
-function rowFromState(id: string, raw: unknown): LeaderRow | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const s = raw as Record<string, unknown>;
-  const profile = (s.profile ?? null) as { name?: string } | null;
-  const shop = (s.shop ?? {}) as { equipped?: { avatar?: string; frame?: string }; owned?: Record<string, { expiresAt?: string }> };
-  const battle = (s.battle ?? {}) as { wins?: number; losses?: number; draws?: number; ratingDelta?: number };
-  const wins = Math.max(0, Math.floor(Number(battle.wins) || 0));
-  const losses = Math.max(0, Math.floor(Number(battle.losses) || 0));
-  const draws = Math.max(0, Math.floor(Number(battle.draws) || 0));
-  const delta = Math.round(Number(battle.ratingDelta) || 0);
-  const rating = ratingFromBattle({ wins, losses, draws, delta });
-
-  const rawName = (profile?.name ?? '').trim();
+function toRow(r: RatingRow, c: CosmeticRow | undefined): LeaderRow {
+  const rating = Math.max(900, Math.round(Number(r.rating) || 1000));
+  const rawName = (typeof c?.name === 'string' ? c.name : '').trim();
   const name = (rawName.split(/\s+/)[0] || 'O‘quvchi').slice(0, 24);
-  const equippedFrame = shop.equipped?.frame;
+  const equipped = c?.equipped && typeof c.equipped === 'object' ? c.equipped : {};
+  const equippedFrame = equipped.frame;
   let frame: string | undefined;
   if (equippedFrame && typeof equippedFrame === 'string') {
-    const owned = shop.owned?.[equippedFrame];
+    const owned = c?.owned && typeof c.owned === 'object' ? c.owned[equippedFrame] : undefined;
     const need = equippedFrame.startsWith('rf-') ? RF_MIN[equippedFrame.slice(3)] : undefined;
     const active = equippedFrame.startsWith('rf-') ? need !== undefined && rating >= need : !owned || !owned.expiresAt || new Date(owned.expiresAt).getTime() > Date.now();
     if (active) frame = equippedFrame;
   }
   return {
-    id,
+    id: String(r.telegram_user_id),
     name,
-    avatar: typeof shop.equipped?.avatar === 'string' ? shop.equipped.avatar.slice(0, 8) : undefined,
+    avatar: typeof equipped.avatar === 'string' ? equipped.avatar.slice(0, 8) : undefined,
     frame,
     rating,
-    wins,
-    losses,
-    draws,
-    delta,
+    wins: Math.max(0, r.wins | 0),
+    losses: Math.max(0, r.losses | 0),
+    draws: Math.max(0, r.draws | 0),
+    delta: rating - 1000,
   };
 }
 
@@ -164,20 +154,23 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   }
 
   try {
-    const r = await fetch(`${db.url}/rest/v1/progress?select=telegram_user_id,state&order=updated_at.desc&limit=500`, {
-      headers: sbHeaders(db.key),
-      signal: AbortSignal.timeout(15_000),
-    });
+    const get = (path: string) => fetch(`${db.url}/rest/v1/${path}`, { headers: sbHeaders(db.key), signal: AbortSignal.timeout(15_000) });
+    const r = await get(`ratings?select=telegram_user_id,rating,wins,losses,draws&order=rating.desc,wins.desc,losses.asc&limit=${LIMIT}`);
     if (!r.ok) throw new Error(`supabase_${r.status}`);
-    const rows = (await r.json()) as { telegram_user_id: number; state: unknown }[];
-    const list = rows
-      .map((x) => rowFromState(String(x.telegram_user_id), x.state))
-      .filter((x): x is LeaderRow => x !== null)
-      .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name))
-      .slice(0, LIMIT);
+    const ratings = (await r.json()) as RatingRow[];
+    // Cosmetics only (name / avatar / frame) for exactly these learners — never the whole saved state.
+    const cos = new Map<number, CosmeticRow>();
+    if (ratings.length) {
+      const ids = ratings.map((x) => x.telegram_user_id).join(',');
+      const c = await get(`progress?select=telegram_user_id,name:state->profile->>name,equipped:state->shop->equipped,owned:state->shop->owned&telegram_user_id=in.(${ids})`);
+      if (c.ok) for (const x of (await c.json()) as CosmeticRow[]) cos.set(x.telegram_user_id, x);
+    }
+    const list = ratings
+      .map((x) => toRow(x, cos.get(x.telegram_user_id)))
+      .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name));
     res.status(200).json({ me: auth.userId, list });
-  } catch (e) {
-    console.error('leaderboard failure', e instanceof Error ? e.message : String(e));
+  } catch {
+    // No logging on purpose (privacy).
     res.status(502).json({ error: 'storage_error' });
   }
 }

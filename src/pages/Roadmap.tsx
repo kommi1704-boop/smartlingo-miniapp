@@ -2,8 +2,9 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { A } from '../lib/router';
 import { LEVELS } from '../types';
 import { useApp } from '../store/store';
-import { updateProfile } from '../store/actions';
+import { updateProfile, saveAiRoadmap, clearAiRoadmap } from '../store/actions';
 import { generateRoadmap, profileSummary, type RoadmapStage } from '../lib/roadmap';
+import { generateAiRoadmap, hashInputs, roadmapConsent, setRoadmapConsent, aiErrorHint } from '../lib/roadmapAi';
 import { Card, Chip, LevelBadge, Notice, PageHeader, Pill, ProgressBar } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { cx } from '../lib/utils';
@@ -62,6 +63,23 @@ function Stage({ st, defaultOpen }: { st: RoadmapStage; defaultOpen: boolean }) 
 
       {open && (
         <div className="slide-up mt-4 grid gap-2.5">
+          <Block icon="🎯" title="Maqsadlar (o‘lchanadigan)">
+            <ul className="space-y-1">
+              {st.objectives.map((o) => <li key={o}>• {o}</li>)}
+            </ul>
+          </Block>
+          <Block icon="📊" title="Natija mezonlari">
+            <ul className="space-y-1">
+              {st.outcomes.map((o) => <li key={o}>• {o}</li>)}
+            </ul>
+            <p className="mt-2 text-xs"><b>Tekshiruv nuqtasi:</b> {st.checkpoint}</p>
+            <p className="mt-1 text-xs"><b>Bajarilgan deb hisoblanadi:</b> {st.criteria}</p>
+          </Block>
+          {st.emphasis.length > 0 && (
+            <Block icon="💪" title="Sizning zaif ko‘nikmalaringizga urg‘u">
+              <p>{st.emphasis.join(', ')} — kunlik reja va bosqich maqsadlarida shu ko‘nikmalarga ko‘proq joy beriladi.</p>
+            </Block>
+          )}
           <Block icon="🧩" title="Grammatika mavzulari">
             {st.grammar.length > 0 ? <ItemList items={st.grammar} base="/grammar" /> : <p>Ilovada bu daraja uchun grammatika darsi yo‘q.</p>}
             <p className="mt-2 text-xs">Qo‘shimcha mavzular: {st.grammarExtra.join(' · ')}</p>
@@ -99,6 +117,118 @@ function Stage({ st, defaultOpen }: { st: RoadmapStage; defaultOpen: boolean }) 
   );
 }
 
+function AiRoadmapCard() {
+  const s = useApp();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [consent, setConsent] = useState(roadmapConsent());
+  const ai = s.aiRoadmap;
+  const stale = !!ai && ai.inputsHash !== hashInputs(s);
+
+  async function generate() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await generateAiRoadmap(s);
+      saveAiRoadmap(r);
+    } catch (e) {
+      setErr(aiErrorHint(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <div className="flex items-start gap-3">
+        <span className="text-2xl" aria-hidden>✨</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold">AI shaxsiylashtirilgan reja</p>
+          <p className="mt-0.5 text-xs text-muted">
+            AI sizning darajalaringiz, zaif ko‘nikmalaringiz va maqsadingiz asosida bosqichlarni yozadi. Bu — tavsiya; mashqlar ro‘yxati pastda avtomatik hisoblanadi.
+          </p>
+        </div>
+        {ai && (
+          <button
+            type="button"
+            aria-label="AI rejasini o‘chirish"
+            className="rounded-xl p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+            onClick={() => clearAiRoadmap()}
+          >
+            <Icon name="trash" className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {!ai && (
+        <>
+          <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-2xl bg-surface2 p-3 text-xs text-muted">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                setRoadmapConsent(e.target.checked);
+              }}
+              className="mt-0.5 h-4 w-4 accent-indigo-600"
+            />
+            <span>
+              Qiziqishlarimni AI rejaga qo‘shish (ixtiyoriy). Yoqilsa, tanlangan mavzularingiz serverga yuboriladi; yoqilmagan holda hech qanday shaxsiy matn yuborilmaydi.
+            </span>
+          </label>
+          <button
+            type="button"
+            className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+            disabled={busy || !s.profile}
+            onClick={generate}
+          >
+            {busy ? 'AI yozmoqda…' : 'AI reja tuzish'}
+          </button>
+        </>
+      )}
+
+      {ai && (
+        <>
+          {stale && (
+            <Notice tone="warn">
+              Profilingiz o‘zgargan (daraja yoki natijalar). Yangi ma’lumotlar asosida reja qayta tuzilishi mumkin.
+            </Notice>
+          )}
+          <div className="mt-3 space-y-2.5">
+            {ai.stages.map((st, i) => (
+              <div key={i} className="rounded-2xl border border-line bg-surface2 p-3">
+                <div className="flex items-center gap-2.5">
+                  <LevelBadge level={st.level} />
+                  <p className="min-w-0 flex-1 truncate text-sm font-bold">{st.focus}</p>
+                  <span className="shrink-0 text-xs font-semibold text-muted">≈ {st.weeks} hafta</span>
+                </div>
+                <div className="mt-2 space-y-1.5 text-xs text-muted">
+                  <p><b className="text-ink">Maqsadlar:</b> {st.objectives.join(' · ')}</p>
+                  <p><b className="text-ink">Mavzular:</b> {st.topics.join(' · ')}</p>
+                  <p><b className="text-ink">Natija mezoni:</b> {st.outcomes.join(' · ')}</p>
+                  <p><b className="text-ink">Tekshiruv:</b> {st.checkpoint}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {ai.note && <p className="mt-2.5 rounded-2xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-100">{ai.note}</p>}
+          <button
+            type="button"
+            className="mt-3 w-full rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm font-bold text-indigo-600 disabled:opacity-60 dark:text-indigo-300"
+            disabled={busy || !s.profile}
+            onClick={generate}
+          >
+            {busy ? 'AI yozmoqda…' : stale ? 'Qayta tuzish (yangi natijalar bilan)' : 'Yangilash'}
+          </button>
+        </>
+      )}
+
+      {err && <p className="mt-2 text-xs font-semibold text-rose-500">{err}</p>}
+      <p className="mt-2 text-[11px] text-muted">AI reja — maslahat. Vaqt hisoblari taxminiy; hech kim aniq natijani kafolatlay olmaydi.</p>
+    </Card>
+  );
+}
+
 export function Roadmap() {
   const s = useApp();
   const p = s.profile!;
@@ -122,7 +252,12 @@ export function Roadmap() {
         <p className="mt-2 text-xs text-muted">{LEVEL_DESC[p.targetLevel].title}: {LEVEL_DESC[p.targetLevel].desc}</p>
       </Card>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
+        <AiRoadmapCard />
+      </div>
+
+      <p className="mt-5 mb-2 px-1 text-sm font-bold">📖 Bosqichlar (mashqlar bilan)</p>
+      <div className="space-y-3">
         {stages.map((st, i) => <Stage key={`${st.level}-${p.targetLevel}`} st={st} defaultOpen={i === 0} />)}
       </div>
 

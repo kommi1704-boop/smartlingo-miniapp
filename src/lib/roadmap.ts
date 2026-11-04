@@ -113,6 +113,16 @@ export interface RoadmapStage {
   status: 'current' | 'next';
   weeks: number;
   focus: string;
+  /** Learning objectives for this stage (Uzbek, concrete). */
+  objectives: string[];
+  /** Measurable outcomes: how completion is evidenced, not felt. */
+  outcomes: string[];
+  /** Assessment checkpoint: what gets measured at the end of the stage. */
+  checkpoint: string;
+  /** Completion criteria (all must hold). */
+  criteria: string;
+  /** Skills this stage emphasises (from the learner's weakest evidence). */
+  emphasis: string[];
   grammar: { id: string; title: string; done: boolean }[];
   grammarExtra: string[];
   vocab: { learned: number; total: number; themes: string[]; goal: number };
@@ -122,6 +132,36 @@ export interface RoadmapStage {
   writing: { id: string; title: string; done: boolean }[];
   skillText: { reading: string; listening: string; speaking: string; writing: string };
   progress: number | null; // 0..100 or null when there is no demo content for this level
+}
+
+/** Weakest skills by real evidence, for stage emphasis. Returns up to 2 skill labels in Uzbek. */
+function weakestSkills(s: PersistedState): string[] {
+  const cand: { label: string; ratio: number | null; started: boolean }[] = [
+    { label: 'tinglash', ratio: usageAcc(s, 'listening'), started: s.quizHistory.some((q) => q.kind === 'listening') },
+    { label: 'yozish', ratio: writingScore(s), started: s.writing.length > 0 },
+    { label: 'o‘qish', ratio: usageAcc(s, 'reading'), started: s.quizHistory.some((q) => q.kind === 'reading') },
+    { label: 'gaplashish', ratio: null, started: Object.keys(s.speakingDone).length > 0 },
+  ];
+  return cand
+    .filter((c) => !c.started || (c.ratio !== null && c.ratio < 0.75))
+    .sort((a, b) => (a.ratio ?? 1) - (b.ratio ?? 1)) // measured-weak first, unmeasured (null -> 1) after
+    .slice(0, 2)
+    .map((c) => c.label);
+}
+
+function usageAcc(s: PersistedState, kind: string): number | null {
+  const items = s.quizHistory.filter((q) => q.kind === kind).slice(-20);
+  const total = items.reduce((a, b) => a + b.total, 0);
+  if (total < 8) return null;
+  return items.reduce((a, b) => a + b.score, 0) / total;
+}
+
+function writingScore(s: PersistedState): number | null {
+  const recent = s.writing.slice(-10);
+  const words = recent.reduce((a, w) => a + w.words, 0);
+  const issues = recent.reduce((a, w) => a + w.issues, 0);
+  if (words < 50) return null;
+  return Math.max(0, 1 - (issues / words) * 2.5);
 }
 
 export function generateRoadmap(profile: Profile, s: PersistedState): RoadmapStage[] {
@@ -153,12 +193,37 @@ export function generateRoadmap(profile: Profile, s: PersistedState): RoadmapSta
     const progress = parts.length ? Math.round((parts.reduce((a, b) => a + b, 0) / parts.length) * 100) : null;
 
     const hours = consolidate && from !== to ? cur.hours * 0.3 : cur.hours;
+    // measurable stage evidence: every objective is checked against real app data
+    const emphasis = weakestSkills(s);
+    const objectives = [
+      `${level} darajasi grammatika mavzularini o‘rganish: ${grammar.slice(0, 3).map((g) => g.title).join(', ')}${grammar.length > 3 ? ' va boshqalar' : ''}`,
+      `Lug‘atni kengaytirish: ${cur.vocabThemes.join(', ')} mavzulari (maqsad: ≈${cur.vocabGoal} ta faol so‘z)`,
+      ...emphasis.map((e) =>
+        e === 'tinglash' ? `Tinglash mashqlarini kuchaytirish: har hafta kamida 3 ta tinglash mashqi` :
+        e === 'yozish' ? `Yozish sifatini oshirish: har hafta kamida 2 ta yozma ish` :
+        e === 'gaplashish' ? `Gapirish odatini shakllantirish: har hafta kamida 2 ta og‘zaki mashq` :
+        `O‘qish hajmini oshirish: har hafta kamida 3 ta matn`,
+      ),
+    ];
+    const vocabLearned = learned;
+    const outcomes = [
+      `Grammatika darslarida ≥80% natija: ${grammar.filter((g) => g.done).length}/${grammar.length || '—'} bajarildi`,
+      `${level} so‘zlaridan ${vocabLearned}/${words.length || cur.vocabGoal} o‘rganildi (maqsad: 80%)`,
+      `O‘qish va tinglash testlarida o‘rtacha ≥70% natija`,
+    ];
+    const checkpoint = `${level} yakunida: darslar testi (≥80%), o‘qish + tinglash testlari (≥70%), yozma ish AI tekshiruvi bilan. Natija past bo‘lsa — bosqich davom etadi.`;
+    const criteria = `Barcha mavjud ${level} darslari bajarilgan, so‘zlarning 80% “o‘rganildi”, so‘nggi 10 ta testning o‘rtacha natijasi ≥70%.`;
     stages.push({
       level,
       consolidate,
       status: consolidate ? 'current' : 'next',
       weeks: Math.max(1, Math.ceil(hours / weeklyHours)),
       focus: cur.focus,
+      objectives,
+      outcomes,
+      checkpoint,
+      criteria,
+      emphasis,
       grammar,
       grammarExtra: cur.grammarExtra,
       vocab: { learned, total: words.length, themes: cur.vocabThemes, goal: cur.vocabGoal },

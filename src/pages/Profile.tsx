@@ -8,6 +8,7 @@ import { cx, fileToAvatarDataUrl, fmt } from '../lib/utils';
 import { haptic } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { A, navigate } from '../lib/router';
+import { SkillProfileCard } from './Start';
 import { Button, Card, Empty, PageHeader, Pill, ProgressBar, Section, StatTile } from '../components/ui';
 import { Avatar, FramedEmoji } from '../components/Avatar';
 import { Icon } from '../components/Icon';
@@ -88,6 +89,11 @@ export function Profile() {
           )}
         </div>
       </div>
+
+      {/* Skill levels (per-skill CEFR estimates + confidence) */}
+      <Section title="🌍 Til ko‘nikmalari">
+        <SkillProfileCard showCta />
+      </Section>
 
       {/* Rating frames ladder */}
       <Section title="🏆 Reyting ramkalari" action={<A to="/shop" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Do‘kon →</A>}>
