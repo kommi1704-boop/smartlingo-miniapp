@@ -317,6 +317,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     }
     res.status(200).json(parsed);
   } catch (e) {
+    console.error('roadmap upstream failure', provider.kind, e instanceof UpstreamError ? `${e.status} ${e.detail}` : String(e instanceof Error ? e.name : e));
     if (e instanceof UpstreamError && e.status === 429) res.status(429).json({ error: 'upstream_busy' });
     else if (e instanceof UpstreamError) res.status(502).json({ error: 'upstream_error', status: e.status, detail: e.detail });
     else res.status(502).json({ error: 'upstream_unreachable' });
