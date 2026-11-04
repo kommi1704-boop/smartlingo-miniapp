@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../store/store';
 import { rankInfo, ratingOf } from '../lib/gamification';
-import { refreshRating } from '../lib/ratingSync';
 import { fetchLeaderboard, notConfigured, type LeaderRow } from '../lib/battleApi';
 import { FRAMES, RANK_TIERS } from '../lib/shop';
 import { Button, Card, Empty, Notice, PageHeader, Pill, Section } from '../components/ui';
@@ -32,7 +31,6 @@ export function Leaderboard() {
 
   const load = useCallback(async () => {
     setState('loading');
-    void refreshRating(); // my own row comes from the server too
     try {
       const j = await fetchLeaderboard();
       setRows(j.list ?? []);
