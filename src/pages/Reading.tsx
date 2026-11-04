@@ -160,7 +160,10 @@ export function AiReadingCard() {
 
               {data && !quiz && (
                 <div className="mt-3">
-                  <p className="text-lg font-extrabold leading-snug">{data.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-extrabold leading-snug">{data.title}</p>
+                    <Pill tone="amber" className="!px-2 !py-0.5 !text-[10px]">⚠ AI yozgan · tekshirilmagan</Pill>
+                  </div>
                   <p className="mt-0.5 text-xs text-muted">{wordCount(data.text)} ta so‘z · mavzu: {interest} · daraja: {s.profile?.estimatedLevel ?? 'A1'}</p>
                   <Card className="mt-2">
                     <Highlightable storeKey={`gentext:${today()}:${interest}`} paragraphs={paras} terms={terms} className="space-y-2.5 text-[16px] leading-relaxed" />
@@ -204,7 +207,7 @@ export function AiReadingCard() {
 
               {data && (
                 <div className="mt-3 flex items-center justify-between">
-                  <p className="text-[11px] text-muted">Bu matn AI tomonidan qiziqishingiz asosida yaratiladi va faqat telefoningizda saqlanadi.</p>
+                  <p className="text-[11px] text-muted">Bu matn AI tomonidan yozilgan, inson tekshirmagan va faqat telefoningizda saqlanadi.</p>
                   <button type="button" className="shrink-0 text-xs font-semibold text-muted underline" onClick={report}>Xato bor</button>
                 </div>
               )}

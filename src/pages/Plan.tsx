@@ -64,6 +64,12 @@ export function Plan() {
                 <Icon name="right" className="h-5 w-5 shrink-0 text-muted" />
               </div>
               {i.type === 'vocab' || i.type === 'tutor' ? <ProgressBar value={i.progress * 100} className="mt-3" label={i.title} /> : null}
+              {i.reason && (
+                <p className="mt-2.5 flex items-start gap-1.5 rounded-xl bg-surface2 px-2.5 py-1.5 text-[11px] leading-snug text-muted">
+                  <span aria-hidden>💡</span>
+                  <span>{i.reason}</span>
+                </p>
+              )}
             </A>
           </li>
         ))}

@@ -26,6 +26,8 @@ export interface TutorRequest {
   level: string;
   name: string;
   age: number;
+  /** Privacy-safe learning aggregates (learnerDigestLines) — no chat/essay text ever. */
+  profile?: string;
 }
 
 export async function askLiveTutor(req: TutorRequest): Promise<string> {

@@ -8,7 +8,7 @@ import { Shell, TAB_ROOTS } from './components/Shell';
 import { Overlays } from './components/Overlays';
 import { Button, Empty } from './components/ui';
 import { Landing } from './pages/Landing';
-import { Onboarding, Assessment, Result } from './pages/Start';
+import { Onboarding, Assessment, SkillProbes, Result } from './pages/Start';
 import { Dashboard } from './pages/Dashboard';
 import { Roadmap } from './pages/Roadmap';
 import { Plan } from './pages/Plan';
@@ -29,7 +29,7 @@ import { Profile } from './pages/Profile';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
 
-const PUBLIC = ['welcome', 'onboarding', 'assessment', 'result'];
+const PUBLIC = ['welcome', 'onboarding', 'assessment', 'assessment-extra', 'result'];
 
 export function App() {
   const path = usePath();
@@ -64,6 +64,7 @@ export function App() {
   if (first === 'welcome') page = <Landing />;
   else if (first === 'onboarding') page = <Onboarding defaultName={tgUser()?.first_name ?? ''} />;
   else if (first === 'assessment') page = <Assessment />;
+  else if (first === 'assessment-extra') page = <SkillProbes />;
   else if (first === 'result') page = hasProfile ? <Result /> : null;
 
   if (page) {

@@ -282,4 +282,275 @@ export const BATTLE_EXTRA: BattleExtraQuiz[] = [
     explain:
       "to hail somebody/something as — «...deb e’lon qilmoq, olqishlamoq». Rasmiy uslubdagi ibora, tanqidchilar nutqida ko‘p uchraydi.",
   },
+  // ------------------------------------------------ Pre-A1 / A1 / C1 / C2 (added: thin levels)
+  {
+    id: "bx29",
+    level: "Pre-A1",
+    q: "I ___ a student.",
+    options: ["am", "is", "are", "be"],
+    answer: 0,
+    explain:
+      "I (men) bilan am ishlatiladi: I am a student — «men o‘quvchiman».",
+  },
+  {
+    id: "bx30",
+    level: "Pre-A1",
+    q: "She ___ my sister.",
+    options: ["am", "is", "are", "be"],
+    answer: 1,
+    explain:
+      "She, he, it bilan is ishlatiladi: She is my sister — «U mening singlim (opam)».",
+  },
+  {
+    id: "bx31",
+    level: "Pre-A1",
+    q: "What colour is the sky on a sunny day?",
+    options: ["red", "blue", "black", "pink"],
+    answer: 1,
+    explain:
+      "Ochiq, quyoshli kunda osmon blue — «ko‘k» rangda bo‘ladi.",
+  },
+  {
+    id: "bx32",
+    level: "Pre-A1",
+    q: "How many legs does a cat have?",
+    options: ["two", "three", "four", "five"],
+    answer: 2,
+    explain:
+      "Mushukning to‘rtta oyog‘i bor: four — «to‘rt».",
+  },
+  {
+    id: "bx33",
+    level: "Pre-A1",
+    q: "___ is your name? — My name is Ali.",
+    options: ["Where", "What", "Who are", "How many"],
+    answer: 1,
+    explain:
+      "Ism so‘ralganda What is your name? deyiladi — «Ismingiz nima?».",
+  },
+  {
+    id: "bx34",
+    level: "Pre-A1",
+    q: "This is ___ apple.",
+    options: ["a", "an", "some", "many"],
+    answer: 1,
+    explain:
+      "Unli tovush bilan boshlanadigan so‘z oldidan an keladi: an apple. Undosh oldidan a: a book.",
+  },
+  {
+    id: "bx35",
+    level: "Pre-A1",
+    q: "Which word is an animal?",
+    options: ["table", "dog", "book", "chair"],
+    answer: 1,
+    explain:
+      "dog — «it» (hayvon). Table — stol, book — kitob, chair — stul: bular buyumlar.",
+  },
+  {
+    id: "bx36",
+    level: "Pre-A1",
+    q: "Good morning! — ___",
+    options: ["Good night!", "Good morning!", "Goodbye!", "Sorry!"],
+    answer: 1,
+    explain:
+      "Salomga shu salom bilan javob beramiz: Good morning! — «Xayrli tong!».",
+  },
+  {
+    id: "bx37",
+    level: "Pre-A1",
+    q: "I have two ___.",
+    options: ["hand", "hands", "a hand", "handes"],
+    answer: 1,
+    explain:
+      "«Ikkita» deganda ko‘plik shakli kerak: two hands. Ko‘plik odatda -s bilan yasaladi.",
+  },
+  {
+    id: "bx38",
+    level: "Pre-A1",
+    q: "Which one is a fruit?",
+    options: ["banana", "bread", "milk", "rice"],
+    answer: 0,
+    explain:
+      "banana — «banan», meva. Bread — non, milk — sut, rice — guruch: bular boshqa oziq-ovqatlar.",
+  },
+  {
+    id: "bx39",
+    level: "A1",
+    q: "He ___ football every Sunday.",
+    options: ["play", "plays", "playing", "is play"],
+    answer: 1,
+    explain:
+      "Present Simple da he/she/it dan keyin fe‘lga -s qo‘shiladi: He plays.",
+  },
+  {
+    id: "bx40",
+    level: "A1",
+    q: "There ___ three books on the desk.",
+    options: ["is", "are", "am", "be"],
+    answer: 1,
+    explain:
+      "Three books — ko‘plik, shuning uchun There are. Birlikda: There is a book.",
+  },
+  {
+    id: "bx41",
+    level: "A1",
+    q: "I ___ breakfast at seven o'clock.",
+    options: ["has", "have", "having", "haves"],
+    answer: 1,
+    explain:
+      "I bilan have ishlatiladi: I have breakfast. Has faqat he/she/it bilan.",
+  },
+  {
+    id: "bx42",
+    level: "A1",
+    q: "My brother is ___ than me.",
+    options: ["tall", "taller", "tallest", "more tall"],
+    answer: 1,
+    explain:
+      "Qisqa sifatlarda taqqoslash -er bilan: taller than — «mendan balandroq».",
+  },
+  {
+    id: "bx43",
+    level: "A1",
+    q: "When you are thirsty, you ___.",
+    options: ["eat bread", "drink water", "read a book", "play football"],
+    answer: 1,
+    explain:
+      "Thirsty — «chanqagan». Chanqaganda suv ichamiz: drink water.",
+  },
+  {
+    id: "bx44",
+    level: "A1",
+    q: "I ___ like milk.",
+    options: ["don't", "doesn't", "isn't", "aren't"],
+    answer: 0,
+    explain:
+      "I bilan inkor shakli don't: I don't like milk — «Men sutni yoqtirmayman».",
+  },
+  {
+    id: "bx45",
+    level: "A1",
+    q: "Yesterday I ___ to the park.",
+    options: ["go", "goes", "went", "going"],
+    answer: 2,
+    explain:
+      "Yesterday — o‘tgan zamon. Go fe‘lining o‘tgan zamon shakli went (noto‘g‘ri fe‘l).",
+  },
+  {
+    id: "bx46",
+    level: "A1",
+    q: "Which sentence is correct?",
+    options: ["She have a cat.", "She has a cat.", "She haves a cat.", "She having a cat."],
+    answer: 1,
+    explain:
+      "She bilan have emas, has ishlatiladi: She has a cat — «Uning mushugi bor».",
+  },
+  {
+    id: "bx47",
+    level: "C1",
+    q: "By the time we arrived, the film ___.",
+    options: ["already started", "had already started", "has already started", "was already starting"],
+    answer: 1,
+    explain:
+      "Ikki o‘tgan voqeadan oldingisi Past Perfect (had + V3) bilan ifodalanadi: film biz kelishimizdan oldin boshlangan.",
+  },
+  {
+    id: "bx48",
+    level: "C1",
+    q: "She asked me ___ I had finished my homework.",
+    options: ["that", "whether", "what", "which"],
+    answer: 1,
+    explain:
+      "Ha/yo‘q savolini ko‘chirma gapda berishda whether (yoki if) ishlatiladi.",
+  },
+  {
+    id: "bx49",
+    level: "C1",
+    q: "The more you practise, ___ you become.",
+    options: ["the better", "better", "the best", "best"],
+    answer: 0,
+    explain:
+      "The + qiyosiy daraja ... the + qiyosiy daraja tuzilishi: qancha ko‘p mashq qilsangiz, shuncha yaxshi bo‘lasiz.",
+  },
+  {
+    id: "bx50",
+    level: "C1",
+    q: "He is said ___ the best player in the country.",
+    options: ["being", "to be", "be", "to being"],
+    answer: 1,
+    explain:
+      "is said to be — passiv tuzilma: «u mamlakatdagi eng yaxshi o‘yinchi deb aytiladi».",
+  },
+  {
+    id: "bx51",
+    level: "C1",
+    q: "I wish I ___ more time to prepare.",
+    options: ["have", "had", "would have", "will have"],
+    answer: 1,
+    explain:
+      "Hozirgi afsus uchun wish + Past Simple: I wish I had... — «qani endi vaqtim ko‘proq bo‘lsa».",
+  },
+  {
+    id: "bx52",
+    level: "C1",
+    q: "Scarcely ___ sat down when the phone rang.",
+    options: ["I had", "had I", "I have", "did I"],
+    answer: 1,
+    explain:
+      "Scarcely/Hardly gap boshida kelsa, Past Perfect da inversiya bo‘ladi: Scarcely had I sat down...",
+  },
+  {
+    id: "bx53",
+    level: "C2",
+    q: "His speech was so ___ that nobody could disagree.",
+    options: ["compelling", "compulsory", "compact", "compatible"],
+    answer: 0,
+    explain:
+      "compelling — ishontiruvchi, ta‘sirchan. Compulsory — majburiy, compact — ixcham, compatible — mos keladigan.",
+  },
+  {
+    id: "bx54",
+    level: "C2",
+    q: "The new law will come into ___ next month.",
+    options: ["effect", "affect", "effective", "affection"],
+    answer: 0,
+    explain:
+      "come into effect — «kuchga kirmoq». Effect — ot (ta‘sir, kuch); affect — fe‘l (ta‘sir qilmoq).",
+  },
+  {
+    id: "bx55",
+    level: "C2",
+    q: "She has a ___ for languages — she learns them effortlessly.",
+    options: ["knack", "knock", "knot", "nick"],
+    answer: 0,
+    explain:
+      "a knack for — «biror ishga qobiliyat, mahorat». Knock — taqillatmoq, knot — tugun.",
+  },
+  {
+    id: "bx56",
+    level: "C2",
+    q: "Choose the word closest in meaning to “ubiquitous”.",
+    options: ["rare", "everywhere", "ancient", "dangerous"],
+    answer: 1,
+    explain:
+      "ubiquitous — «hamma joyda uchraydigan, har yerda mavjud» (everywhere). Rare — kamyob.",
+  },
+  {
+    id: "bx57",
+    level: "C2",
+    q: "The two reports are ___ — they say completely opposite things.",
+    options: ["contradictory", "complementary", "consecutive", "comparable"],
+    answer: 0,
+    explain:
+      "contradictory — bir-biriga zid. Complementary — bir-birini to‘ldiruvchi.",
+  },
+  {
+    id: "bx58",
+    level: "C2",
+    q: "Hardly anyone ___ the meeting, so it was cancelled.",
+    options: ["attended", "attend", "was attended", "had attend"],
+    answer: 0,
+    explain:
+      "Hardly anyone — «deyarli hech kim»; o‘tgan zamon fe‘li: attended. Bekor qilinishi sababi — odamlar kam kelgani.",
+  },
 ];

@@ -1,6 +1,5 @@
 import type { ReadingPassage } from '../types';
 import { READING_MORE } from './reading-more';
-import { READING_EXTENDED } from './reading-extended';
 
 const READING_BASE: ReadingPassage[] = [
   {
@@ -577,4 +576,4 @@ Nevertheless, optimism should not breed complacency. Access to technology remain
   },
 ];
 
-export const READING: ReadingPassage[] = [...READING_BASE, ...READING_MORE, ...READING_EXTENDED];
+export const READING: ReadingPassage[] = [...READING_BASE, ...READING_MORE];

@@ -5,6 +5,8 @@ import { getState, useApp } from '../store/store';
 import { appendMessage, deleteConversation, newConversation, recordTutorMessage } from '../store/actions';
 import { askLiveTutor, tutorIsLive, tutorErrorHint } from '../lib/api';
 import { demoReply, SUGGESTIONS } from '../lib/tutorDemo';
+import { learnerDigestLines } from '../lib/learner';
+import { generateRoadmap } from '../lib/roadmap';
 import { Button, Modal, Pill } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { prettyDateTime } from '../lib/dates';
@@ -63,7 +65,10 @@ export function Tutor() {
       setBusy(true);
       try {
         const history = current.messages.slice(-10).map((m) => ({ role: m.role, text: m.text }));
-        const reply = await askLiveTutor({ messages: history, level: p.estimatedLevel, name: p.name, age: p.age });
+        // Privacy-safe learning profile: aggregates only (levels, weak topics, counts).
+        const stageFocus = generateRoadmap(p, getState())[0]?.focus;
+        const profile = learnerDigestLines(getState(), stageFocus).join(' ');
+        const reply = await askLiveTutor({ messages: history, level: p.estimatedLevel, name: p.name, age: p.age, profile });
         appendMessage(id, { role: 'assistant', text: reply });
       } catch (e) {
         toast(`Jonli AI javob bermadi (${tutorErrorHint(e instanceof Error ? e.message : 'unknown')}). Demo javob ko‘rsatildi`, 'warn', 6000);
