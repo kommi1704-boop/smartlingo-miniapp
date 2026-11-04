@@ -7,6 +7,7 @@ import { BASE } from './api';
 import { isTelegram, tgInitData } from './telegram';
 import { defaultState, getState, setState, subscribeState } from '../store/store';
 import { toast } from '../store/ui';
+import { refreshRating } from './ratingSync';
 import type { PersistedState } from '../types';
 
 export type SyncStatus = 'off' | 'unavailable' | 'connecting' | 'synced' | 'saving' | 'error';
@@ -141,6 +142,7 @@ export async function initSync(): Promise<void> {
     }
     ready = true;
     set('synced', Date.now());
+    void refreshRating(); // the rating is owned by the server: always show ITS numbers
     subscribeState(schedule);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {

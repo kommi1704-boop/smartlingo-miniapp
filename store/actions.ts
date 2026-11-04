@@ -432,27 +432,30 @@ export function resetAll(): void {
 // ---------- Friendly battles ----------
 
 /**
- * Records a finished battle: W/L/D counters, the Elo delta (only rated battles) and the history.
- * AI battles are rated only for the first AI_BATTLES_PER_DAY per day (no rating farming).
+ * Adds a finished battle to the on-device history list. It does NOT touch the rating or the
+ * W/L/D counters: those belong to the server (see applyServerRating) and the history is only a
+ * list to look at.
  */
 export function recordBattleResult(r: BattleRecord): void {
-  const t = today();
-  setState((s) => {
-    const used = s.battle.ratedToday.date === t ? s.battle.ratedToday.count : 0;
-    const rated = r.vs === 'player' || used < AI_BATTLES_PER_DAY;
-    const delta = rated ? r.delta : 0;
-    return {
-      ...s,
-      battle: {
-        ratingDelta: s.battle.ratingDelta + delta,
-        wins: s.battle.wins + (r.result === 'win' ? 1 : 0),
-        losses: s.battle.losses + (r.result === 'loss' ? 1 : 0),
-        draws: s.battle.draws + (r.result === 'draw' ? 1 : 0),
-        ratedToday: { date: t, count: used + (r.vs === 'ai' ? 1 : 0) },
-        history: [{ ...r, delta }, ...s.battle.history].slice(0, 20),
-      },
-    };
-  });
+  setState((s) => ({ ...s, battle: { ...s.battle, history: [r, ...s.battle.history].slice(0, 20) } }));
+}
+
+/**
+ * Stores the rating the SERVER reported. Everything the app shows (rating, rank, W/L/D, how many
+ * rated AI duels are left today) comes from here, never from anything computed on the device.
+ */
+export function applyServerRating(m: { rating: number; wins: number; losses: number; draws: number; aiLeft: number }): void {
+  setState((s) => ({
+    ...s,
+    battle: {
+      ...s.battle,
+      ratingDelta: Math.round(m.rating) - 1000,
+      wins: m.wins,
+      losses: m.losses,
+      draws: m.draws,
+      ratedToday: { date: new Date().toISOString().slice(0, 10), count: Math.max(0, AI_BATTLES_PER_DAY - m.aiLeft) },
+    },
+  }));
 }
 
 export { BADGES, haptic };
