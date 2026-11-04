@@ -3,12 +3,9 @@
 //  GET  /api/battle?action=list              (auth)    -> { list: OpenBattle[] }  open challenges of others
 //  GET  /api/battle?action=get&id=...        (auth)    -> { battle: BattleView | null }
 //  GET  /api/battle?action=sync&id=...       (auth)    -> { live: LiveSync | { legacy: true } }
-//  GET  /api/battle?action=me                (auth)    -> { me: MyRating }  MY rating, owned by the server
-//  POST /api/battle  { action: 'open',     questions, name, avatar? }         -> { battle }
-//  POST /api/battle  { action: 'join',     id, name, avatar? }                -> { battle }
-//  POST /api/battle  { action: 'answer',   id, round, pick (0-3), t (ms) }    -> { live: LiveSync }
-//  POST /api/battle  { action: 'ai_start' }                                   -> { ai: AiStart }   rated Lingo-AI duel begins
-//  POST /api/battle  { action: 'ai_result', result: win|loss|draw }           -> { ai: AiResult, me }
+//  POST /api/battle  { action: 'open',     questions, rating, name, avatar? } -> { battle }
+//  POST /api/battle  { action: 'join',     id, rating, name, avatar? }        -> { battle }
+//  POST /api/battle  { action: 'answer',   id, round, correct (0|1), t (ms) } -> { live: LiveSync }
 //  POST /api/battle  { action: 'forfeit',  id }                               -> { live: LiveSync }
 //  POST /api/battle  { action: 'submit',   id, score }                        -> { battle }   (legacy async flow)
 //  POST /api/battle  { action: 'cancel',   id }                               -> { ok: true }
@@ -26,17 +23,6 @@
 //   escapes the rating loss.
 // - Elo: K=64 for both sides (user report: climbing was too slow) — a win between equals is
 //   +32, an underdog upset up to the ±64 clamp. Must match PVP_ELO_K in src/lib/battle.ts.
-//
-// THE RATING LIVES ON THE SERVER (table public.ratings). The browser only displays it:
-// - open/join ignore any client-sent rating and read the real one from the table;
-// - the answer's correctness is decided HERE from the stored question (the client sends only
-//   which option it picked, never "I was right");
-// - a finished battle is applied to both players by the SQL function settle_battle(): atomic and
-//   idempotent (a retry or a double request can never count a battle twice);
-// - Lingo-AI duels: at most 3 rated per day, a duel that is started and never reported (the app
-//   was closed) is counted as a LOSS, and a result that arrives faster than a human could play is
-//   counted as a loss too.
-// This function writes NO logs (no console output); errors only become a 502 response.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Schema: supabase/schema.sql adds `alter table battles add column if not exists live jsonb`.
 import crypto from 'node:crypto';
@@ -81,7 +67,6 @@ interface BattleRow {
   p1_delta: number | null;
   p2_delta: number | null;
   live: LiveState | null;
-  settled?: boolean;
   seen1: number | null; // heartbeat: last time p1 polled sync (separate columns so
   seen2: number | null; //  heartbeats never clobber concurrent `live` writes)
   created_at: string;
@@ -118,26 +103,6 @@ interface LiveSync {
   left: 'me' | 'opp' | null;
 }
 
-/** My rating as the server stores it (the only source of truth). */
-interface RatingRow {
-  telegram_user_id: number;
-  rating: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  ai_day: string | null;
-  ai_count: number;
-  ai_open_at: string | null;
-}
-
-interface MyRating {
-  rating: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  aiLeft: number; // rated Lingo-AI duels still available today
-}
-
 interface Req {
   method?: string;
   url?: string;
@@ -160,9 +125,6 @@ const ROUND_GRACE_MS = 3000; // extra time on the server clock for network laten
 const START_DELAY_MS = 3500; // countdown between join and round 0
 const ADVANCE_DELAY_MS = 1500; // reveal pause between rounds
 const STALE_MS = 25_000; // no heartbeat for this long mid-battle = forfeit
-const AI_PER_DAY = 3; // must match AI_BATTLES_PER_DAY in src/lib/battle.ts
-const AI_ELO_K = 48; // must match AI_ELO_K in src/lib/battle.ts
-const AI_MIN_MS = 15_000; // a 7-question duel cannot honestly be finished faster than this (guards against scripts)
 const hits = new Map<string, { n: number; reset: number }>();
 
 function header(req: Req, name: string): string {
@@ -225,48 +187,6 @@ function expectedScore(you: number, opp: number): number {
 }
 
 const clampDelta = (d: number): number => Math.max(-MAX_DELTA, Math.min(MAX_DELTA, Math.round(d)));
-
-type Db = { url: string; key: string };
-
-/** Mirrors kScale()/aiK() in src/lib/battle.ts. */
-function aiK(rating: number): number {
-  const scale = rating < 1300 ? 1 : rating < 1500 ? 0.85 : rating < 1700 ? 0.7 : rating < 1900 ? 0.55 : 0.45;
-  return Math.max(4, Math.round(AI_ELO_K * scale));
-}
-
-/** Calendar day in Tashkent (the learners' time zone) — the AI daily quota resets at local midnight. */
-const dayKey = (): string => new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
-
-/** Reads my rating row, creating it (1000) on first use. Never takes a rating from the client. */
-async function myRatingRow(db: Db, uid: string): Promise<RatingRow> {
-  const get = async (): Promise<RatingRow | undefined> => {
-    const r = await sbFetch(db, `ratings?select=*&telegram_user_id=eq.${uid}&limit=1`);
-    if (!r.ok) throw new Error(`supabase_${r.status}`);
-    return ((await r.json()) as RatingRow[])[0];
-  };
-  const found = await get();
-  if (found) return found;
-  const ins = await sbFetch(db, 'ratings?on_conflict=telegram_user_id', {
-    method: 'POST',
-    headers: { prefer: 'resolution=ignore-duplicates,return=minimal' },
-    body: JSON.stringify({ telegram_user_id: Number(uid) }),
-  });
-  if (!ins.ok) throw new Error(`supabase_${ins.status}`);
-  const again = await get();
-  if (!again) throw new Error('rating_missing');
-  return again;
-}
-
-function toMine(r: RatingRow): MyRating {
-  const used = r.ai_day === dayKey() ? r.ai_count : 0;
-  return { rating: r.rating, wins: r.wins, losses: r.losses, draws: r.draws, aiLeft: Math.max(0, AI_PER_DAY - used) };
-}
-
-/** Applies a finished PvP battle to both ratings (atomic + idempotent, see settle_battle in schema.sql). */
-async function settle(db: Db, id: string): Promise<void> {
-  const r = await sbFetch(db, 'rpc/settle_battle', { method: 'POST', body: JSON.stringify({ p_id: id }) });
-  if (!r.ok) throw new Error(`settle_${r.status}`);
-}
 
 /** Mirrors timeForQuestion() in src/lib/battle.ts (server knows the questions). */
 function qTimeMs(questions: Quiz[], i: number): number {
@@ -388,6 +308,10 @@ function sanitizeQuestions(raw: unknown): Quiz[] | null {
 }
 
 const cleanText = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const cleanRating = (v: unknown): number => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(5000, Math.max(900, n)) : 1000;
+};
 
 export default async function handler(req: Req, res: Res): Promise<void> {
   res.setHeader('Cache-Control', 'no-store');
@@ -444,14 +368,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         res.status(200).json({ battle: null });
         return;
       }
-      if (row.status === 'finished' && row.settled === false) await settle(db, row.id); // self-heal
       res.status(200).json({ battle: view(row, uid) });
-      return;
-    }
-
-    // ---- GET / my rating (server-owned) ----
-    if (req.method === 'GET' && action === 'me') {
-      res.status(200).json({ me: toMine(await myRatingRow(db, uid)) });
       return;
     }
 
@@ -471,7 +388,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const live = row.live;
       const readRound = live.round;
       let changed = false;
-      if (row.status === 'finished' && row.settled === false) await settle(db, row.id); // self-heal
       if (row.status === 'active') {
         if (isP1) row.seen1 = Date.now();
         else row.seen2 = Date.now();
@@ -491,7 +407,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         });
         if (r.ok) {
           const arr = (await r.json().catch(() => [])) as BattleRow[];
-          if (arr.length > 0 && row.status === 'finished') await settle(db, row.id);
           if (arr.length === 0) {
             const fresh = await getRow(db, row.id);
             if (fresh) {
@@ -521,20 +436,18 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         res.status(400).json({ error: 'bad_questions' });
         return;
       }
-      const mine = await myRatingRow(db, uid);
-      // never lose a result: settle finished battles that were not applied yet, THEN garbage-collect
-      await sbFetch(db, 'rpc/settle_all_finished', { method: 'POST', body: '{}' });
+      // garbage-collect stale rows, then drop my previous open challenges
       await sbFetch(db, `battles?created_at=lt.${new Date(Date.now() - ROW_TTL_MS).toISOString()}`, { method: 'DELETE' });
       await sbFetch(db, `battles?p1=eq.${uid}&status=eq.open`, { method: 'DELETE' });
       const row: BattleRow = {
         id: crypto.randomUUID().slice(0, 8) + '_' + uid + '_' + Date.now().toString(36),
         p1: Number(uid), p2: null,
         p1_name: cleanText(body?.name, 24) || 'O‘quvchi', p2_name: null,
-        p1_rating: mine.rating, p2_rating: null,
+        p1_rating: cleanRating(body?.rating), p2_rating: null,
         p1_avatar: cleanText(body?.avatar, 8) || null, p2_avatar: null,
         p1_score: null, p2_score: null, p1_done: false, p2_done: false,
         status: 'open', questions, winner: null, p1_delta: null, p2_delta: null,
-        live: freshLive(), settled: false, seen1: Date.now(), seen2: null,
+        live: freshLive(), seen1: Date.now(), seen2: null,
         created_at: new Date().toISOString(),
       };
       const r = await sbFetch(db, 'battles', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify(row) });
@@ -559,7 +472,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         res.status(409).json({ error: 'not_joinable' });
         return;
       }
-      const mine = await myRatingRow(db, uid);
       const live: LiveState = row.live ?? freshLive();
       live.round = 0;
       live.roundStart = Date.now() + START_DELAY_MS; // shared countdown — both clients start together
@@ -569,7 +481,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const patched: Partial<BattleRow> = {
         p2: Number(uid),
         p2_name: cleanText(body?.name, 24) || 'O‘quvchi',
-        p2_rating: mine.rating,
+        p2_rating: cleanRating(body?.rating),
         p2_avatar: cleanText(body?.avatar, 8) || null,
         status: 'active',
         live,
@@ -598,11 +510,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const live = row.live;
       const isP1 = String(row.p1) === uid;
       const round = Math.round(Number(body?.round));
-      const pickRaw = Number(body?.pick);
-      if (!Number.isInteger(pickRaw) || pickRaw < 0 || pickRaw > 3) {
-        res.status(400).json({ error: 'bad_pick' });
-        return;
-      }
+      const correct = Number(body?.correct) === 1;
       const t = Math.max(0, Math.min(120_000, Math.round(Number(body?.t) || 0)));
       if (row.status === 'finished') {
         res.status(200).json({ live: liveSync(row, uid) });
@@ -614,8 +522,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       if (row.status === 'active' && live.roundStart != null && round === live.round) {
         const myAns = isP1 ? live.a1 : live.a2;
         if (myAns == null) {
-          // Correctness is decided here, from the stored question — never reported by the client.
-          const correct = pickRaw === row.questions[live.round]?.answer;
           const ans: LiveAns = { c: correct ? 1 : 0, t };
           if (isP1) live.a1 = ans;
           else live.a2 = ans;
@@ -652,7 +558,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           if (r.ok) {
             const arr = (await r.json().catch(() => [])) as BattleRow[];
             if (arr.length === 0) wrote = false; // lost the race — the round already moved
-            else if ((row.status as string) === 'finished') await settle(db, row.id); // finishRow() may have ended it
           }
         }
       }
@@ -685,7 +590,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         if (r.ok) {
           const arr = (await r.json().catch(() => [])) as BattleRow[];
           if (arr.length > 0) {
-            await settle(db, row.id);
             res.status(200).json({ live: liveSync(row, uid) });
             return;
           }
@@ -729,83 +633,18 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         patched.p1_delta = clampDelta(PVP_K * (result - expectedScore(row.p1_rating, opp)));
         patched.p2_delta = clampDelta(PVP_K * (1 - result - expectedScore(row.p2_rating ?? row.p1_rating, row.p1_rating)));
       }
-      const r = await sbFetch(db, `battles?id=eq.${id}&status=neq.finished`, { method: 'PATCH', headers: { prefer: 'return=representation' }, body: JSON.stringify(patched) });
+      const r = await sbFetch(db, `battles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patched) });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
-      const wrote = (await r.json().catch(() => [])) as BattleRow[];
-      if (wrote.length > 0 && wrote[0].status === 'finished') await settle(db, id);
       const fresh = (await getRow(db, id)) ?? row;
       res.status(200).json({ battle: view(fresh, uid) });
       return;
     }
 
-    // ---- POST / a rated Lingo-AI duel starts ----
-    if (action === 'ai_start') {
-      const row = await myRatingRow(db, uid);
-      // A previous duel that was never reported (app closed mid-game) is a loss.
-      if (row.ai_open_at) await closeAi(db, uid, row.ai_open_at, 'loss');
-      const cur = await myRatingRow(db, uid);
-      const today = dayKey();
-      const used = cur.ai_day === today ? cur.ai_count : 0;
-      if (used >= AI_PER_DAY) {
-        res.status(200).json({ ai: { rated: false, ...toMine(cur) } });
-        return;
-      }
-      // Conditional claim: two simultaneous starts cannot both take the same slot.
-      const claim = await sbFetch(db, `ratings?telegram_user_id=eq.${uid}&ai_count=eq.${cur.ai_count}`, {
-        method: 'PATCH',
-        headers: { prefer: 'return=representation' },
-        body: JSON.stringify({ ai_day: today, ai_count: used + 1, ai_open_at: new Date().toISOString() }),
-      });
-      const claimed = claim.ok ? ((await claim.json().catch(() => [])) as RatingRow[]) : [];
-      if (claimed.length === 0) {
-        res.status(200).json({ ai: { rated: false, ...toMine(cur) } });
-        return;
-      }
-      res.status(200).json({ ai: { rated: true, ...toMine(claimed[0]) } });
-      return;
-    }
-
-    // ---- POST / the rated Lingo-AI duel is over ----
-    if (action === 'ai_result') {
-      const claimed = typeof body?.result === 'string' ? (body.result as string) : '';
-      const result = claimed === 'win' || claimed === 'draw' ? claimed : 'loss';
-      const row = await myRatingRow(db, uid);
-      if (!row.ai_open_at) {
-        // practice duel (daily quota used up) or a duplicate report: nothing to apply
-        res.status(200).json({ ai: { rated: false, delta: 0, ...toMine(row) } });
-        return;
-      }
-      const tooFast = Date.now() - new Date(row.ai_open_at).getTime() < AI_MIN_MS;
-      const applied = await closeAi(db, uid, row.ai_open_at, tooFast ? 'loss' : (result as 'win' | 'draw' | 'loss'));
-      res.status(200).json({ ai: { rated: applied !== null, delta: applied?.delta ?? 0, ...toMine(applied?.row ?? row) } });
-      return;
-    }
-
     res.status(400).json({ error: 'bad_action' });
-  } catch {
-    // No logging on purpose (privacy): the client just sees a generic storage error.
+  } catch (e) {
+    console.error('battle failure', e instanceof Error ? e.message : String(e));
     res.status(502).json({ error: 'storage_error' });
   }
-}
-
-/**
- * Finishes the open rated AI duel exactly once: claims it by clearing ai_open_at (whoever clears it
- * wins the race), then applies the Elo change through the SQL function.
- */
-async function closeAi(db: Db, uid: string, openAt: string, result: 'win' | 'draw' | 'loss'): Promise<{ delta: number; row: RatingRow } | null> {
-  const claim = await sbFetch(db, `ratings?telegram_user_id=eq.${uid}&ai_open_at=eq.${encodeURIComponent(openAt)}`, {
-    method: 'PATCH',
-    headers: { prefer: 'return=representation' },
-    body: JSON.stringify({ ai_open_at: null }),
-  });
-  const claimed = claim.ok ? ((await claim.json().catch(() => [])) as RatingRow[]) : [];
-  if (claimed.length === 0) return null; // someone else already closed it
-  const score = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
-  const delta = Math.round(aiK(claimed[0].rating) * (score - 0.5)); // Lingo plays at the learner's own level -> expected 0.5
-  const r = await sbFetch(db, 'rpc/apply_ai_result', { method: 'POST', body: JSON.stringify({ p_uid: Number(uid), p_delta: delta, p_result: result }) });
-  if (!r.ok) throw new Error(`apply_${r.status}`);
-  const out = (await r.json()) as RatingRow | RatingRow[];
-  return { delta, row: Array.isArray(out) ? out[0] : out };
 }
 
 async function getRow(db: { url: string; key: string }, id: string): Promise<BattleRow | null> {

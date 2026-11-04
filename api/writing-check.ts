@@ -331,6 +331,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     }
     res.status(200).json({ result });
   } catch (e) {
+    console.error('writing-check upstream failure', e instanceof UpstreamError ? `${e.status} ${e.detail}` : String(e instanceof Error ? e.name : e));
     if (e instanceof UpstreamError && e.status === 429) res.status(429).json({ error: 'upstream_busy' });
     else res.status(502).json({ error: 'upstream_error' });
   }

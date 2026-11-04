@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Level, Quiz } from '../types';
 import { useApp } from '../store/store';
-import { addCoins, applyServerRating, isOwnedActive, recordBattleResult } from '../store/actions';
-import { refreshRating } from '../lib/ratingSync';
+import { addCoins, isOwnedActive, recordBattleResult } from '../store/actions';
 import { toast } from '../store/ui';
 import { rankInfo, ratingOf } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import {
-  AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiAccuracy, aiAccFor, aiCorrectFor, aiRatedLeft,
-  aiThinkMs, battleResultOf, buildBattleQuestions, eloDelta, levelIdx, PVP_ELO_K, timeForQuestion,
+  AI_BATTLES_PER_DAY, BATTLE_QUESTIONS, aiK, aiAccuracy, aiAccFor, aiCorrectFor, aiRatedLeft,
+  aiThinkMs, battleResultOf, buildBattleQuestions, eloDelta, levelIdx, PVP_ELO_K, scoreOf, timeForQuestion,
   type BattleQuiz,
 } from '../lib/battle';
 import {
-  aiResult, aiStart, answerPvp, battleAvailable, cancelChallenge, forfeitPvp, getBattle, isLegacySync, joinChallenge, listChallenges,
+  answerPvp, battleAvailable, cancelChallenge, forfeitPvp, getBattle, isLegacySync, joinChallenge, listChallenges,
   notConfigured, openChallenge, submitScore, syncPvp, type BattleView, type LiveSync, type SyncResult,
 } from '../lib/battleApi';
 import { Button, Card, Modal, Notice, Pill, ProgressBar, Section } from '../components/ui';
@@ -96,7 +95,6 @@ export function Battle() {
   const liveScoreRef = useRef({ you: 0, them: 0 }); // latest duel scores (for the forfeit record)
   const modeRef = useRef<'ai' | 'pvp'>('ai');
   const oppRatingRef = useRef<number | null>(null);
-  const aiRatedRef = useRef(false); // the server counted the current Lingo-AI duel as rated
   const oppNameRef = useRef('Raqib');
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [legacyPvp, setLegacyPvp] = useState(false); // pre-live battle row -> old async flow
@@ -114,7 +112,6 @@ export function Battle() {
 
   useEffect(() => {
     let alive = true;
-    void refreshRating(); // always start from the server's numbers
     battleAvailable().then((v) => alive && setOnline(v));
     return () => {
       alive = false;
@@ -131,31 +128,19 @@ export function Battle() {
     const vs = modeRef.current;
     const oppRating = oppRatingRef.current ?? rating;
     const { you, them } = liveScoreRef.current;
-    const record = (delta: number) =>
-      recordBattleResult({
-        id: uid('bt'),
-        date: new Date().toISOString(),
-        vs: vs === 'ai' ? 'ai' : 'player',
-        opponent: oppNameRef.current,
-        you,
-        them,
-        total: BATTLE_QUESTIONS,
-        result: 'loss',
-        delta,
-      });
-    if (vs === 'pvp') {
-      // The server applies the loss to my rating; the number below is only what the history list shows.
-      record(eloDelta(rating, oppRating, 0, PVP_ELO_K));
-      const id = battleIdRef.current;
-      if (id) void forfeitPvp(id).finally(() => void refreshRating());
-    } else if (aiRatedRef.current) {
-      // A rated Lingo duel that is left = a loss, decided by the server (it also does so on its own
-      // if this request never arrives, e.g. the app was closed).
-      aiRatedRef.current = false;
-      void aiResult('loss', true).then((r) => { applyServerRating(r); record(r.delta); }).catch(() => record(0));
-    } else {
-      record(0);
-    }
+    const delta = eloDelta(rating, oppRating, 0, vs === 'ai' ? aiK(rating) : PVP_ELO_K);
+    recordBattleResult({
+      id: uid('bt'),
+      date: new Date().toISOString(),
+      vs: vs === 'ai' ? 'ai' : 'player',
+      opponent: oppNameRef.current,
+      you,
+      them,
+      total: BATTLE_QUESTIONS,
+      result: 'loss',
+      delta,
+    });
+    if (vs === 'pvp' && battleIdRef.current) void forfeitPvp(battleIdRef.current);
     toast('Jangni tark etdingiz — mag‘lubiyat hisoblandi', 'warn');
   }, [rating]);
 
@@ -175,9 +160,6 @@ export function Battle() {
     oppRatingRef.current = rating;
     liveScoreRef.current = { you: 0, them: 0 };
     resolvedRef.current = false;
-    // The server decides whether this duel is rated (max 3 a day). No answer = practice only.
-    aiRatedRef.current = false;
-    void aiStart().then((r) => { aiRatedRef.current = r.rated; applyServerRating(r); }).catch(() => undefined);
     setPhase('duel');
     haptic('light');
   }, [s.quizHistory, level, rating]);
@@ -190,7 +172,7 @@ export function Battle() {
   const goSearching = useCallback(async () => {
     setPhase('searching');
     setDiag(null);
-    const me = { name: myName, avatar: myAvatar }; // the rating is NOT sent: the server owns it
+    const me = { rating, name: myName, avatar: myAvatar };
     try {
       // 1) join an existing open challenge if there is one
       const list = await listChallenges();
@@ -261,7 +243,7 @@ export function Battle() {
       );
       startAi();
     }
-  }, [myName, myAvatar, s.quizHistory, level, startAi, withLevels]);
+  }, [rating, myName, myAvatar, s.quizHistory, level, startAi, withLevels]);
 
   const cancelSearch = useCallback(async () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -273,29 +255,12 @@ export function Battle() {
   // ===== Finish paths =====
 
   const finish = useCallback(
-    async (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
+    (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
       resolvedRef.current = true; // battle resolved normally — leaving now is free
       const result = battleResultOf(you, them);
-      let rated = vs === 'player';
-      let delta = vs === 'player' ? serverDelta ?? 0 : 0;
-      if (vs === 'ai') {
-        // The SERVER computes and stores the rating change of a Lingo duel (and refuses to rate more
-        // than 3 a day). If it cannot be reached the duel is simply practice: nothing is lost or won.
-        const wasRated = aiRatedRef.current;
-        aiRatedRef.current = false;
-        if (wasRated) {
-          try {
-            const r = await aiResult(result);
-            applyServerRating(r);
-            rated = r.rated;
-            delta = r.delta;
-          } catch {
-            toast('Server bilan aloqa yo‘q — bu jang reytingga ta’sir qilmadi', 'warn');
-          }
-        }
-      } else {
-        void refreshRating(); // PvP: the server already applied it — just fetch the new numbers
-      }
+      const rated = vs === 'player' || ratedLeft > 0;
+      const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), aiK(rating)) : serverDelta ?? 0;
+      const delta = rated ? rawDelta : 0;
       recordBattleResult({
         id: uid('bt'),
         date: new Date().toISOString(),
@@ -305,14 +270,14 @@ export function Battle() {
         them,
         total: questions.length || BATTLE_QUESTIONS,
         result,
-        delta,
+        delta: rawDelta,
       });
       if (rated) addCoins(result === 'win' ? WIN_COINS : result === 'draw' ? DRAW_COINS : LOSS_COINS);
       haptic(result === 'win' ? 'success' : 'warning');
       setOutcome({ vs, opponent, you, them, result, delta, rated });
       setPhase('result');
     },
-    [questions.length],
+    [questions.length, ratedLeft, rating],
   );
 
   const onDuelFinish = useCallback(
@@ -1044,7 +1009,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppAvatar, onFinish, onSco
       playSfx('wrong');
     }
     const t = Math.max(0, Math.round(nowS() - (v.roundStart ?? nowS())));
-    void answerPvp(battleId, v.round, i, t)
+    void answerPvp(battleId, v.round, correct, t)
       .then((r) => {
         if (!finishedRef.current) apply(r);
       })

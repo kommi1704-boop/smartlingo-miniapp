@@ -7,10 +7,6 @@
 // Env (server only, never VITE_-prefixed): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // The browser never talks to Supabase. The user id is taken only from the verified initData, never from the body.
 // Chat history and writing texts are NOT stored online (privacy: the learners are minors).
-// The RATING is not part of the saved progress any more: it lives in public.ratings and only the
-// server changes it. On GET the battle numbers of the saved state are overwritten with the server's,
-// so editing localStorage / the synced copy can never change a rating.
-// No logging (privacy): errors become a generic 502.
 import crypto from 'node:crypto';
 
 interface Req {
@@ -122,21 +118,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
       const rows = (await r.json()) as { state: unknown; updated_at: string }[];
-      let state = rows[0]?.state ?? null;
-      if (state && typeof state === 'object' && !Array.isArray(state)) {
-        const rr = await fetch(`${db.url}/rest/v1/ratings?telegram_user_id=eq.${uid}&select=rating,wins,losses,draws&limit=1`, {
-          headers: sbHeaders(db.key),
-          signal: AbortSignal.timeout(15_000),
-        });
-        const mine = rr.ok ? ((await rr.json()) as { rating: number; wins: number; losses: number; draws: number }[])[0] : undefined;
-        const prev = ((state as Record<string, unknown>).battle ?? {}) as Record<string, unknown>;
-        state = {
-          ...(state as Record<string, unknown>),
-          // no ratings row yet = a brand-new player: the base rating, never a number from the device
-          battle: { ...prev, ratingDelta: (mine?.rating ?? 1000) - 1000, wins: mine?.wins ?? 0, losses: mine?.losses ?? 0, draws: mine?.draws ?? 0 },
-        };
-      }
-      res.status(200).json({ enabled: true, state, updatedAt: rows[0]?.updated_at ?? null });
+      res.status(200).json({ enabled: true, state: rows[0]?.state ?? null, updatedAt: rows[0]?.updated_at ?? null });
       return;
     }
 
@@ -159,13 +141,6 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         signal: AbortSignal.timeout(15_000),
       });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
-      // make sure this learner has a (server-owned) rating row so they appear on the leaderboard
-      await fetch(`${db.url}/rest/v1/ratings?on_conflict=telegram_user_id`, {
-        method: 'POST',
-        headers: { ...sbHeaders(db.key), prefer: 'resolution=ignore-duplicates,return=minimal' },
-        body: JSON.stringify({ telegram_user_id: Number(uid) }),
-        signal: AbortSignal.timeout(15_000),
-      }).catch(() => undefined);
       res.status(200).json({ ok: true });
       return;
     }
@@ -182,7 +157,8 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     }
 
     res.status(405).json({ error: 'method_not_allowed' });
-  } catch {
+  } catch (e) {
+    console.error('progress failure', e instanceof Error ? e.message : String(e));
     res.status(502).json({ error: 'storage_error' });
   }
 }
