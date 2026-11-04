@@ -128,13 +128,17 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           headers: sbHeaders(db.key),
           signal: AbortSignal.timeout(15_000),
         });
-        const mine = rr.ok ? ((await rr.json()) as { rating: number; wins: number; losses: number; draws: number }[])[0] : undefined;
-        const prev = ((state as Record<string, unknown>).battle ?? {}) as Record<string, unknown>;
-        state = {
-          ...(state as Record<string, unknown>),
-          // no ratings row yet = a brand-new player: the base rating, never a number from the device
-          battle: { ...prev, ratingDelta: (mine?.rating ?? 1000) - 1000, wins: mine?.wins ?? 0, losses: mine?.losses ?? 0, draws: mine?.draws ?? 0 },
-        };
+        // If the ratings table is not reachable (e.g. schema.sql not run yet) leave the saved numbers
+        // untouched — never "reset" a rating just because the lookup failed.
+        if (rr.ok) {
+          const mine = ((await rr.json()) as { rating: number; wins: number; losses: number; draws: number }[])[0];
+          const prev = ((state as Record<string, unknown>).battle ?? {}) as Record<string, unknown>;
+          state = {
+            ...(state as Record<string, unknown>),
+            // no ratings row yet = a brand-new player: the base rating, never a number from the device
+            battle: { ...prev, ratingDelta: (mine?.rating ?? 1000) - 1000, wins: mine?.wins ?? 0, losses: mine?.losses ?? 0, draws: mine?.draws ?? 0 },
+          };
+        }
       }
       res.status(200).json({ enabled: true, state, updatedAt: rows[0]?.updated_at ?? null });
       return;
