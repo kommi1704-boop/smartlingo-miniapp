@@ -1,6 +1,7 @@
 import type { ListeningActivity } from '../types';
+import { LISTENING_EXTRA } from './listening-extra';
 
-export const LISTENING: ListeningActivity[] = [
+const LISTENING_BASE: ListeningActivity[] = [
   {
     id: "l01",
     title: "Meeting a New Classmate",
@@ -238,3 +239,5 @@ export const LISTENING: ListeningActivity[] = [
     ],
   },
 ];
+
+export const LISTENING: ListeningActivity[] = [...LISTENING_BASE, ...LISTENING_EXTRA];
