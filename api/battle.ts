@@ -79,6 +79,7 @@ interface BattleView {
   me: 'p1' | 'p2';
   questions?: Quiz[];
   oppName: string;
+  oppId?: string; // opponent's telegram user id -> opens their public profile
   oppAvatar?: string;
   oppRating?: number;
   meScore?: number;
@@ -204,6 +205,7 @@ function view(row: BattleRow, uid: string): BattleView {
     me,
     questions: mine || String(row.p2) === uid ? row.questions : undefined,
     oppName: (mine ? row.p2_name : row.p1_name) ?? 'Raqib',
+    oppId: String(mine ? row.p2 ?? '' : row.p1) || undefined,
     oppAvatar: (mine ? row.p2_avatar : row.p1_avatar) ?? undefined,
     oppRating: (mine ? row.p2_rating : row.p1_rating) ?? undefined,
     meScore: mine ? row.p1_score ?? undefined : row.p2_score ?? undefined,
@@ -351,7 +353,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       if (!r.ok) throw new Error(`supabase_${r.status}`);
       const rows = (await r.json()) as BattleRow[];
       res.status(200).json({
-        list: rows.map((b) => ({ id: b.id, name: b.p1_name || 'Raqib', rating: b.p1_rating, avatar: b.p1_avatar ?? undefined, createdAt: b.created_at })),
+        list: rows.map((b) => ({ id: b.id, uid: String(b.p1), name: b.p1_name || 'Raqib', rating: b.p1_rating, avatar: b.p1_avatar ?? undefined, createdAt: b.created_at })),
       });
       return;
     }

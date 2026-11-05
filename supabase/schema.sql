@@ -106,3 +106,109 @@ end;
 $$;
 
 revoke execute on function public.bump_ai_usage(bigint, date, text) from anon, authenticated;
+
+-- ============================================================================
+-- Telegram Stars payments (Coin Store). Idempotent: safe to re-run.
+-- SECURITY MODEL IDENTICAL TO progress/battles: RLS on, NO policies — browsers
+-- cannot read or write these rows; only the Vercel server functions (service-role
+-- key) may. The client NEVER touches this table directly.
+-- ----------------------------------------------------------------------------
+-- One row per created invoice: 'pending' -> 'succeeded' | 'failed' | 'refunded'.
+-- Coins are NOT written into progress.state here (the device owns that copy);
+-- instead succeeded+unacked rows form a durable ledger that the client applies
+-- via ack (see src/lib/billing.ts). This avoids the client overwriting a
+-- server-side balance change with its own stale copy on the next sync push.
+create table if not exists public.payments (
+  id                          text primary key,      -- "pay_<uid>_<rand>", embedded in the invoice payload
+  telegram_user_id            bigint      not null,
+  package_id                  text        not null,  -- 'tiny' | 'starter' | 'popular' | 'pro' | 'mega' | 'ultimate'
+  coins                       int         not null,
+  stars                       int         not null,
+  currency                    text        not null default 'XTR',
+  status                      text        not null default 'pending', -- pending|succeeded|failed|refunded
+  invoice_payload             text,
+  telegram_payment_charge_id  text,                  -- unique — Telegram's idempotency key
+  acked                       boolean     not null default false, -- client applied the credit to its balance
+  acked_at                    timestamptz,
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
+);
+
+alter table public.payments enable row level security;
+
+-- Duplicate-payment guard at the database level: a charge id can exist only once.
+create unique index if not exists payments_charge_id_uq
+  on public.payments (telegram_payment_charge_id)
+  where telegram_payment_charge_id is not null;
+
+create index if not exists payments_user_created_idx
+  on public.payments (telegram_user_id, created_at desc);
+
+drop trigger if exists payments_touch on public.payments;
+create trigger payments_touch before update on public.payments
+  for each row execute function public.touch_updated_at();
+
+-- Atomic credit claim. The webhook calls this on successful_payment:
+--   returns coins (>0)  -> this call won the race, the payment IS credited (row now 'succeeded')
+--   returns 0           -> missing row / other user / already processed (duplicate delivery)
+-- Counts as the single source of truth for "credit exactly once".
+create or replace function public.claim_payment(p_id text, p_uid bigint, p_charge_id text)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_coins int;
+begin
+  update public.payments
+     set status = 'succeeded',
+         telegram_payment_charge_id = p_charge_id,
+         updated_at = now()
+   where id = p_id
+     and telegram_user_id = p_uid
+     and status = 'pending'
+   returning coins into v_coins;
+  return coalesce(v_coins, 0);
+end;
+$$;
+
+revoke execute on function public.claim_payment(text, bigint, text) from anon, authenticated;
+
+-- Client acknowledgement: "I have added these coins to my balance". Only the
+-- owner can ack, only succeeded rows. Idempotent.
+create or replace function public.ack_payments(p_ids text[], p_uid bigint)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.payments
+     set acked = true, acked_at = now(), updated_at = now()
+   where id = any(p_ids)
+     and telegram_user_id = p_uid
+     and status = 'succeeded'
+     and acked = false;
+end;
+$$;
+
+revoke execute on function public.ack_payments(text[], bigint) from anon, authenticated;
+
+-- ============================================================================
+-- Public identities (username / first name as seen in Telegram). Idempotent.
+-- Written ONLY from the server after initData verification. Usernames are public
+-- Telegram handles by design (the user chooses them); no email, phone or any
+-- other contact data is ever stored.
+create table if not exists public.identities (
+  telegram_user_id bigint primary key,
+  username         text,
+  first_name       text,
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.identities enable row level security;
+
+drop trigger if exists identities_touch on public.identities;
+create trigger identities_touch before update on public.identities
+  for each row execute function public.touch_updated_at();

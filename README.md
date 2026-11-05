@@ -168,6 +168,62 @@ Safety notes:
 ### Online progress (optional)
 Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (see `supabase/README.md`). Inside Telegram, progress then follows the learner to a new phone. Chats and writing texts are never uploaded. Learners can switch it off or delete everything in Settings.
 
+---
+
+## 6b. Telegram Stars billing — buy Coins (optional)
+
+A "Tanga do‘koni" screen lets learners buy Coin packs with **Telegram Stars (XTR)**:
+
+| Package | Coins | Price | Limit |
+|---|---|---|---|
+| Tiny Pack | 10 | 1 Star | **max 3 per user** (enforced on the server) |
+| Starter Pack | 100 | 15 Stars | — |
+| Popular Pack | 350 | 45 Stars | — |
+| Pro Pack | 850 | 99 Stars | — |
+| Mega Pack | 2,000 | 199 Stars | — |
+| Ultimate Pack | 5,000 | 399 Stars | — |
+
+How it works (no mock confirmations — real Telegram invoices):
+1. The client asks `POST /api/payments {action:'open'}`, which checks the Tiny Pack budget, stores a
+   `pending` row and returns a **real invoice link** from `createInvoiceLink` (currency `XTR`).
+2. The app opens it with `WebApp.openInvoice()`. The bot webhook (`/api/bot`) validates the
+   `pre_checkout_query` (owner, amount, budget) and answers within Telegram's 10 s window.
+3. On `successful_payment` the webhook credits **exactly once** through the atomic
+   `claim_payment()` RPC (a unique index on the charge id blocks duplicate webhook deliveries).
+   If a Tiny Pack purchase somehow exceeds the 3× budget, the Stars are **refunded automatically**.
+4. The app pulls the payments ledger, adds the coins to the **existing** wallet and acknowledges
+   (`ack`). A purchase also lands after a reinstall or on a new phone.
+5. Payment history (successful / pending / failed / refunded) is shown in the store screen.
+
+Setup (one-time):
+1. In Supabase → SQL Editor re-run the **full `supabase/schema.sql`** — it adds the `payments` and
+   `identities` tables plus the `claim_payment` / `ack_payments` functions (idempotent, existing data untouched).
+2. Re-run the setup script **after deploying**: `… npm run setup-bot` — it now also subscribes the
+   webhook to `pre_checkout_query` (mandatory for Stars payments).
+3. No new environment variables: the billing reuses `TELEGRAM_BOT_TOKEN`, `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`.
+4. Stars are real money. Test with the 1-Star Tiny Pack first.
+
+---
+
+## 6c. Public student profiles (optional)
+
+Every learner who syncs online gets a **public profile** at `#/u/<telegram id>`:
+
+- Opens when tapping a row in the **leaderboards** (rating / weekly XP / monthly XP), or an
+  opponent's name during a friendly battle and on the battle result screen. Your own row opens
+  your editable profile.
+- Shows equipped cosmetics exactly as equipped in the owner's profile (avatar emoji, frame,
+  name color / effect, title, background style), plus CEFR level, XP level, global / weekly /
+  monthly rank, streak, learned words, completed lessons, badges and owned collectibles.
+- **Privacy:** the server (`/api/profile?uid=…`) projects a sanitized view. Age, goal, uploaded
+  photo, interests, placement details, chats, essays, mistakes and per-day activity **never leave
+  the server**. Only the first name, the public Telegram @username (stored in the new
+  `identities` table) and learning aggregates are exposed. There is no email/phone in the system.
+- Weekly and monthly boards rank by XP earned in the last 7 / 30 UTC days.
+- Requires the same setup as online progress: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`,
+  and the `identities` table from the current `supabase/schema.sql`.
+
 ## 7. Known limits
 
 - **Data is stored on the device only.** Clearing the browser/Telegram cache, or using another phone, starts fresh.
@@ -181,13 +237,21 @@ Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in Vercel (see `supabase/READ
 
 ## 8. Testing status (please read)
 
-The package registry was blocked in the environment where this project was written, so
-`npm install` and the real `vite build` were **not run there** (they were later run on the owner's machine for the first version; the latest additions have not been through that yet). Only the data files were type-checked with `tsc --strict`. Instead the code was bundled with
-esbuild + Tailwind and exercised in a real headless Chromium: landing, onboarding, placement test,
-all 19 screens, flashcards/quiz/matching, grammar quiz, tutor demo, writing feedback, dark mode,
-persistence after reload, the highlighter, voice picker, mascot and sounds all passed (35 + 30 checks, no runtime errors).
-Because the real type-check has not run, `npm run typecheck` may report a few small type nits;
-`npm run build` does not depend on it. If `npm install` or the build shows an error, send it to me and I'll fix it.
+The earlier parts of this note referred to the first release (written where the package registry
+was blocked). Since then the project is verified in a normal environment on every delivery:
+
+- `npm run typecheck` (tsc --strict) — clean.
+- `npm run build` (vite) — succeeds.
+- Unit suites (run with `npx tsx tests/<file>.ts`): `phase2.test.ts` (58), `ai-handlers.test.ts` (32),
+  `billing-profile.test.ts` (70 — catalog parity, Tiny Pack budget, payload format, rating clamps,
+  XP windows, streaks, public-profile projection + privacy leak checks), `handlers-smoke.test.ts` (9).
+- The new screens (Tanga do‘koni incl. confirm/cancel/paid modals + credit application,
+  leaderboards incl. weekly/monthly tabs, public profile incl. cosmetics and ranks) were
+  exercised end-to-end in a real headless Chromium on desktop and mobile viewports with mocked
+  APIs and a stubbed Telegram SDK — no console errors.
+- The live Stars flow itself (real invoice, webhook, refund) can only be proven against a real
+  bot + Supabase + a real 1-Star purchase; the server logic is covered by unit tests as far as
+  possible without those secrets.
 
 ## 9. Where to change things
 

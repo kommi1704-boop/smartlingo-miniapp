@@ -26,7 +26,14 @@ async function call(method, payload) {
   return j.ok;
 }
 
-await call('setWebhook', { url: `${url}/api/bot`, ...(secret ? { secret_token: secret } : {}), allowed_updates: ['message'] });
+await call('setWebhook', {
+  url: `${url}/api/bot`,
+  ...(secret ? { secret_token: secret } : {}),
+  // pre_checkout_query is REQUIRED for Telegram Stars payments: the bot must answer
+  // it within 10 seconds or the payment is cancelled. successful_payment arrives
+  // inside 'message'. Re-run this script after deploying the billing update.
+  allowed_updates: ['message', 'pre_checkout_query'],
+});
 await call('setChatMenuButton', { menu_button: { type: 'web_app', text: 'O‘rganish', web_app: { url } } });
 await call('setMyCommands', {
   commands: [

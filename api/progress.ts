@@ -74,6 +74,28 @@ function supa(): { url: string; key: string } | null {
 
 const sbHeaders = (key: string) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' });
 
+/** Upserts the learner's PUBLIC identity (username / first name from verified initData) for student profiles. */
+async function upsertIdentity(db: { url: string; key: string }, initData: string): Promise<void> {
+  try {
+    const params = new URLSearchParams(initData);
+    const user = JSON.parse(params.get('user') ?? '{}') as { id?: number | string; username?: string; first_name?: string };
+    const uid = Number(user.id);
+    if (!uid) return;
+    const clean = (s: unknown): string | null => (typeof s === 'string' && /^[\w.]{2,32}$/.test(s) ? s : null);
+    const username = clean(user.username);
+    const firstName = typeof user.first_name === 'string' && user.first_name.trim() ? user.first_name.trim().slice(0, 24) : null;
+    if (!username && !firstName) return;
+    await fetch(`${db.url}/rest/v1/identities?on_conflict=telegram_user_id`, {
+      method: 'POST',
+      headers: { ...sbHeaders(db.key), prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ telegram_user_id: uid, username, first_name: firstName }),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    /* identity is a nice-to-have — never fail the sync over it */
+  }
+}
+
 /** Keeps only what is needed to restore progress. Chats and writing texts stay on the device. */
 function cleanState(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -141,6 +163,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         signal: AbortSignal.timeout(15_000),
       });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
+      void upsertIdentity(db, initData); // fire-and-forget; public identity for student profiles
       res.status(200).json({ ok: true });
       return;
     }
