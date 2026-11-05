@@ -1100,8 +1100,8 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
         ? `Jang boshlanadi: ${Math.max(1, Math.ceil(((sync.roundStart ?? nowS()) - nowS()) / 1000))}…`
         : preStart
           ? banner || 'Keyingi savol…'
-          : sync.mine?.c === 1
-            ? 'To‘g‘ri javob — ochko sizniki! ⚡'
+          : pick !== null && pick === q.answer
+            ? 'To‘g‘ri javob — ochko sizniki! ⚡' // instant local truth — no server wait
             : pick !== null
               ? 'Noto‘g‘ri tanlov — raqibning javobi kutilmoqda…'
               : sync.opp
@@ -1177,7 +1177,15 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
         <p className="mt-2 whitespace-pre-line text-lg font-bold leading-snug">{q.q}</p>
         <div className="mt-4 grid gap-2.5" role="group" aria-label="Javob variantlari">
           {q.options.map((o, i) => {
-            const isCorrect = sync.mine?.c === 1 && i === q.answer; // reveal only my own correct answer
+            // Instant reveal: the client already knows the answer key (the questions ship
+            // with it), so a CORRECT pick lights up green the moment it is tapped — the old
+            // code waited for the server round-trip, and since a correct answer advances the
+            // round server-side, "mine.c === 1" never survived to the next render: every
+            // correct answer first flashed red ✗ + "noto‘g‘ri tanlov" for the whole slow
+            // network round-trip while the point still got added (user report:
+            // "to‘g‘ri javobni bosganda ham xato chiqardi, lekin ochko qo‘shyapti").
+            // A WRONG pick still hides the key while the opponent is still racing.
+            const isCorrect = i === q.answer && (pick === i || sync.mine?.c === 1);
             const isPicked = pick === i;
             return (
               <button
