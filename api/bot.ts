@@ -11,8 +11,18 @@
 //   in the same second) is refunded automatically via refundStarPayment.
 // - Coins live in the payments ledger as succeeded+unacked rows; the Mini App
 //   applies them to the existing wallet and acks (see src/lib/billing.ts).
+//
+// Referrals ("Do'st taklifi"):
+// - Share links look like  https://t.me/<bot>?start=ref<referrer_id>  — Telegram
+//   delivers them as the text  "/start ref<referrer_id>".
+// - Only BRAND-NEW learners count (no online progress AND no identity yet).
+// - The referral row is keyed by the invited user's id (PK => exactly once, ever).
+// - The invited learner's coins are granted IMMEDIATELY here (deterministic grant
+//   id => idempotent); the referrer's coins are paid by /api/progress the first
+//   time the invited learner actually syncs (see reward_referral RPC).
+//
 // Env (server only): TELEGRAM_BOT_TOKEN, WEBAPP_URL, WEBHOOK_SECRET,
-//                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments).
+//                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments, referrals).
 
 interface Req {
   method?: string;
@@ -66,6 +76,17 @@ const PKG: Record<string, { coins: number; stars: number }> = {
   ultimate: { coins: 5000, stars: 399 },
 };
 const TINY_MAX = 3;
+
+// Referral reward in Coins — keep in sync with api/progress.ts (tests cross-check both).
+export const REFERRAL_COINS = 50;
+
+/** Parses "/start ref<referrer_id>" — returns the referrer id, or null for any other text. */
+export function parseRefPayload(text: string): number | null {
+  const m = /^\/start(?:\s+ref(\d{1,15}))?\s*$/.exec(text.trim());
+  if (!m || !m[1]) return null;
+  const n = Number(m[1]);
+  return n > 0 ? n : null;
+}
 
 async function tg(token: string, method: string, payload: unknown): Promise<{ ok: boolean; description?: string }> {
   try {
@@ -121,6 +142,73 @@ async function patchPayment(url: string, key: string, id: string, uid: number, f
     body: JSON.stringify(fields),
     signal: AbortSignal.timeout(15_000),
   }).catch(() => undefined);
+}
+
+interface FromUser {
+  id: number;
+  first_name?: string;
+}
+
+const webAppBtn = (url: string) => ({ inline_keyboard: [[{ text: '🚀 Ilovani ochish', web_app: { url } }]] });
+
+/**
+ * Records a referral and gifts the invited learner their coins.
+ * Returns true when THIS call accepted the referral (first time only).
+ * Every guard is idempotent: the PK on referrals.referred_id is the final say.
+ */
+async function handleReferral(db: { url: string; key: string }, token: string, appUrl: string, from: FromUser, referrerId: number): Promise<boolean> {
+  if (referrerId === from.id) return false; // self-invites never count
+  try {
+    // The invited learner must be brand-new: no online progress AND no identity yet.
+    // (Both were created by /api/progress on previous app opens.)
+    const probe = await Promise.all([
+      fetch(`${db.url}/rest/v1/progress?telegram_user_id=eq.${from.id}&select=telegram_user_id&limit=1`, { headers: sbHeaders(db.key), signal: AbortSignal.timeout(15_000) }),
+      fetch(`${db.url}/rest/v1/identities?telegram_user_id=eq.${from.id}&select=telegram_user_id&limit=1`, { headers: sbHeaders(db.key), signal: AbortSignal.timeout(15_000) }),
+    ]);
+    for (const r of probe) {
+      if (r.ok && ((await r.json()) as unknown[]).length > 0) {
+        await tg(token, 'sendMessage', {
+          chat_id: from.id,
+          text: 'Bu taklif havolasi faqat yangi o‘quvchilar uchun 🙂 Siz allaqachon o‘quvchimiz — ilovani oching va o‘rganishni davom ettiring!',
+        });
+        return false;
+      }
+    }
+
+    // Record the referral. on_conflict + ignore-duplicates => empty result when the
+    // account was referred before (retry, second link, group of friends racing).
+    const ins = await fetch(`${db.url}/rest/v1/referrals?on_conflict=referred_id`, {
+      method: 'POST',
+      headers: { ...sbHeaders(db.key), prefer: 'return=representation,resolution=ignore-duplicates' },
+      body: JSON.stringify({ referred_id: from.id, referrer_id: referrerId, status: 'pending' }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!ins.ok) return false;
+    const inserted = (await ins.json()) as unknown[];
+    if (!Array.isArray(inserted) || inserted.length === 0) return false; // already referred earlier
+
+    // Gift the invited learner NOW (deterministic id: a webhook retry cannot double-credit).
+    await fetch(`${db.url}/rest/v1/coin_grants?on_conflict=id`, {
+      method: 'POST',
+      headers: { ...sbHeaders(db.key), prefer: 'return=minimal,resolution=ignore-duplicates' },
+      body: JSON.stringify({ id: `gr_ref${from.id}_invite`, telegram_user_id: from.id, coins: REFERRAL_COINS, source: 'referral_invite' }),
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => undefined);
+
+    const name = from.first_name?.trim().slice(0, 24) || 'do‘st';
+    await tg(token, 'sendMessage', {
+      chat_id: from.id,
+      text: `🎉 Assalomu alaykum, ${name}!\n\nSiz do‘stingiz taklifi bilan keldingiz — hisobingizga 🪙 +${REFERRAL_COINS} Coin sovg‘a qilindi!\n\nIlovani oching: Coin darhol Do‘konda ko‘rinadi, do‘stingiz esa siz birinchi mashqingizni qilganingizdan so‘ng mukofot oladi. Omad! 🚀`,
+      reply_markup: webAppBtn(appUrl),
+    });
+    await tg(token, 'sendMessage', {
+      chat_id: referrerId,
+      text: `🎉 ${name} sizning havolangiz orqali qo‘shildi!\n\nU ilovada birinchi mashqini qilgach hisobingizga 🪙 +${REFERRAL_COINS} Coin qo‘shiladi.\n\nYana do‘stlaringizni taklif qiling — har biri uchun mukofot! 💎`,
+    });
+    return true;
+  } catch {
+    return false; // any trouble -> treat as a normal /start, never block the new user
+  }
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
@@ -247,9 +335,21 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     return;
   }
 
-  // ---------- 3) Regular messages (/start, /help, anything else) ----------
+  // ---------- 3) Regular messages (/start, /help, referral links, anything else) ----------
   if (msg?.text) {
     const name = msg.from?.first_name ?? 'do‘st';
+    // Referral deep link: /start ref<referrer_id> (private chats only).
+    const ref = parseRefPayload(msg.text);
+    const db = supa();
+    if (ref && db && msg.from && msg.chat.id === msg.from.id) {
+      const handled = await handleReferral(db, token, url, { id: msg.from.id, first_name: msg.from.first_name }, ref);
+      if (handled) {
+        res.status(200).json({ ok: true });
+        return;
+      }
+      // not accepted (existing learner, duplicate, self, or storage hiccup)
+      // -> fall through to the regular welcome below.
+    }
     if (msg.text.startsWith('/start') || msg.text.startsWith('/help')) {
       await tg(token, 'sendMessage', {
         chat_id: msg.chat.id,

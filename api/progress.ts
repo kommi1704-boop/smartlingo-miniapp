@@ -4,6 +4,15 @@
 //  PUT    /api/progress  (valid initData)   -> { ok: true }     body: { state }
 //  DELETE /api/progress  (valid initData)   -> { ok: true }     (removes the server copy)
 //
+// Side duties (both best-effort, never fail the sync):
+// - presence snapshot for the daily streak-reminder cron (api/reminders.ts):
+//   last_active day (Asia/Tashkent) + stored streak freezes, parsed SERVER-SIDE
+//   from the verified state json.
+// - referral settle: the first sync of an invited learner flips their referral to
+//   'rewarded' and pays the referrer through the atomic reward_referral RPC;
+//   the referrer gets a Telegram message. Coins reach both sides via the
+//   coin_grants ledger the Mini App applies exactly once (see src/lib/billing.ts).
+//
 // Env (server only, never VITE_-prefixed): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // The browser never talks to Supabase. The user id is taken only from the verified initData, never from the body.
 // Chat history and writing texts are NOT stored online (privacy: the learners are minors).
@@ -106,6 +115,104 @@ function cleanState(raw: unknown): Record<string, unknown> | null {
   return s;
 }
 
+// ---------- Presence + referral settle (shared with api/reminders.ts) ----------
+
+/** Current day in Asia/Tashkent (UTC+5, no DST) as YYYY-MM-DD — matches the app's local day keys. */
+export function uztDay(ts: number = Date.now()): string {
+  return new Date(ts + 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+export interface PresenceSnapshot {
+  last_active: string | null; // YYYY-MM-DD of the newest day with any activity, or null
+  freezes: number; // streak freezes held at sync time
+}
+
+/** Server-side read of the client's activity map: the newest day with XP or a freeze. */
+export function presenceFromState(state: unknown): PresenceSnapshot {
+  let last: string | null = null;
+  let freezes = 0;
+  if (state && typeof state === 'object' && !Array.isArray(state)) {
+    const s = state as { activity?: Record<string, { xp?: number; frozen?: boolean }>; shop?: { streakFreezes?: unknown } };
+    const act = s.activity;
+    if (act && typeof act === 'object' && !Array.isArray(act)) {
+      for (const [key, day] of Object.entries(act)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue; // only well-formed day keys
+        const d = day && typeof day === 'object' ? day : {};
+        if ((d.xp ?? 0) > 0 || d.frozen === true) {
+          if (last === null || key > last) last = key;
+        }
+      }
+    }
+    const f = s.shop?.streakFreezes;
+    freezes = typeof f === 'number' && Number.isFinite(f) ? Math.max(0, Math.floor(f)) : 0;
+  }
+  return { last_active: last, freezes };
+}
+
+/** Keep in sync with api/bot.ts REFERRAL_COINS (tests cross-check both). */
+export const REFERRAL_COINS = 50;
+
+async function tgSend(token: string, payload: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch {
+    /* notifications are best-effort */
+  }
+}
+
+// The referral settles exactly once (the RPC guards it); this in-memory set just
+// avoids re-running the RPC on every sync within one serverless instance.
+const settled = new Set<number>();
+
+/** Best-effort presence upsert + referral settle. Called after GET and PUT. */
+async function afterSync(db: { url: string; key: string }, uid: number, state: unknown, botToken: string | undefined): Promise<void> {
+  try {
+    // 1) presence snapshot (for the reminder cron)
+    const p = presenceFromState(state);
+    if (p.last_active) {
+      await fetch(`${db.url}/rest/v1/presence?on_conflict=telegram_user_id`, {
+        method: 'POST',
+        headers: { ...sbHeaders(db.key), prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ telegram_user_id: uid, last_active: p.last_active, freezes: p.freezes }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    }
+
+    // 2) first sync of a referred learner -> pay the referrer (atomic, once)
+    if (settled.has(uid)) return;
+    settled.add(uid);
+    const r = await fetch(`${db.url}/rest/v1/rpc/reward_referral`, {
+      method: 'POST',
+      headers: sbHeaders(db.key),
+      body: JSON.stringify({ p_referred: uid, p_coins: REFERRAL_COINS }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok || !botToken) return;
+    const coins = (await r.json().catch(() => 0)) as unknown;
+    if (typeof coins !== 'number' || coins <= 0) return;
+    const rr = await fetch(`${db.url}/rest/v1/referrals?referred_id=eq.${uid}&select=referrer_id&limit=1`, {
+      headers: sbHeaders(db.key),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!rr.ok) return;
+    const rows = (await rr.json()) as { referrer_id: number }[];
+    const rid = rows[0]?.referrer_id;
+    if (rid) {
+      void tgSend(botToken, {
+        chat_id: rid,
+        text: `🎉 Do‘stingiz o‘rganishni boshladi!\n\nHisobingizga 🪙 +${coins} Coin qo‘shildi — ilovani ochib oling. Yana do‘stlaringizni taklif qiling! 💎`,
+      });
+    }
+  } catch {
+    /* best-effort — never fail the sync over this */
+  }
+}
+
 export default async function handler(req: Req, res: Res): Promise<void> {
   res.setHeader('Cache-Control', 'no-store');
   const db = supa();
@@ -140,6 +247,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
       const rows = (await r.json()) as { state: unknown; updated_at: string }[];
+      void afterSync(db, Number(uid), rows[0]?.state ?? null, botToken); // best-effort, response is not delayed
       res.status(200).json({ enabled: true, state: rows[0]?.state ?? null, updatedAt: rows[0]?.updated_at ?? null });
       return;
     }
@@ -163,6 +271,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         signal: AbortSignal.timeout(15_000),
       });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
+      void afterSync(db, Number(uid), state, botToken); // best-effort, response is not delayed
       void upsertIdentity(db, initData); // fire-and-forget; public identity for student profiles
       res.status(200).json({ ok: true });
       return;

@@ -224,6 +224,47 @@ Every learner who syncs online gets a **public profile** at `#/u/<telegram id>`:
 - Requires the same setup as online progress: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`,
   and the `identities` table from the current `supabase/schema.sql`.
 
+---
+
+## 6d. Viral growth — referrals, share cards, streak reminders (optional)
+
+Three growth features built on the same ledger patterns as billing (idempotent, no mock
+confirmations, the existing wallet is reused).
+
+**1. Referrals ("Do'stlarni taklif qiling" — Profile page)**
+- Every learner gets a personal invite link `https://t.me/<bot>?start=ref<id>` (the bot
+  username is read from Telegram's `getMe` and served by `/api/payments`).
+- A **brand-new** learner opening the link is recorded once (`referrals` table, primary key
+  on the invited user) and receives **+50 Coin immediately**; the referrer gets **+50 Coin**
+  when the invited learner does their first exercise (first progress sync flips the referral
+  via the atomic `reward_referral()` RPC). Both rewards reach the wallet through the same
+  exactly-once `coin_grants` ledger used by Stars purchases. Self-invites and existing
+  learners are rejected by the bot webhook.
+
+**2. Share cards (Profile page)**
+- "Ulashish" opens Telegram's native share dialog with an invite text; "Natijamni ulashish"
+  shares a streak / XP / level card — and every shared card carries the referral link, so
+  each share is a potential invite.
+
+**3. Daily streak reminder (Telegram push)**
+- A Vercel cron (`api/reminders.ts`, scheduled daily at 13:00 UTC = 18:00 Tashkent) messages
+  learners who studied yesterday but not today ("🔥 Seriyangiz xavf ostida!") with a button
+  that opens the Mini App. Max **one message per user per day**; learners holding a streak
+  freeze are skipped. The input comes from the tiny `presence` table, refreshed on every
+  progress sync.
+- Cron auth: Vercel sends `x-vercel-cron: 1`. Optionally set `CRON_SECRET` in Vercel and you
+  can also call `https://<app>/api/reminders` with `Authorization: Bearer <secret>` manually.
+  Everything else is rejected (401).
+
+Setup (one-time, on top of the billing setup):
+1. Re-run the **full `supabase/schema.sql`** — it adds the `referrals`, `coin_grants` and
+   `presence` tables plus the `reward_referral` function (idempotent, existing data untouched).
+2. Redeploy — Vercel registers the cron from `vercel.json` automatically (Hobby plan supports
+   daily crons; no extra env vars required, `CRON_SECRET` is optional).
+3. The referral reward is 50 Coin (`REFERRAL_COINS`) — change it in `api/bot.ts`,
+   `api/progress.ts` and `src/lib/referrals.ts` together (tests cross-check all three).
+
+
 ## 7. Known limits
 
 - **Data is stored on the device only.** Clearing the browser/Telegram cache, or using another phone, starts fresh.

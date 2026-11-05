@@ -196,6 +196,106 @@ $$;
 revoke execute on function public.ack_payments(text[], bigint) from anon, authenticated;
 
 -- ============================================================================
+-- Referrals ("Do'st taklifi"). Idempotent: safe to re-run.
+-- One row per invited learner, keyed by the INVITED user (a person can be
+-- referred only once — the primary key enforces that at the database level).
+-- Life cycle: bot webhook inserts status='pending' when a NEW learner opens the
+-- bot via t.me/<bot>?start=ref<referrer>; /api/progress flips it to 'rewarded'
+-- (and pays the referrer through coin_grants) the first time the invited
+-- learner actually syncs progress from the Mini App. No browser ever touches
+-- these rows: RLS on, no policies — only the server functions (service-role key).
+create table if not exists public.referrals (
+  referred_id   bigint      primary key,            -- invited learner (telegram id)
+  referrer_id   bigint      not null,               -- who shared the link
+  status        text        not null default 'pending', -- pending | rewarded
+  created_at    timestamptz not null default now(),
+  rewarded_at   timestamptz
+);
+
+alter table public.referrals enable row level security;
+
+create index if not exists referrals_referrer_idx
+  on public.referrals (referrer_id, created_at desc);
+
+drop trigger if exists referrals_touch on public.referrals;
+create trigger referrals_touch before update on public.referrals
+  for each row execute function public.touch_updated_at();
+
+-- ============================================================================
+-- Coin grants — server-side coin GIFTS (referral rewards today, campaigns later).
+-- Mirrors the payments ledger pattern: the server records the gift, the client
+-- applies it to its existing wallet (addCoins) exactly once and acknowledges.
+-- Reward ids are DETERMINISTIC ("gr_ref<referred>_invite" / "gr_ref<referred>_bonus")
+-- so re-running the same reward (webhook retry, duplicate sync) can never
+-- double-credit: the primary key makes the second insert a no-op.
+create table if not exists public.coin_grants (
+  id               text        primary key,  -- deterministic idempotency key
+  telegram_user_id bigint      not null,
+  coins            int         not null,
+  source           text        not null,     -- 'referral_invite' | 'referral_bonus'
+  acked            boolean     not null default false,
+  acked_at         timestamptz,
+  created_at       timestamptz not null default now()
+);
+
+alter table public.coin_grants enable row level security;
+
+create index if not exists coin_grants_user_idx
+  on public.coin_grants (telegram_user_id, created_at desc);
+
+-- ============================================================================
+-- Presence — tiny daily snapshot for the streak-reminder cron (api/reminders.ts).
+-- Written ONLY by /api/progress (server-parsed from the verified state):
+--   last_active = the last day (Asia/Tashkent date) the learner earned anything
+--   freezes     = streak freezes held at the last sync (protected users are not nagged)
+--   reminded_on = the last day the cron sent this user a reminder (1/day max)
+create table if not exists public.presence (
+  telegram_user_id bigint      primary key,
+  last_active      date,
+  freezes          int         not null default 0,
+  reminded_on      date,
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.presence enable row level security;
+
+create index if not exists presence_last_active_idx
+  on public.presence (last_active) where last_active is not null;
+
+drop trigger if exists presence_touch on public.presence;
+create trigger presence_touch before update on public.presence
+  for each row execute function public.touch_updated_at();
+
+-- Atomic referral reward. /api/progress calls it when the invited learner first
+-- syncs: flips pending -> rewarded and grants the referrer's coins. Returns the
+-- coins granted (0 when there was nothing pending). Idempotent.
+create or replace function public.reward_referral(p_referred bigint, p_coins int)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_referrer bigint;
+begin
+  update public.referrals
+     set status = 'rewarded', rewarded_at = now()
+   where referred_id = p_referred
+     and status = 'pending'
+   returning referrer_id into v_referrer;
+  if v_referrer is null then
+    return 0;
+  end if;
+  insert into public.coin_grants (id, telegram_user_id, coins, source)
+    values ('gr_ref' || p_referred::text || '_bonus', v_referrer, p_coins, 'referral_bonus')
+    on conflict (id) do nothing;
+  return p_coins;
+end;
+$$;
+
+revoke execute on function public.reward_referral(bigint, int) from anon, authenticated;
+
+-- ============================================================================
 -- Public identities (username / first name as seen in Telegram). Idempotent.
 -- Written ONLY from the server after initData verification. Usernames are public
 -- Telegram handles by design (the user chooses them); no email, phone or any

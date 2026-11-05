@@ -1,9 +1,11 @@
 // Vercel serverless function: the Coin Store (Telegram Stars / XTR billing).
 //  GET  /api/payments                  (no auth)       -> { enabled: boolean }
-//  GET  /api/payments                  (valid initData)-> { enabled, packages, tinyLeft, history, pending }
+//  GET  /api/payments                  (valid initData)-> { enabled, packages, tinyLeft, history, pending,
+//                                                          grants, ref, botUsername }
 //  POST /api/payments { action:'open',  packageId }     -> { id, url }        real Telegram invoice link (XTR)
 //  POST /api/payments { action:'close', id, status:'failed'|'cancelled' } -> { ok }   invoice closed without paying
 //  POST /api/payments { action:'ack',   ids: string[] } -> { ok }             client applied the credits locally
+//  POST /api/payments { action:'ack_grants', ids: string[] } -> { ok }        client applied the coin gifts
 //
 // SECURITY MODEL
 // - The user id comes ONLY from the HMAC-verified initData, never from the body.
@@ -15,6 +17,10 @@
 //   acknowledges. This plays cleanly with the device-owned progress sync.
 // - Tiny Pack is limited to 3 successful purchases per user, enforced here (invoice
 //   creation) AND again in the webhook (refund if somehow exceeded).
+// - coin_grants are server-side coin GIFTS (referral rewards). Same ledger pattern:
+//   unacked rows are offered to the client, applied with addCoins, then acked.
+// - ref = referral stats for the "Do'stlarni taklif qiling" card; botUsername comes
+//   from getMe (cached) so the client can build t.me/<bot>?start=ref<uid> links.
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
@@ -121,7 +127,26 @@ interface PaymentRow {
   created_at: string;
 }
 
-const okId = (id: unknown): id is string => typeof id === 'string' && /^pay_[0-9a-zA-Z_]{3,64}$/.test(id);
+interface GrantRow {
+  id: string;
+  coins: number;
+  source: string;
+}
+
+const okPayId = (id: unknown): id is string => typeof id === 'string' && /^pay_[0-9a-zA-Z_]{3,64}$/.test(id);
+const okGrantId = (id: unknown): id is string => typeof id === 'string' && /^gr_[0-9a-zA-Z_]{3,64}$/.test(id);
+
+// Bot username from getMe — fetched once per serverless instance and cached.
+let botUsernamePromise: Promise<string | null> | null = null;
+function botUsername(token: string): Promise<string | null> {
+  botUsernamePromise ??= tgApi(token, 'getMe', {})
+    .then((j) => {
+      const u = (j.result as { username?: unknown } | undefined)?.username;
+      return typeof u === 'string' && /^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(u) ? u : null;
+    })
+    .catch(() => null);
+  return botUsernamePromise;
+}
 
 async function tgApi(token: string, method: string, payload: unknown): Promise<{ ok: boolean; description?: string; result?: unknown }> {
   const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -172,15 +197,23 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         return;
       }
       const h = sbHeaders(db.key);
-      const [histRes, tinyRes, pendRes] = await Promise.all([
+      const [histRes, tinyRes, pendRes, grantRes, refJoinRes, refEarnRes] = await Promise.all([
         fetch(`${db.url}/rest/v1/payments?select=id,package_id,coins,stars,status,created_at&telegram_user_id=eq.${uid}&order=created_at.desc&limit=30`, { headers: h, signal: AbortSignal.timeout(15_000) }),
         fetch(`${db.url}/rest/v1/payments?select=id&telegram_user_id=eq.${uid}&package_id=eq.tiny&status=eq.succeeded`, { headers: h, signal: AbortSignal.timeout(15_000) }),
         fetch(`${db.url}/rest/v1/payments?select=id,coins,package_id&telegram_user_id=eq.${uid}&status=eq.succeeded&acked=eq.false&order=created_at.asc&limit=20`, { headers: h, signal: AbortSignal.timeout(15_000) }),
+        fetch(`${db.url}/rest/v1/coin_grants?select=id,coins,source&telegram_user_id=eq.${uid}&acked=eq.false&order=created_at.asc&limit=20`, { headers: h, signal: AbortSignal.timeout(15_000) }),
+        fetch(`${db.url}/rest/v1/referrals?select=referred_id&referrer_id=eq.${uid}&status=eq.rewarded`, { headers: h, signal: AbortSignal.timeout(15_000) }),
+        fetch(`${db.url}/rest/v1/coin_grants?select=coins&telegram_user_id=eq.${uid}&source=like.referral*`, { headers: h, signal: AbortSignal.timeout(15_000) }),
       ]);
-      if (!histRes.ok || !tinyRes.ok || !pendRes.ok) throw new Error(`supabase_${histRes.status}/${tinyRes.status}/${pendRes.status}`);
+      if (!histRes.ok || !tinyRes.ok || !pendRes.ok || !grantRes.ok || !refJoinRes.ok || !refEarnRes.ok) {
+        throw new Error(`supabase_${histRes.status}/${tinyRes.status}/${pendRes.status}/${grantRes.status}/${refJoinRes.status}/${refEarnRes.status}`);
+      }
       const history = (await histRes.json()) as PaymentRow[];
       const tinyRows = (await tinyRes.json()) as { id: string }[];
       const pending = (await pendRes.json()) as { id: string; coins: number; package_id: string }[];
+      const grants = (await grantRes.json()) as GrantRow[];
+      const invited = (await refJoinRes.json()) as { referred_id: number }[];
+      const earnedRows = (await refEarnRes.json()) as { coins: number }[];
 
       res.status(200).json({
         enabled: true,
@@ -188,6 +221,9 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         tinyLeft: tinyLeftOf(tinyRows.length),
         history: history.map((r) => ({ id: r.id, packageId: r.package_id, coins: r.coins, stars: r.stars, status: r.status, date: r.created_at })),
         pending: pending.map((r) => ({ id: r.id, coins: r.coins, packageId: r.package_id })),
+        grants: grants.map((g) => ({ id: g.id, coins: g.coins, source: g.source })),
+        ref: { invited: invited.length, earned: earnedRows.reduce((a, r) => a + (r.coins ?? 0), 0) },
+        botUsername: await botUsername(botToken),
       });
       return;
     }
@@ -266,7 +302,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         }
         const id = body?.id;
         const status = body?.status;
-        if (!okId(id) || (status !== 'failed' && status !== 'cancelled')) {
+        if (!okPayId(id) || (status !== 'failed' && status !== 'cancelled')) {
           res.status(400).json({ error: 'bad_request' });
           return;
         }
@@ -281,12 +317,33 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         return;
       }
 
+      if (action === 'ack_grants') {
+        if (rateLimited(`ackg:${uid}`, 30)) {
+          res.status(429).json({ error: 'too_many_requests' });
+          return;
+        }
+        const ids = Array.isArray(body?.ids) ? (body?.ids as unknown[]).filter(okGrantId).slice(0, 20) : [];
+        if (ids.length === 0) {
+          res.status(400).json({ error: 'bad_request' });
+          return;
+        }
+        // Only the owner's unacked rows are flipped; idempotent, no RPC needed.
+        await fetch(`${db.url}/rest/v1/coin_grants?telegram_user_id=eq.${uid}&acked=eq.false&id=in.(${ids.join(',')})`, {
+          method: 'PATCH',
+          headers: { ...sbHeaders(db.key), prefer: 'return=minimal' },
+          body: JSON.stringify({ acked: true, acked_at: new Date().toISOString() }),
+          signal: AbortSignal.timeout(15_000),
+        });
+        res.status(200).json({ ok: true });
+        return;
+      }
+
       if (action === 'ack') {
         if (rateLimited(`ack:${uid}`, 30)) {
           res.status(429).json({ error: 'too_many_requests' });
           return;
         }
-        const ids = Array.isArray(body?.ids) ? (body?.ids as unknown[]).filter(okId).slice(0, 20) : [];
+        const ids = Array.isArray(body?.ids) ? (body?.ids as unknown[]).filter(okPayId).slice(0, 20) : [];
         if (ids.length === 0) {
           res.status(400).json({ error: 'bad_request' });
           return;
