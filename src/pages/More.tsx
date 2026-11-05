@@ -8,6 +8,7 @@ const HINT: Record<string, string> = {
   '/battle': 'Do‘stona jang — raqib yoki Lingo AI, reyting uchun',
   '/leaderboard': 'Reyting jadvali — eng kuchli o‘quvchilar',
   '/shop': 'Coin do‘koni — ramkalar, avatrlar, sovg‘alar',
+  '/stars': 'Telegram Stars bilan Coin olish',
   '/roadmap': 'Bosqichma-bosqich reja',
   '/grammar': '14 ta dars va testlar',
   '/reading': '10 ta matn',

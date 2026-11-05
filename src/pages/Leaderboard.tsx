@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../store/store';
 import { rankInfo, ratingOf } from '../lib/gamification';
-import { fetchLeaderboard, notConfigured, type LeaderRow } from '../lib/battleApi';
+import { fetchLeaderboard, notConfigured, type LeaderRow, type Leaderboards } from '../lib/battleApi';
 import { FRAMES, RANK_TIERS } from '../lib/shop';
-import { Button, Card, Empty, Notice, PageHeader, Pill, Section } from '../components/ui';
+import { Button, Card, Empty, Notice, PageHeader, Pill, Section, Tabs } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { A } from '../lib/router';
+import { A, navigate } from '../lib/router';
 import { cx, fmt } from '../lib/utils';
+
+type BoardId = 'global' | 'week' | 'month';
 
 /** Ring class for a leaderboard row's equipped frame (server already checked it is active). */
 function ringFor(frame?: string): string {
@@ -17,6 +19,54 @@ function ringFor(frame?: string): string {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+function RowView({ r, i, meId, board }: { r: LeaderRow; i: number; meId: string; board: BoardId }) {
+  const mine = r.id === meId;
+  const rank = rankInfo(r.rating);
+  const to = mine ? '/profile' : `/u/${r.id}`;
+  return (
+    <A
+      to={to}
+      aria-label={`${r.name} profili`}
+      className={cx(
+        'flex items-center gap-3 rounded-3xl border bg-surface !p-3.5 shadow-sm shadow-indigo-900/5 transition hover:border-indigo-300 active:scale-[0.99]',
+        mine ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' : 'border-line',
+      )}
+    >
+      <span className={cx('w-8 shrink-0 text-center text-lg font-extrabold', i >= 3 && 'text-sm text-muted')}>{i < 3 ? MEDALS[i] : i + 1}</span>
+      <div className="flex shrink-0 items-center justify-center rounded-full bg-surface2 p-1">
+        <span className={cx('flex h-9 w-9 items-center justify-center rounded-full text-xl', ringFor(r.frame))}>{r.avatar ?? '🙂'}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold">
+          {r.name} {mine && <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">(siz)</span>}
+        </p>
+        <p className={cx('text-xs font-semibold', board === 'global' ? rank.tier.text : 'text-muted')}>
+          {board === 'global' ? (
+            <>
+              {rank.tier.name}
+              {r.wins + r.losses > 0 && <span className="font-normal text-muted"> · ⚔️ {r.wins}W/{r.losses}L</span>}
+            </>
+          ) : board === 'week' ? (
+            <>7 kun: {fmt(r.xpWeek)} XP · umumiy {fmt(r.xp)}</>
+          ) : (
+            <>30 kun: {fmt(r.xpMonth)} XP · umumiy {fmt(r.xp)}</>
+          )}
+        </p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-base font-extrabold leading-none">{board === 'global' ? fmt(r.rating) : board === 'week' ? fmt(r.xpWeek) : fmt(r.xpMonth)}</p>
+        {board === 'global' && r.delta !== 0 && (
+          <p className={cx('mt-0.5 text-[11px] font-bold', r.delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
+            {r.delta > 0 ? `+${r.delta}` : r.delta} jang
+          </p>
+        )}
+        {board !== 'global' && <p className="mt-0.5 text-[11px] font-semibold text-muted">XP</p>}
+      </div>
+      <Icon name="right" className="h-4 w-4 shrink-0 text-muted" />
+    </A>
+  );
+}
+
 export function Leaderboard() {
   const s = useApp();
   const myRating = ratingOf(s);
@@ -25,15 +75,16 @@ export function Leaderboard() {
   const myAvatar = s.shop.equipped.avatar ?? '🙂';
 
   const [state, setState] = useState<'loading' | 'ok' | 'off' | 'error'>('loading');
-  const [rows, setRows] = useState<LeaderRow[]>([]);
+  const [data, setData] = useState<Leaderboards | null>(null);
   const [meId, setMeId] = useState('');
+  const [tab, setTab] = useState<BoardId>('global');
   const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     setState('loading');
     try {
       const j = await fetchLeaderboard();
-      setRows(j.list ?? []);
+      setData(j);
       setMeId(j.me ?? '');
       setState('ok');
     } catch (e) {
@@ -45,15 +96,18 @@ export function Leaderboard() {
     void load();
   }, [load, tick]);
 
+  const rows: LeaderRow[] = tab === 'global' ? data?.list ?? [] : tab === 'week' ? data?.weekly ?? [] : data?.monthly ?? [];
   const myIndex = rows.findIndex((r) => r.id === meId);
   const inList = myIndex >= 0;
+  const heroValue = tab === 'global' ? fmt(myRating) : tab === 'week' ? fmt(data?.weekly.find((r) => r.id === meId)?.xpWeek ?? 0) : fmt(data?.monthly.find((r) => r.id === meId)?.xpMonth ?? 0);
+  const heroHint = tab === 'global' ? (inList && state === 'ok' ? `#${myIndex + 1} o‘rin` : 'reyting') : tab === 'week' ? (inList && state === 'ok' ? `#${myIndex + 1} o‘rin` : "7 kunlik XP") : inList && state === 'ok' ? `#${myIndex + 1} o‘rin` : '30 kunlik XP';
 
   return (
     <div>
       <PageHeader
         emoji="🏆"
         title="Reyting jadvali"
-        subtitle="Eng kuchli o‘quvchilar — reyting bo‘yicha top"
+        subtitle="Jang reytingi va haftalik / oylik XP musobaqalari"
         right={
           <Button size="sm" variant="secondary" icon="refresh" onClick={() => setTick((t) => t + 1)} disabled={state === 'loading'}>
             Yangilash
@@ -74,8 +128,8 @@ export function Leaderboard() {
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xl font-extrabold leading-none">{fmt(myRating)}</p>
-            <p className="mt-0.5 text-[11px] text-violet-100">{inList && state === 'ok' ? `#${myIndex + 1} o‘rin` : 'reyting'}</p>
+            <p className="text-xl font-extrabold leading-none">{heroValue}</p>
+            <p className="mt-0.5 text-[11px] text-violet-100">{heroHint}</p>
           </div>
         </div>
       </div>
@@ -104,68 +158,58 @@ export function Leaderboard() {
 
       {state === 'ok' && (
         <>
+          <div className="mt-3">
+            <Tabs<BoardId>
+              value={tab}
+              onChange={setTab}
+              tabs={[
+                { id: 'global', label: 'Reyting', icon: 'swords' },
+                { id: 'week', label: 'Haftalik XP', icon: 'flame' },
+                { id: 'month', label: 'Oylik XP', icon: 'chart' },
+              ]}
+            />
+          </div>
+
           {!inList && (
             <div className="mt-3">
               <Notice>
-                <>Siz hali onlayn ro‘yxatda emassiz — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, profilingiz jadvalga tushadi (1000 reytingdan boshlanadi).</>
+                <>{tab === 'global' ? <>Siz hali onlayn ro‘yxatda emassiz — <b>Sozlamalar → Onlayn saqlash</b> yoqilgan bo‘lsa, profilingiz jadvalga tushadi (1000 reytingdan boshlanadi).</> : <>Bu jadvalda chiqish uchun oxirgi {tab === 'week' ? '7' : '30'} kunda kamida 1 XP yig‘ing (onlayn saqlash yoqilgan bo‘lishi kerak).</>}</>
               </Notice>
             </div>
           )}
-          <Section title={`Top ${Math.min(rows.length, 100)} o‘quvchi`}>
+
+          <Section title={tab === 'global' ? `Top ${rows.length} o‘quvchi (jang reytingi)` : tab === 'week' ? 'Haftalik XP poygasi' : 'Oylik XP poygasi'}>
             {rows.length === 0 ? (
-              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing — profil yaratganingizdan so‘ng ismingiz shu yerda paydo bo‘ladi!" />
+              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing — mashq qilsangiz ismingiz shu yerda paydo bo‘ladi!" />
             ) : (
               <div className="space-y-2">
-                {rows.map((r, i) => {
-                  const rank = rankInfo(r.rating);
-                  const mine = r.id === meId;
-                  return (
-                    <Card
-                      key={r.id}
-                      className={cx('flex items-center gap-3 !p-3.5', mine && 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/10')}
-                    >
-                      <span className={cx('w-8 shrink-0 text-center text-lg font-extrabold', i >= 3 && 'text-sm text-muted')}>
-                        {i < 3 ? MEDALS[i] : i + 1}
-                      </span>
-                      <div className="flex shrink-0 items-center justify-center rounded-full bg-surface2 p-1">
-                        <span className={cx('flex h-9 w-9 items-center justify-center rounded-full text-xl', ringFor(r.frame))}>{r.avatar ?? '🙂'}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold">
-                          {r.name} {mine && <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">(siz)</span>}
-                        </p>
-                        <p className={cx('text-xs font-semibold', rank.tier.text)}>
-                          {rank.tier.name}
-                          {r.wins + r.losses > 0 && <span className="font-normal text-muted"> · ⚔️ {r.wins}W/{r.losses}L</span>}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-base font-extrabold leading-none">{fmt(r.rating)}</p>
-                        {r.delta !== 0 && (
-                          <p className={cx('mt-0.5 text-[11px] font-bold', r.delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
-                            {r.delta > 0 ? `+${r.delta}` : r.delta} jang
-                          </p>
-                        )}
-                      </div>
-                    </Card>
-                  );
-                })}
+                {rows.map((r, i) => (
+                  <RowView key={`${tab}:${r.id}`} r={r} i={i} meId={meId} board={tab} />
+                ))}
               </div>
             )}
           </Section>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Pill tone="indigo">📈 Reyting faqat janglardan</Pill>
+            <Pill tone="amber">🔥 Haftalik/Oylik — XP bilan</Pill>
             <A to="/battle">
-              <Pill tone="amber" className="cursor-pointer">⚔️ Jang qilib oshiring →</Pill>
+              <Pill tone="neutral" className="cursor-pointer">⚔️ Jang qilib oshiring →</Pill>
             </A>
+          </div>
+
+          <div className="mt-3">
+            <Card className="flex items-center gap-3 !p-3.5" onClick={() => navigate('/leaderboard')}>
+              <Icon name="user" className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+              <p className="min-w-0 flex-1 text-sm text-muted">O‘quvchining ismi yoki avatari bosilsa — uning ochiq profili ochiladi.</p>
+            </Card>
           </div>
         </>
       )}
 
       <div className="mt-4 flex items-center gap-2 text-xs text-muted">
         <Icon name="info" className="h-4 w-4 shrink-0" />
-        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Reyting = 1000 + janglar natijasi (XP va darslar hisobga olinmaydi). Jadvalda barcha o‘quvchilar ko‘rinadi: yangi qo‘shilganlar 1000 reytingdan boshlaydi va faqat janglar orqali o‘sadi.</p>
+        <p>Faqat ismning birinchi so‘zi ko‘rsatiladi. Jang reytingi = 1000 + janglar natijasi; haftalik va oylik jadvallar XP bo‘yicha. Har bir qatorni bosib o‘quvchining ochiq profilini ko‘rishingiz mumkin.</p>
       </div>
     </div>
   );

@@ -27,6 +27,8 @@ interface TgWebApp {
   enableClosingConfirmation?(): void;
   openLink(url: string, opts?: { try_instant_view?: boolean }): void;
   openTelegramLink(url: string): void;
+  /** Opens a native Telegram invoice (Telegram Stars / XTR payments). Available since Bot API 6.x clients. */
+  openInvoice?(url: string): void;
   onEvent(name: string, cb: () => void): void;
   offEvent(name: string, cb: () => void): void;
   BackButton: { show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void; isVisible: boolean };

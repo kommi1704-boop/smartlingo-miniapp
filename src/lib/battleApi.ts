@@ -33,6 +33,7 @@ export interface BattleView {
   me: 'p1' | 'p2';
   questions?: Quiz[];
   oppName: string;
+  oppId?: string; // opponent's user id — opens their public profile
   oppAvatar?: string;
   oppRating?: number;
   meScore?: number;
@@ -44,6 +45,7 @@ export interface BattleView {
 
 export interface OpenChallenge {
   id: string;
+  uid: string; // challenger's user id — opens their public profile
   name: string;
   rating: number;
   avatar?: string;
@@ -160,8 +162,21 @@ export interface LeaderRow {
   draws?: number;
   losses: number;
   delta: number;
+  xp: number;
+  xpWeek: number;
+  xpMonth: number;
 }
 
-export async function fetchLeaderboard(): Promise<{ me: string; list: LeaderRow[] }> {
+export interface Leaderboards {
+  me: string;
+  /** Rating board (battle Elo) — the classic one. */
+  list: LeaderRow[];
+  /** XP earned in the last 7 days, best first. */
+  weekly: LeaderRow[];
+  /** XP earned in the last 30 days, best first. */
+  monthly: LeaderRow[];
+}
+
+export async function fetchLeaderboard(): Promise<Leaderboards> {
   return json(await fetch(`${BASE}/api/leaderboard`, { headers: headers() }));
 }

@@ -7,12 +7,13 @@ import {
   type ChestReward, type FrameItem, type NameColorItem, type NameFxItem,
 } from '../lib/shop';
 import { pct, cx, fmt } from '../lib/utils';
-import { haptic } from '../lib/telegram';
+import { haptic, isTelegram } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { Button, Card, Modal, PageHeader, Pill, ProgressBar, Section, Tabs } from '../components/ui';
 import { FramedEmoji } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { Confetti } from '../components/Mascot';
+import { navigate } from '../lib/router';
 
 type TabId = 'frames' | 'avatars' | 'names' | 'titles' | 'gifts';
 
@@ -96,6 +97,7 @@ export function Shop() {
             <div className="text-xs font-bold uppercase tracking-wide text-amber-100">Sizning hisobingiz</div>
             <div className="mt-1 text-4xl font-black leading-none">{fmt(balance)} 🪙</div>
             <div className="mt-1 text-sm text-amber-100">Coin · vazifalar va o‘yinlarda yig‘iladi</div>
+            {!isTelegram() && <div className="mt-1 text-[11px] font-semibold text-amber-100">Stars bilan olish Telegram ichida ishlaydi</div>}
           </div>
           <div className="text-right text-xs font-semibold text-amber-100">
             <div>🎁 {s.shop.chestsOpened} quti ochilgan</div>
@@ -103,6 +105,14 @@ export function Shop() {
             {boosted && <div className="mt-1">⚡ 2x XP · {boostLeft} soat</div>}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate('/stars')}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white/20 px-4 py-3 text-sm font-extrabold text-white transition hover:bg-white/30 active:scale-[0.99]"
+        >
+          ⭐ Stars bilan Coin olish
+          <Icon name="right" className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Daily quests */}

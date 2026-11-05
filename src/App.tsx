@@ -4,6 +4,8 @@ import { bindBackButton, tgUser } from './lib/telegram';
 import { applyTheme, watchTheme } from './lib/theme';
 import { getState, useApp } from './store/store';
 import { dayStart } from './store/actions';
+import { checkPendingCredits } from './lib/billing';
+import { isTelegram } from './lib/telegram';
 import { Shell, TAB_ROOTS } from './components/Shell';
 import { Overlays } from './components/Overlays';
 import { Button, Empty } from './components/ui';
@@ -25,9 +27,11 @@ import { Progress } from './pages/Progress';
 import { Settings } from './pages/Settings';
 import { More } from './pages/More';
 import { Shop } from './pages/Shop';
+import { Stars } from './pages/Stars';
 import { Profile } from './pages/Profile';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
+import { PublicProfile } from './pages/PublicProfile';
 
 const PUBLIC = ['welcome', 'onboarding', 'assessment', 'assessment-extra', 'result'];
 
@@ -48,6 +52,11 @@ export function App() {
   useEffect(() => {
     dayStart();
   }, []);
+
+  // Coin Store ledger: apply any paid-but-unapplied Stars purchases exactly once at start
+  useEffect(() => {
+    if (isTelegram() && s.profile) void checkPendingCredits();
+  }, [s.profile]);
 
   // Telegram native Back button
   const showBack = !!first && !TAB_ROOTS.includes(path);
@@ -92,9 +101,14 @@ export function App() {
     case 'resources': body = <Resources />; break;
     case 'progress': body = <Progress />; break;
     case 'shop': body = <Shop />; break;
+    case 'stars': body = <Stars />; break;
     case 'profile': body = <Profile />; break;
     case 'battle': body = <Battle />; break;
     case 'leaderboard': body = <Leaderboard />; break;
+    case 'u': body = seg[1] && /^\d{1,15}$/.test(seg[1]) ? <PublicProfile uid={seg[1]} /> : (
+      <Empty emoji="🔍" title="O‘quvchi topilmadi" text="Bunday sahifa yo‘q." action={<Button onClick={() => navigate('/leaderboard')}>Reyting jadvali</Button>} />
+    );
+    break;
     case 'settings': body = <Settings />; break;
     case 'more': body = <More />; break;
     default:

@@ -23,6 +23,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/battle', label: 'Janglar', icon: 'swords' },
   { path: '/leaderboard', label: 'Reyting', icon: 'trophy' },
   { path: '/shop', label: 'Do‘kon', icon: 'cart' },
+  { path: '/stars', label: 'Tanga do‘koni', icon: 'coins' },
   { path: '/grammar', label: 'Grammatika', icon: 'bulb' },
   { path: '/reading', label: 'O‘qish', icon: 'book' },
   { path: '/listening', label: 'Tinglash', icon: 'headphones' },

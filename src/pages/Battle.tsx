@@ -96,6 +96,7 @@ export function Battle() {
   const modeRef = useRef<'ai' | 'pvp'>('ai');
   const oppRatingRef = useRef<number | null>(null);
   const oppNameRef = useRef('Raqib');
+  const oppIdRef = useRef<string | null>(null); // opponent's user id -> opens their public profile
   const [confirmQuit, setConfirmQuit] = useState(false);
   const [legacyPvp, setLegacyPvp] = useState(false); // pre-live battle row -> old async flow
 
@@ -158,6 +159,7 @@ export function Battle() {
     modeRef.current = 'ai';
     oppNameRef.current = 'Lingo (AI)';
     oppRatingRef.current = rating;
+    oppIdRef.current = null;
     liveScoreRef.current = { you: 0, them: 0 };
     resolvedRef.current = false;
     setPhase('duel');
@@ -188,6 +190,7 @@ export function Battle() {
             modeRef.current = 'pvp';
             oppNameRef.current = c.name;
             oppRatingRef.current = c.rating ?? null;
+            oppIdRef.current = c.uid ?? null;
             liveScoreRef.current = { you: 0, them: 0 };
             resolvedRef.current = false;
             setPhase('duel');
@@ -219,6 +222,7 @@ export function Battle() {
             modeRef.current = 'pvp';
             oppNameRef.current = b.oppName;
             oppRatingRef.current = b.oppRating ?? null;
+            oppIdRef.current = b.oppId ?? null;
             liveScoreRef.current = { you: 0, them: 0 };
             resolvedRef.current = false;
             setPhase('duel');
@@ -357,6 +361,7 @@ export function Battle() {
             me={searchBattle?.me ?? 'p1'}
             questions={questions}
             oppName={searchBattle?.oppName ?? oppNameRef.current}
+            oppId={searchBattle?.oppId ?? oppIdRef.current}
             oppAvatar={searchBattle?.oppAvatar ?? '🙂'}
             onFinish={onLiveFinish}
             onScore={onScoreCb}
@@ -369,6 +374,7 @@ export function Battle() {
             questions={questions}
             mode={mode}
             oppName={mode === 'ai' ? 'Lingo (AI)' : searchBattle?.oppName ?? 'Raqib'}
+            oppId={mode === 'ai' ? null : searchBattle?.oppId ?? oppIdRef.current}
             oppAvatar={mode === 'ai' ? '🤖' : searchBattle?.oppAvatar ?? '🙂'}
             seed={aiSeedRef.current}
             accuracy={accRef.current}
@@ -465,6 +471,13 @@ export function Battle() {
           </div>
           {!outcome.rated && (
             <p className="mt-2 text-xs text-muted">Kunlik {AI_BATTLES_PER_DAY} ta reytingli AI jangi tugadi — bu jang mashq rejimida o‘tdi.</p>
+          )}
+          {outcome.vs === 'player' && oppIdRef.current && (
+            <div className="mt-3 flex justify-center">
+              <Button size="sm" variant="secondary" icon="user" onClick={() => navigate(`/u/${oppIdRef.current}`)}>
+                Raqib profili
+              </Button>
+            </div>
           )}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button onClick={mode === 'ai' || !online ? startAi : goSearching}>⚔️ Yana jang</Button>
@@ -624,6 +637,7 @@ interface DuelProps {
   questions: BattleQuiz[];
   mode: 'ai' | 'pvp';
   oppName: string;
+  oppId?: string | null; // opponent's user id — when present their name opens the public profile
   oppAvatar: string;
   seed: string;
   accuracy: number; // Lingo's base accuracy — mirrors the learner's own skill
@@ -636,7 +650,7 @@ interface DuelProps {
 /** How a duel question ended. 'you' / 'ai' = the first correct answer won the point. */
 type ResolveKind = 'you' | 'ai' | 'nobody' | 'timeout';
 
-function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, onFinish, onScore, onQuitRequest }: DuelProps) {
+function Duel({ questions, mode, oppName, oppId, oppAvatar, seed, accuracy, userLevel, onFinish, onScore, onQuitRequest }: DuelProps) {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<number | null>(null); // my pick (a wrong pick locks me out of this question)
   const [aiDone, setAiDone] = useState<boolean | null>(null); // null = Lingo has not answered yet
@@ -785,7 +799,18 @@ function Duel({ questions, mode, oppName, oppAvatar, seed, accuracy, userLevel, 
         <div className="text-center text-xs font-extrabold text-muted">VS</div>
         <div className="flex items-center justify-end gap-2 text-right">
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold">{oppName}</p>
+            {oppId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/u/${oppId}`)}
+                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-300"
+                aria-label={`${oppName} profilini ochish`}
+              >
+                {oppName} 🔍
+              </button>
+            ) : (
+              <p className="truncate text-xs font-bold">{oppName}</p>
+            )}
             <p className="text-xl font-extrabold leading-none text-rose-500">{mode === 'ai' ? aiScore : '…'}</p>
           </div>
           <span className="text-2xl">{oppAvatar}</span>
@@ -899,6 +924,7 @@ interface LiveDuelProps {
   me: 'p1' | 'p2';
   questions: BattleQuiz[];
   oppName: string;
+  oppId?: string | null; // opponent's user id — when present their name opens the public profile
   oppAvatar: string;
   onFinish: (you: number, them: number, delta: number) => void;
   onScore: (you: number, them: number) => void;
@@ -906,7 +932,7 @@ interface LiveDuelProps {
   onLegacy: () => void; // battle row predates live duels -> fall back to the async flow
 }
 
-function LiveDuel({ battleId, me, questions, oppName, oppAvatar, onFinish, onScore, onQuitRequest, onLegacy }: LiveDuelProps) {
+function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish, onScore, onQuitRequest, onLegacy }: LiveDuelProps) {
   const [sync, setSync] = useState<LiveSync | null>(null);
   const [pick, setPick] = useState<number | null>(null); // my optimistic pick for this round
   const [now, setNow] = useState(() => Date.now());
@@ -1065,7 +1091,18 @@ function LiveDuel({ battleId, me, questions, oppName, oppAvatar, onFinish, onSco
         <div className="text-center text-xs font-extrabold text-muted">VS</div>
         <div className="flex items-center justify-end gap-2 text-right">
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold">{oppName}</p>
+            {oppId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/u/${oppId}`)}
+                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-300"
+                aria-label={`${oppName} profilini ochish`}
+              >
+                {oppName} 🔍
+              </button>
+            ) : (
+              <p className="truncate text-xs font-bold">{oppName}</p>
+            )}
             <p className="text-xl font-extrabold leading-none text-rose-500">{oppScore}</p>
           </div>
           <span className="text-2xl">{oppAvatar}</span>
