@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "description": "SmartLingo AI — Telegram Mini App for Uzbek-speaking learners of English (ages 8–17)",
-  "engines": { "node": ">=20.19" },
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,14 +15,17 @@
     "setup-bot": "node scripts/setup-bot.mjs"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.8.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "three": "^0.187.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^5.0.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.6.0",
