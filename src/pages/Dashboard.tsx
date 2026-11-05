@@ -15,6 +15,7 @@ import { NAV_ALL } from '../components/Shell';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
+import { universeOverall } from '../lib/universe';
 
 export function Dashboard() {
   const s = useApp();
@@ -65,6 +66,20 @@ export function Dashboard() {
           </div>
         </div>
       </section>
+
+      {/* Learning Universe promo (3D world map) */}
+      <A
+        to="/universe"
+        className="uni-sky relative mt-4 flex items-center gap-3 overflow-hidden rounded-3xl border border-indigo-400/30 p-4 text-white shadow-lg shadow-indigo-900/30 transition active:scale-[0.99]"
+      >
+        <span className="relative z-10 text-4xl">🪐</span>
+        <span className="relative z-10 min-w-0 flex-1">
+          <span className="block text-xs font-bold uppercase tracking-wide text-cyan-200">Learning Universe</span>
+          <span className="block font-extrabold">5 ta sehrli olam sizni kutmoqda!</span>
+          <span className="block text-xs text-indigo-200">{universeOverall(s)}% egallandi · dunyolarni ochib, XP va Coin yig‘ing</span>
+        </span>
+        <Icon name="right" className="relative z-10 h-5 w-5 shrink-0" />
+      </A>
 
       {/* Today's plan */}
       <A

@@ -648,3 +648,56 @@ html.dark[data-bg='grid'] body {
 .bub-bob {
   animation: bub-bob 1.6s ease-in-out infinite;
 }
+
+/* ---------- Learning Universe (3D world map) ---------- */
+
+/* Deep-space sky: layered radial gradients + a tiled starfield (::before sits
+   behind the transparent 3D canvas, so the real 3D scene paints on top). */
+.uni-sky {
+  background: radial-gradient(110% 80% at 50% 0%, #232a6d 0%, #131748 42%, #0a0e2a 72%, #060a1f 100%);
+}
+.uni-sky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(1.5px 1.5px at 12% 22%, rgba(255, 255, 255, 0.75) 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 68%, rgba(255, 255, 255, 0.5) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 55% 15%, rgba(190, 220, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1px 1px at 71% 45%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 86% 25%, rgba(210, 190, 255, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 92% 78%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 88%, rgba(255, 255, 255, 0.4) 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 64% 82%, rgba(160, 220, 255, 0.5) 50%, transparent 51%);
+  background-size: 340px 340px;
+  background-repeat: repeat;
+  opacity: 0.55;
+}
+
+/* Frosted world sheet over the map */
+.uni-glass {
+  background: rgba(7, 10, 30, 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Gentle floating for the 2D-fallback islands (also keeps them centered) */
+.uni-float {
+  animation: uni-float 5.5s ease-in-out infinite;
+}
+@keyframes uni-float {
+  0%,
+  100% {
+    transform: translate(-50%, -50%);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 9px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .uni-float {
+    animation: none;
+    transform: translate(-50%, -50%);
+  }
+}

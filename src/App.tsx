@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { navigate, goBack, segments, usePath } from './lib/router';
 import { bindBackButton, tgUser } from './lib/telegram';
 import { applyTheme, watchTheme } from './lib/theme';
@@ -32,6 +32,10 @@ import { Profile } from './pages/Profile';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
 import { PublicProfile } from './pages/PublicProfile';
+
+// The 3D Learning Universe (three.js) ships as its own lazy chunk — it is only
+// downloaded when a learner actually opens the world map.
+const Universe = lazy(() => import('./pages/Universe'));
 
 const PUBLIC = ['welcome', 'onboarding', 'assessment', 'assessment-extra', 'result'];
 
@@ -104,6 +108,19 @@ export function App() {
     case 'stars': body = <Stars />; break;
     case 'profile': body = <Profile />; break;
     case 'battle': body = <Battle />; break;
+    case 'universe':
+      body = (
+        <Suspense
+          fallback={
+            <div className="flex h-56 items-center justify-center text-sm font-semibold text-muted">
+              <span className="animate-pulse">🪐 Koinot yuklanmoqda…</span>
+            </div>
+          }
+        >
+          <Universe />
+        </Suspense>
+      );
+      break;
     case 'leaderboard': body = <Leaderboard />; break;
     case 'u': body = seg[1] && /^\d{1,15}$/.test(seg[1]) ? <PublicProfile uid={seg[1]} /> : (
       <Empty emoji="🔍" title="O‘quvchi topilmadi" text="Bunday sahifa yo‘q." action={<Button onClick={() => navigate('/leaderboard')}>Reyting jadvali</Button>} />
