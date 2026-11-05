@@ -32,6 +32,7 @@ interface BattleOutcome {
   result: 'win' | 'loss' | 'draw';
   delta: number; // applied rating change
   rated: boolean;
+  aborted?: boolean; // connection-failure finish (zero answers) — no rating, no history entry
 }
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -259,9 +260,19 @@ export function Battle() {
   // ===== Finish paths =====
 
   const finish = useCallback(
-    (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
+    (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number, serverWinner?: 'me' | 'opp' | 'draw' | null, aborted?: boolean) => {
       resolvedRef.current = true; // battle resolved normally — leaving now is free
-      const result = battleResultOf(you, them);
+      // PvP results come from the SERVER's winner field, not from the score: a 0:0 forfeit
+      // loss used to render as "Durrang -44" (user report). AI battles stay score-based.
+      const result: BattleOutcome['result'] =
+        vs === 'player' && serverWinner ? (serverWinner === 'me' ? 'win' : serverWinner === 'opp' ? 'loss' : 'draw') : battleResultOf(you, them);
+      if (aborted) {
+        // The duel never really happened (nobody answered — connection died). Nothing counts:
+        // no rating, no coins, no history entry — just tell the player what happened.
+        setOutcome({ vs, opponent, you, them, result: 'draw', delta: 0, rated: false, aborted: true });
+        setPhase('result');
+        return;
+      }
       const rated = vs === 'player' || ratedLeft > 0;
       const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), aiK(rating)) : serverDelta ?? 0;
       const delta = rated ? rawDelta : 0;
@@ -312,7 +323,7 @@ export function Battle() {
             setWaitNote('Raqib hali javob bermadi. Kutishda davom etamizmi?');
             return;
           }
-          finish(view.meScore ?? you, view.oppScore ?? 0, 'player', view.oppName, view.myDelta ?? 0);
+          finish(view.meScore ?? you, view.oppScore ?? 0, 'player', view.oppName, view.myDelta ?? 0, view.winner, view.aborted === true);
         } catch {
           if (waitRunRef.current !== run) return;
           toast('Ulanish xatosi — natija saqlanmadi', 'warn');
@@ -328,8 +339,8 @@ export function Battle() {
   }, []);
 
   const onLiveFinish = useCallback(
-    (you: number, them: number, delta: number) => {
-      finish(you, them, 'player', oppNameRef.current, delta);
+    (you: number, them: number, delta: number, winner: 'me' | 'opp' | 'draw' | null, aborted: boolean) => {
+      finish(you, them, 'player', oppNameRef.current, delta, winner, aborted);
     },
     [finish],
   );
@@ -442,14 +453,21 @@ export function Battle() {
   if (phase === 'result' && outcome) {
     const win = outcome.result === 'win';
     const draw = outcome.result === 'draw';
+    const aborted = outcome.aborted === true;
     return (
       <div>
         <Bar emoji="⚔️" title="Jang tugadi" onBack={() => setPhase('lobby')} />
         <Card className="pop-in relative text-center">
-          {win && <Confetti count={44} />}
-          <div className="flex justify-center"><Mascot mood={win ? 'cheer' : draw ? 'happy' : 'think'} size={92} /></div>
-          <p className="mt-1 text-2xl font-extrabold">{win ? '🏆 G‘alaba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}</p>
-          <p className="mt-1 text-sm text-muted">{outcome.opponent}ga qarshi</p>
+          {win && !aborted && <Confetti count={44} />}
+          <div className="flex justify-center"><Mascot mood={aborted ? 'think' : win ? 'cheer' : draw ? 'happy' : 'think'} size={92} /></div>
+          <p className="mt-1 text-2xl font-extrabold">
+            {aborted ? '📡 Jang bekor qilindi' : win ? '🏆 G‘alaba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            {aborted
+              ? 'Ulanish uzilishi tufayli hech kim javob bermadi — bu jang hisobga olinmadi.'
+              : `${outcome.opponent}ga qarshi`}
+          </p>
           <div className="mt-4 flex items-center justify-center gap-4">
             <div className="text-center">
               <div className="text-3xl">{myAvatar}</div>
@@ -469,7 +487,7 @@ export function Battle() {
             </Pill>
             {outcome.rated && <Pill tone="amber" className="!px-3 !py-1.5">🪙 +{win ? WIN_COINS : draw ? DRAW_COINS : LOSS_COINS} Coin</Pill>}
           </div>
-          {!outcome.rated && (
+          {!outcome.rated && !aborted && (
             <p className="mt-2 text-xs text-muted">Kunlik {AI_BATTLES_PER_DAY} ta reytingli AI jangi tugadi — bu jang mashq rejimida o‘tdi.</p>
           )}
           {outcome.vs === 'player' && oppIdRef.current && (
@@ -926,7 +944,7 @@ interface LiveDuelProps {
   oppName: string;
   oppId?: string | null; // opponent's user id — when present their name opens the public profile
   oppAvatar: string;
-  onFinish: (you: number, them: number, delta: number) => void;
+  onFinish: (you: number, them: number, delta: number, winner: 'me' | 'opp' | 'draw' | null, aborted: boolean) => void;
   onScore: (you: number, them: number) => void;
   onQuitRequest: () => void;
   onLegacy: () => void; // battle row predates live duels -> fall back to the async flow
@@ -943,6 +961,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
   const syncRef = useRef<LiveSync | null>(null);
   const pickRef = useRef<number | null>(null);
   const inflightRef = useRef(false);
+  const errsRef = useRef(0); // mirror of errs for the poll loop (adaptive backoff)
   const offsetRef = useRef(0); // serverNow - clientNow, for a shared clock
   const prevRef = useRef<{ round: number; mine: number; theirs: number } | null>(null);
 
@@ -958,13 +977,14 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       syncRef.current = v;
       setSync(v);
       setErrs(0);
+      errsRef.current = 0;
       const mine = me === 'p1' ? v.s1 : v.s2;
       const theirs = me === 'p1' ? v.s2 : v.s1;
       onScore(mine, theirs);
       if (v.status === 'finished') {
         if (!finishedRef.current) {
           finishedRef.current = true;
-          onFinish(mine, theirs, v.myDelta ?? 0);
+          onFinish(mine, theirs, v.myDelta ?? 0, v.winner, v.aborted === true);
         }
         return;
       }
@@ -994,8 +1014,11 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
   );
 
   // Round-state poll — also the heartbeat that keeps me "online" on the server.
+  // A self-rescheduling timeout (not a fixed interval) so a run of failures backs the poll
+  // off to 2.5s instead of hammering a struggling network every 1.2s.
   useEffect(() => {
     let alive = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const run = async () => {
       if (inflightRef.current || finishedRef.current) return;
       inflightRef.current = true;
@@ -1003,17 +1026,24 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
         const v = await syncPvp(battleId);
         if (alive) apply(v);
       } catch {
-        if (alive) setErrs((e) => e + 1);
+        if (alive) {
+          errsRef.current += 1;
+          setErrs(errsRef.current);
+        }
       } finally {
         inflightRef.current = false;
       }
     };
-    void run();
-    const poll = setInterval(() => void run(), 1200);
+    const loop = async () => {
+      await run();
+      if (!alive) return;
+      timer = setTimeout(() => void loop(), errsRef.current >= 3 ? 2500 : 1200);
+    };
+    void loop();
     const tick = setInterval(() => setNow(Date.now()), 100);
     return () => {
       alive = false;
-      clearInterval(poll);
+      if (timer) clearTimeout(timer);
       clearInterval(tick);
     };
   }, [battleId, apply]);
@@ -1039,7 +1069,10 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       .then((r) => {
         if (!finishedRef.current) apply(r);
       })
-      .catch(() => setErrs((e) => e + 1));
+      .catch(() => {
+        errsRef.current += 1;
+        setErrs(errsRef.current);
+      });
   }
 
   if (!sync || !q) {

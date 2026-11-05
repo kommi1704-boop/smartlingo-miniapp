@@ -8,6 +8,15 @@ import type { Quiz } from '../types';
 
 const headers = () => ({ 'Content-Type': 'application/json', 'X-Telegram-Init-Data': tgInitData() });
 
+/**
+ * Fetch with a hard timeout. Without this a hung request on a slow mobile network blocked the
+ * sync loop (and thus the heartbeat) for 30s+ — the opponent then "forfeited" us and the duel
+ * ended 0:0 before the first question (user report: "ulandi lekin sekin").
+ */
+async function fetchT(url: string, init?: RequestInit, ms = 8000): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+}
+
 async function json<T>(r: Response): Promise<T> {
   if (!r.ok) {
     let code = `http_${r.status}`;
@@ -40,6 +49,7 @@ export interface BattleView {
   oppScore?: number;
   winner: 'me' | 'opp' | 'draw' | null;
   myDelta?: number;
+  aborted?: boolean; // finished with zero answers (connection issue) — rating untouched
   createdAt: string;
 }
 
@@ -64,7 +74,7 @@ let probeCache: boolean | null = null;
 export async function battleAvailable(force = false): Promise<boolean> {
   if (probeCache !== null && !force) return probeCache;
   try {
-    const r = await fetch(`${BASE}/api/battle`, { headers: { Accept: 'application/json' } });
+    const r = await fetchT(`${BASE}/api/battle`, { headers: { Accept: 'application/json' } }, 4000);
     probeCache = r.ok ? (await r.json())?.enabled === true : false;
   } catch {
     probeCache = false;
@@ -73,35 +83,35 @@ export async function battleAvailable(force = false): Promise<boolean> {
 }
 
 export async function listChallenges(): Promise<OpenChallenge[]> {
-  const j = await json<{ list: OpenChallenge[] }>(await fetch(`${BASE}/api/battle?action=list`, { headers: headers() }));
+  const j = await json<{ list: OpenChallenge[] }>(await fetchT(`${BASE}/api/battle?action=list`, { headers: headers() }));
   return j.list ?? [];
 }
 
 export async function openChallenge(questions: Quiz[], me: BattleMe): Promise<BattleView> {
   return json<{ battle: BattleView }>(
-    await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'open', questions, ...me }) }),
+    await fetchT(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'open', questions, ...me }) }),
   ).then((j) => j.battle);
 }
 
 export async function joinChallenge(id: string, me: BattleMe): Promise<BattleView> {
   return json<{ battle: BattleView }>(
-    await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'join', id, ...me }) }),
+    await fetchT(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'join', id, ...me }) }),
   ).then((j) => j.battle);
 }
 
 export async function submitScore(id: string, score: number): Promise<BattleView> {
   return json<{ battle: BattleView }>(
-    await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'submit', id, score }) }),
+    await fetchT(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'submit', id, score }) }),
   ).then((j) => j.battle);
 }
 
 export async function getBattle(id: string): Promise<BattleView | null> {
-  const j = await json<{ battle: BattleView | null }>(await fetch(`${BASE}/api/battle?action=get&id=${encodeURIComponent(id)}`, { headers: headers() }));
+  const j = await json<{ battle: BattleView | null }>(await fetchT(`${BASE}/api/battle?action=get&id=${encodeURIComponent(id)}`, { headers: headers() }));
   return j.battle;
 }
 
 export async function cancelChallenge(id: string): Promise<void> {
-  await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'cancel', id }) }).catch(() => undefined);
+  await fetchT(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'cancel', id }) }).catch(() => undefined);
 }
 
 // ===== Live duel (real-time rounds) =====
@@ -119,6 +129,7 @@ export interface LiveSync {
   winner: 'me' | 'opp' | 'draw' | null;
   myDelta?: number;
   left: 'me' | 'opp' | null; // who abandoned the battle
+  aborted?: boolean; // finished with zero answers — rating untouched, UI shows a neutral screen
 }
 
 export type SyncResult = LiveSync | { legacy: true };
@@ -128,7 +139,7 @@ export const isLegacySync = (r: SyncResult): r is { legacy: true } => (r as { le
 /** Polls the round state (~1.2 s during a duel). Doubles as a presence heartbeat. */
 export async function syncPvp(id: string): Promise<SyncResult> {
   const j = await json<{ live: SyncResult }>(
-    await fetch(`${BASE}/api/battle?action=sync&id=${encodeURIComponent(id)}`, { headers: headers() }),
+    await fetchT(`${BASE}/api/battle?action=sync&id=${encodeURIComponent(id)}`, { headers: headers() }),
   );
   return j.live;
 }
@@ -136,7 +147,7 @@ export async function syncPvp(id: string): Promise<SyncResult> {
 /** Sends my answer for the current round; the server decides the point and advances the round. */
 export async function answerPvp(id: string, round: number, correct: boolean, t: number): Promise<SyncResult> {
   const j = await json<{ live: SyncResult }>(
-    await fetch(`${BASE}/api/battle`, {
+    await fetchT(`${BASE}/api/battle`, {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify({ action: 'answer', id, round, correct: correct ? 1 : 0, t }),
@@ -147,7 +158,7 @@ export async function answerPvp(id: string, round: number, correct: boolean, t: 
 
 /** Leaves an active battle — counts as a loss, the opponent gets the win. */
 export async function forfeitPvp(id: string): Promise<void> {
-  await fetch(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'forfeit', id }), keepalive: true }).catch(() => undefined);
+  await fetchT(`${BASE}/api/battle`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'forfeit', id }), keepalive: true }).catch(() => undefined);
 }
 
 // ===== Leaderboard =====
