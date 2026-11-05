@@ -11,6 +11,11 @@
 import type { PersistedState } from '../types';
 import { todaysQuests, type QuestDef } from './shop';
 import { xpLevel } from './gamification';
+import { VOCAB } from '../data/vocab';
+import { GRAMMAR } from '../data/grammar';
+import { READING } from '../data/reading';
+import { LISTENING } from '../data/listening';
+import { SPEAKING } from '../data/speaking';
 
 export type WorldId = 'forest' | 'kingdom' | 'ocean' | 'mountain' | 'galaxy';
 
@@ -46,7 +51,7 @@ export const WORLDS: WorldDef[] = [
     color: '#34d399',
     unlockLevel: 1,
     pos: [-5.0, 0.1, 1.7],
-    map: { x: 14, y: 58 },
+    map: { x: 24, y: 60 },
     activities: [
       { emoji: '🃏', label: 'So‘z kartochkalari', sub: 'Yangi so‘zlarni o‘rganish', route: '/vocab' },
       { emoji: '🧠', label: 'Moslashtirish o‘yini', sub: 'So‘z va tarjimani juftlang', route: '/games/memory' },
@@ -93,7 +98,7 @@ export const WORLDS: WorldDef[] = [
     color: '#f472b6',
     unlockLevel: 4,
     pos: [5.0, 1.5, 0.9],
-    map: { x: 86, y: 62 },
+    map: { x: 78, y: 58 },
     activities: [
       { emoji: '🗣️', label: 'Gapirish akademiyasi', sub: 'AI tekshiradigan topshiriqlar', route: '/speaking' },
       { emoji: '💬', label: 'AI suhbat', sub: 'Lingo bilan erkin gaplashing', route: '/tutor' },
@@ -108,7 +113,7 @@ export const WORLDS: WorldDef[] = [
     color: '#fbbf24',
     unlockLevel: 5,
     pos: [1.6, -0.15, 4.4],
-    map: { x: 48, y: 84 },
+    map: { x: 50, y: 80 },
     activities: [
       { emoji: '📖', label: 'O‘qish matnlari', sub: 'Matn + savollar', route: '/reading' },
       { emoji: '🎮', label: 'Kunlik o‘yin', sub: 'Tezlik va diqqat challenge', route: '/games' },
@@ -119,16 +124,19 @@ export const WORLDS: WorldDef[] = [
 export const worldById = (id: WorldId): WorldDef => WORLDS.find((w) => w.id === id) ?? WORLDS[0];
 
 /**
- * Catalog sizes — how many real items exist per world. These are CONSTANTS so the
- * lazy Universe chunk stays light (no data-file imports); tests/universe.test.ts
- * cross-checks them against the actual catalogs (VOCAB/GRAMMAR/... lengths).
+ * Catalog sizes — derived DIRECTLY from the real data files, so adding new
+ * material (e.g. +50 reading, +25 listening) updates the Universe automatically.
+ * The old version hardcoded the numbers (ocean: 5, galaxy: 20 …) and went stale
+ * the moment new content was added (user report: progress/plan numbers wrong).
+ * These catalogs are already part of the main bundle (Vocab/Grammar/… pages
+ * import them), so this adds zero extra chunk weight.
  */
 export const WORLD_TOTALS: Record<WorldId, number> = {
-  forest: 380, // VOCAB (base + B1 + B2)
-  kingdom: 34, // GRAMMAR lessons
-  ocean: 5, // LISTENING activities
-  mountain: 30, // SPEAKING prompts
-  galaxy: 20, // READING passages
+  forest: VOCAB.length, // So‘z kartochkalari (base + B1 + B2)
+  kingdom: GRAMMAR.length, // Grammatika darslari
+  ocean: LISTENING.length, // Tinglash mashqlari
+  mountain: SPEAKING.length, // Gapirish mavzulari
+  galaxy: READING.length, // O‘qish matnlari
 };
 
 /** How many items of a world's metric are completed, derived from existing state only. */

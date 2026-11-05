@@ -145,30 +145,31 @@ export function Profile() {
       <PageHeader emoji="🧑‍🚀" title="Profil" subtitle="Reyting, avatar va yutumlaringiz" />
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-500/25">
-        <div className="flex items-center gap-4">
-          <div className="rounded-3xl bg-white/15 p-1.5">
+      <div className="feature-ring relative overflow-hidden rounded-2xl bg-surface p-5">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-accent/20 blur-3xl" aria-hidden />
+        <div className="relative flex items-center gap-4">
+          <div className="rounded-2xl bg-surface2 p-1.5">
             <Avatar emoji={equippedAvatar} size={84} />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className={cx('truncate text-2xl font-extrabold leading-tight', nameCls)}>{p.name}</h1>
-            {equippedTitle && <p className="mt-0.5 text-sm font-bold text-amber-200">{equippedTitle.name}</p>}
-            <p className={cx('mt-1 text-sm font-extrabold', 'text-indigo-100')}>
-              <span className="rounded-full bg-white/20 px-2.5 py-0.5">{rank.tier.name}</span>{' '}
+            {equippedTitle && <p className="mt-0.5 text-sm font-bold text-gold">{equippedTitle.name}</p>}
+            <p className="mt-1 text-sm font-extrabold">
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-accent dark:text-[#b3a4ff]">{rank.tier.name}</span>{' '}
               <span className="font-bold">{fmt(rating)} reyting</span>
             </p>
           </div>
         </div>
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-indigo-100">
+        <div className="relative mt-4">
+          <div className="flex items-center justify-between text-xs font-semibold text-muted">
             <span>Tajriba darajasi {xp.level}</span>
             <span>{fmt(s.xp)} XP</span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi tajriba darajasigacha">
-            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${xp.pct}%` }} />
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface2" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi tajriba darajasigacha">
+            <div className="h-full rounded-full bg-gradient-to-r from-accent to-accent2 transition-all" style={{ width: `${xp.pct}%` }} />
           </div>
           {rank.next && (
-            <p className="mt-1.5 text-[11px] text-indigo-100">
+            <p className="mt-1.5 text-[11px] text-muted">
               Keyingi pog‘ona: <b>{rank.next.name}</b> — yana {fmt(rank.next.min - rating)} reyting
             </p>
           )}
@@ -402,6 +403,30 @@ export function Profile() {
           <Pill tone="amber" className="!px-3 !py-1.5">🪙 {fmt(s.coins.balance)} Coin — do‘konda sarflang</Pill>
         </div>
       )}
+
+      {/* Settings + all sections — everything stays reachable with the 5-tab nav */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <A to="/more" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+            <Icon name="grid" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">Barcha bo‘limlar</span>
+            <span className="block truncate text-xs text-muted">Do‘kon, resurslar va boshqalar</span>
+          </span>
+          <Icon name="right" className="h-4 w-4 text-muted" />
+        </A>
+        <A to="/settings" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface2 text-muted">
+            <Icon name="settings" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">Sozlamalar</span>
+            <span className="block truncate text-xs text-muted">Mavzu, maqsadlar, reset</span>
+          </span>
+          <Icon name="right" className="h-4 w-4 text-muted" />
+        </A>
+      </div>
     </div>
   );
 }

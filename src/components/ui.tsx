@@ -5,12 +5,19 @@ import { Icon, type IconName } from './Icon';
 import { goBack } from '../lib/router';
 import { Mascot } from './Mascot';
 
+// ============================================================================
+// SmartLingo component system — premium dark EdTech.
+// Standards: 8px spacing rhythm · radii 12/16/24 · control heights 32/40/48 ·
+// icons 16/20/24 · one accent (#7357FF) with cyan (#50D5F5) and gold (#FFC247)
+// as supporting tones. Gradients only on featured surfaces.
+// ============================================================================
+
 // ---------- Button ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-500/30 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98]',
-  secondary: 'bg-surface2 text-ink hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-line',
-  ghost: 'bg-transparent text-indigo-600 dark:text-indigo-300 hover:bg-surface2',
+  primary: 'bg-accent text-white shadow-sm shadow-accent/30 hover:bg-accent/90 active:scale-[0.98]',
+  secondary: 'bg-surface2 text-ink hover:bg-surface2/70 border border-line',
+  ghost: 'bg-transparent text-accent hover:bg-surface2',
   danger: 'bg-rose-600 text-white hover:bg-rose-500',
   success: 'bg-emerald-600 text-white hover:bg-emerald-500',
 };
@@ -23,20 +30,21 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = 'primary', size = 'md', full, icon, className, children, ...rest }: BtnProps) {
-  const sz = size === 'sm' ? 'px-3 py-1.5 text-sm gap-1.5' : size === 'lg' ? 'px-6 py-3.5 text-base gap-2' : 'px-4 py-2.5 text-sm gap-2';
+  // consistent control heights: sm 32px · md 40px · lg 48px
+  const sz = size === 'sm' ? 'h-8 px-3 text-[13px] gap-1.5' : size === 'lg' ? 'h-12 px-6 text-[15px] gap-2' : 'h-10 px-4 text-sm gap-2';
   return (
     <button
       type="button"
       {...rest}
       className={cx(
-        'inline-flex items-center justify-center rounded-2xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
         sz,
         VARIANT[variant],
         full && 'w-full',
         className,
       )}
     >
-      {icon && <Icon name={icon} className={size === 'sm' ? 'h-4 w-4' : 'h-5 w-5'} />}
+      {icon && <Icon name={icon} className={size === 'sm' ? 'h-4 w-4' : 'h-[18px] w-[18px]'} />}
       {children}
     </button>
   );
@@ -48,7 +56,11 @@ export function Card({ children, className, onClick, as = 'div' }: { children: R
   return (
     <Tag
       onClick={onClick}
-      className={cx('rounded-3xl border border-line bg-surface p-4 shadow-sm shadow-indigo-900/5 sm:p-5', onClick && 'cursor-pointer transition hover:border-indigo-300', className)}
+      className={cx(
+        'rounded-2xl border border-line bg-surface p-4 shadow-sm shadow-black/5 sm:p-5',
+        onClick && 'cursor-pointer transition hover:border-accent/40',
+        className,
+      )}
     >
       {children}
     </Tag>
@@ -63,10 +75,10 @@ export function LevelBadge({ level, className }: { level: Level; className?: str
 export function Pill({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'indigo' | 'green' | 'amber' | 'rose'; className?: string }) {
   const t = {
     neutral: 'bg-surface2 text-muted',
-    indigo: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200',
-    green: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
-    amber: 'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200',
-    rose: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200',
+    indigo: 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]',
+    green: 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    amber: 'bg-gold/15 text-amber-700 dark:bg-gold/15 dark:text-[#ffd27d]',
+    rose: 'bg-rose-500/15 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
   }[tone];
   return <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', t, className)}>{children}</span>;
 }
@@ -79,7 +91,7 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
       aria-pressed={active}
       className={cx(
         'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
-        active ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-line bg-surface text-ink hover:border-indigo-300',
+        active ? 'border-accent bg-accent text-white' : 'border-line bg-surface text-ink hover:border-accent/40',
       )}
     >
       {children}
@@ -88,7 +100,7 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
 }
 
 // ---------- Progress ----------
-export function ProgressBar({ value, className, color = 'bg-gradient-to-r from-indigo-500 to-violet-500', label }: { value: number; className?: string; color?: string; label?: string }) {
+export function ProgressBar({ value, className, color = 'bg-gradient-to-r from-accent to-accent2', label }: { value: number; className?: string; color?: string; label?: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
     <div
@@ -97,7 +109,7 @@ export function ProgressBar({ value, className, color = 'bg-gradient-to-r from-i
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label}
-      className={cx('h-2.5 w-full overflow-hidden rounded-full bg-surface2', className)}
+      className={cx('h-2 w-full overflow-hidden rounded-full bg-surface2', className)}
     >
       <div className={cx('h-full rounded-full transition-all duration-500', color)} style={{ width: `${v}%` }} />
     </div>
@@ -111,15 +123,15 @@ export function ProgressRing({ value, size = 84, stroke = 9, children }: { value
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`${Math.round(v)} foiz`}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-indigo-100 dark:stroke-indigo-500/20" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-surface2" />
         <circle
           cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
           stroke="url(#ringGrad)" strokeDasharray={c} strokeDashoffset={c - (v / 100) * c} className="transition-all duration-700"
         />
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#8b5cf6" />
+            <stop offset="0%" stopColor="#7357ff" />
+            <stop offset="100%" stopColor="#50d5f5" />
           </linearGradient>
         </defs>
       </svg>
@@ -131,7 +143,7 @@ export function ProgressRing({ value, size = 84, stroke = 9, children }: { value
 // ---------- Tabs ----------
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; icon?: IconName }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div role="tablist" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto rounded-2xl bg-surface2 p-1">
+    <div role="tablist" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto rounded-xl bg-surface2 p-1">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -140,8 +152,8 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: 
           aria-selected={value === t.id}
           onClick={() => onChange(t.id)}
           className={cx(
-            'flex shrink-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition',
-            value === t.id ? 'bg-surface text-indigo-700 shadow-sm dark:text-indigo-200' : 'text-muted hover:text-ink',
+            'flex shrink-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition',
+            value === t.id ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink',
           )}
         >
           {t.icon && <Icon name={t.icon} className="h-4 w-4" />}
@@ -180,7 +192,7 @@ export function PageHeader({ title, subtitle, back, right, emoji }: { title: str
 
 export function Empty({ emoji = '🌤️', title, text, action }: { emoji?: string; title: string; text?: string; action?: ReactNode }) {
   return (
-    <div className="rounded-3xl border border-dashed border-line p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-line p-8 text-center">
       <div className="flex justify-center"><Mascot mood="think" size={84} /></div>
       <div className="mt-1 text-3xl">{emoji}</div>
       <p className="mt-2 font-bold">{title}</p>
@@ -194,10 +206,10 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
   return (
     <div
       className={cx(
-        'flex gap-2.5 rounded-2xl border p-3 text-sm',
+        'flex gap-2.5 rounded-xl border p-3 text-sm',
         tone === 'warn'
-          ? 'border-amber-300/60 bg-amber-50 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-100'
-          : 'border-indigo-200 bg-indigo-50 text-indigo-900 dark:border-indigo-400/30 dark:bg-indigo-500/10 dark:text-indigo-100',
+          ? 'border-gold/40 bg-gold/10 text-amber-900 dark:text-amber-100'
+          : 'border-accent/30 bg-accent/10 text-indigo-900 dark:text-indigo-100',
       )}
     >
       <Icon name="info" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -208,15 +220,15 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
 
 export function StatTile({ icon, label, value, hint, tone = 'indigo' }: { icon: IconName; label: string; value: ReactNode; hint?: string; tone?: 'indigo' | 'amber' | 'emerald' | 'violet' }) {
   const t = {
-    indigo: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300',
-    amber: 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
-    emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
-    violet: 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
+    indigo: 'bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]',
+    amber: 'bg-gold/15 text-amber-600 dark:bg-gold/15 dark:text-[#ffd27d]',
+    emerald: 'bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
+    violet: 'bg-violet-500/12 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
   }[tone];
   return (
     <Card className="!p-3.5">
       <div className="flex items-center gap-3">
-        <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', t)}>
+        <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', t)}>
           <Icon name={icon} />
         </div>
         <div className="min-w-0">
@@ -241,7 +253,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
         ref={ref}
         tabIndex={-1}
@@ -249,7 +261,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="pop-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl bg-surface p-5 shadow-2xl outline-none"
+        className="pop-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-2xl outline-none"
       >
         {title && <h2 className="mb-3 text-lg font-extrabold">{title}</h2>}
         {children}
@@ -262,7 +274,7 @@ export function Section({ title, action, children }: { title: string; action?: R
   return (
     <section className="mt-6">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h2 className="text-base font-extrabold">{title}</h2>
+        <h2 className="text-[15px] font-bold tracking-tight">{title}</h2>
         {action}
       </div>
       {children}

@@ -25,7 +25,7 @@ export function applyTheme(theme: Settings['theme'], bg: string = 'doodle'): voi
   const dark = isDark(theme);
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.dataset.bg = BG_IDS.has(bg as BgStyle) ? bg : 'doodle';
-  const color = dark ? '#0e0f21' : '#f3f4ff';
+  const color = dark ? '#0b1020' : '#f3f5fc';
   setTgColors(color);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', color);

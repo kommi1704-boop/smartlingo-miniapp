@@ -23,7 +23,7 @@ export function defaultState(): PersistedState {
     writing: [],
     speakingDone: {},
     highlights: {},
-    settings: { theme: 'auto', bg: 'doodle', dailyWordGoal: 10, haptics: true, sound: true, showTranslation: false },
+    settings: { theme: 'dark', bg: 'doodle', dailyWordGoal: 10, haptics: true, sound: true, showTranslation: false },
     games: { best: {}, plays: 0, daily: { date: '', done: false }, dailyCount: 0, xpToday: { date: '', xp: 0 } },
     coins: { balance: 0, earnedToday: { date: '', amount: 0 }, spentTotal: 0 },
     shop: { owned: {}, equipped: {}, chestsOpened: 0, streakFreezes: 0 },

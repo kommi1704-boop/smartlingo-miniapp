@@ -51,11 +51,11 @@ function MissionRow({ m }: { m: MissionView }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-bold">{m.quest.title}</p>
-          <span className="shrink-0 text-xs font-bold text-amber-600 dark:text-amber-300">+{m.quest.coins} 🪙</span>
+          <span className="shrink-0 text-xs font-bold text-gold">+{m.quest.coins} 🪙</span>
         </div>
         <div className="mt-1 flex items-center gap-2">
           <ProgressBar value={m.pct} className="flex-1" />
-          <span className={cx('shrink-0 text-[11px] font-semibold', m.claimed ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted')}>
+          <span className={cx('shrink-0 text-[11px] font-semibold', m.claimed ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted')}>
             {m.claimed ? 'olingan ✓' : `${m.done}/${m.quest.target}`}
           </span>
         </div>
@@ -90,26 +90,26 @@ export default function Universe() {
   return (
     <div className="pb-2">
       {/* ---------- Top HUD ---------- */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
         <button onClick={() => goBack('/')} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition hover:bg-surface2" aria-label="Orqaga">
           <Icon name="left" className="h-5 w-5" />
         </button>
-        <div className="min-w-0 flex-1 text-center">
-          <h1 className="bg-gradient-to-r from-indigo-400 via-violet-300 to-cyan-300 bg-clip-text text-xl font-extrabold text-transparent md:text-2xl">
+        <div className="min-w-0 flex-1">
+          <h1 className="bg-gradient-to-r from-indigo-400 via-violet-300 to-cyan-300 bg-clip-text text-lg font-extrabold text-transparent md:text-2xl">
             🪐 Learning Universe
           </h1>
-          <p className="text-[11px] text-muted">Har bir dars — yangi sarguzasgt</p>
+          <p className="hidden text-[11px] text-muted sm:block">Har bir dars — yangi sarguzasgt</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200" title="Tajriba darajasi">
+          <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff]" title="Tajriba darajasi">
             Lv {xp.level}
           </span>
-          <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-700 dark:bg-violet-500/20 dark:text-violet-200" title="Umumiy XP">
+          <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff]" title="Umumiy XP">
             ⭐ {fmt(s.xp)}
           </span>
           <button
             onClick={() => navigate('/shop')}
-            className="rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-white shadow-sm shadow-amber-500/30"
+            className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-[#231a05] shadow-sm shadow-gold/30"
             title="Do‘konga o‘tish"
           >
             🪙 {fmt(s.coins.balance)}
@@ -253,7 +253,7 @@ export default function Universe() {
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeDasharray={`${(overall / 100) * 97.4} 97.4`}
-                  className="stroke-indigo-500"
+                  className="stroke-accent"
                 />
               </svg>
               <span className="absolute text-sm font-extrabold">{overall}%</span>
@@ -291,7 +291,7 @@ export default function Universe() {
                   <p className="truncate text-sm font-semibold">{q.title}</p>
                   <p className="text-[11px] text-muted">{new Date(q.date).toLocaleDateString('uz-UZ')}</p>
                 </div>
-                <span className={cx('shrink-0 text-xs font-extrabold', q.score / Math.max(1, q.total) >= 0.6 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500')}>
+                <span className={cx('shrink-0 text-xs font-extrabold', q.score / Math.max(1, q.total) >= 0.6 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500')}>
                   {q.score}/{q.total}
                 </span>
               </div>

@@ -1,21 +1,42 @@
-import { Mascot, Sparkles } from '../components/Mascot';
+// SmartLingo Home — premium dark restructure.
+// Hierarchy: greeting → continue learning → Learning Universe teaser →
+// daily challenge → quick access → stats → recent activity.
+// Every number is derived from real state / real catalogs — nothing fake.
 import { useMemo } from 'react';
 import { A, navigate } from '../lib/router';
 import { useApp } from '../store/store';
 import { buildPlan, planSummary } from '../lib/plan';
-import { streakOf, xpProgress } from '../lib/gamification';
+import { streakOf, xpProgress, BADGES } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
-import { isOwnedActive } from '../store/actions';
+import { isOwnedActive, claimQuest } from '../store/actions';
 import { lastDays, shortDay, today } from '../lib/dates';
-import { Button, Card, LevelBadge, PageHeader, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
+import { Button, Card, LevelBadge, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { BarChart } from '../components/BarChart';
 import { Avatar } from '../components/Avatar';
-import { NAV_ALL } from '../components/Shell';
+import { Mascot } from '../components/Mascot';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
-import { universeOverall } from '../lib/universe';
+import { missionsFor, universeOverall } from '../lib/universe';
+import { VOCAB } from '../data/vocab';
+import { GRAMMAR } from '../data/grammar';
+import { READING } from '../data/reading';
+import { LISTENING } from '../data/listening';
+import { SPEAKING } from '../data/speaking';
+import { WRITING } from '../data/writing';
+
+/** Quiz-history kind → display info for "continue learning" + recent activity. */
+const KIND_META: Record<string, { label: string; route: string; emoji: string }> = {
+  vocab: { label: 'So‘z boyligi', route: '/vocab', emoji: '🃏' },
+  'vocab-quiz': { label: 'So‘z boyligi', route: '/vocab', emoji: '🃏' },
+  matching: { label: 'Moslashtirish', route: '/games/memory', emoji: '🧠' },
+  grammar: { label: 'Grammatika', route: '/grammar', emoji: '🧩' },
+  reading: { label: 'O‘qish', route: '/reading', emoji: '📖' },
+  listening: { label: 'Tinglash', route: '/listening', emoji: '🎧' },
+  writing: { label: 'Yozish', route: '/writing', emoji: '✍️' },
+  placement: { label: 'Daraja testi', route: '/progress', emoji: '🎯' },
+};
 
 export function Dashboard() {
   const s = useApp();
@@ -27,165 +48,222 @@ export function Dashboard() {
   const t = today();
   const day = s.activity[t];
   const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
-  const totalLessons = Object.values(s.lessons).filter((l) => l.completed).length;
-  const totalReviews = Object.values(s.vocab).reduce((a, v) => a + v.reviews, 0);
-  const learned = Object.values(s.vocab).filter((v) => v.status === 'learned').length;
   const goal = s.settings.dailyWordGoal;
   const next = plan.find((i) => !i.done);
   const chart = lastDays(7).map((k) => ({ label: shortDay(k), value: s.activity[k]?.xp ?? 0, highlight: k === t }));
+  const missions = missionsFor(s);
+  const overall = universeOverall(s);
+
+  const totalLessons = Object.values(s.lessons).filter((l) => l.completed).length;
+  const totalReviews = Object.values(s.vocab).reduce((a, v) => a + v.reviews, 0);
+  const learned = Object.values(s.vocab).filter((v) => v.status === 'learned').length;
+
+  // last finished quiz → "continue learning" context
+  const lastQuiz = s.quizHistory[s.quizHistory.length - 1];
+  const lastMeta = lastQuiz ? KIND_META[lastQuiz.kind] : undefined;
+
+  const recent = s.quizHistory.slice(-4).reverse();
+  const daily = gameInfo(dailyGameId());
+  const dailyDone = s.games.daily.date === t && s.games.daily.done;
+
+  const quick = [
+    { path: '/vocab', label: 'So‘zlar', emoji: '🃏', count: `${learned}/${VOCAB.length}` },
+    { path: '/grammar', label: 'Grammatika', emoji: '🧩', count: `${GRAMMAR.length} dars` },
+    { path: '/reading', label: 'O‘qish', emoji: '📖', count: `${READING.length} matn` },
+    { path: '/listening', label: 'Tinglash', emoji: '🎧', count: `${LISTENING.length} mashq` },
+    { path: '/speaking', label: 'Gaplashish', emoji: '🗣️', count: `${SPEAKING.length} mavzu` },
+    { path: '/writing', label: 'Yozish', emoji: '✍️', count: `${WRITING.length} mavzu` },
+  ];
+
+  const apps = [
+    { path: '/games', label: 'O‘yinlar', icon: 'game' as const },
+    { path: '/battle', label: 'Janglar', icon: 'swords' as const },
+    { path: '/shop', label: 'Do‘kon', icon: 'cart' as const },
+    { path: '/leaderboard', label: 'Reyting', icon: 'trophy' as const },
+    { path: '/progress', label: 'Progress', icon: 'chart' as const },
+  ];
 
   return (
     <div>
-      {/* Welcome */}
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg shadow-indigo-500/25">
-        <Sparkles />
-        <div className="flex items-start justify-between gap-3">
+      {/* ---------- B. Personalized greeting ---------- */}
+      <section className="feature-ring relative overflow-hidden rounded-2xl bg-surface p-4 sm:p-5">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-accent/20 blur-3xl" aria-hidden />
+        <div className="relative flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-3xl bg-white/15 p-1.5">
-              {s.shop.equipped.avatar ? <Avatar emoji={s.shop.equipped.avatar} size={62} /> : <Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={62} />}
+            <div className="rounded-2xl bg-surface2 p-1">
+              {s.shop.equipped.avatar ? (
+                <Avatar emoji={s.shop.equipped.avatar} size={56} />
+              ) : (
+                <Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={56} />
+              )}
             </div>
             <div className="min-w-0">
-            <h1 className={cx('text-2xl font-extrabold leading-tight', nameCls)}>Salom, {p.name}! 👋</h1>
-            <p className="mt-1 text-sm text-indigo-100">
-              {sum.allDone ? 'Bugungi reja to‘liq bajarildi. Barakalla!' : streak > 0 ? `${streak} kunlik seriya — davom eting!` : 'Bugun birinchi qadamni qo‘ying.'}
-            </p>
+              <h1 className={cx('truncate text-xl font-extrabold leading-tight sm:text-2xl', nameCls)}>Salom, {p.name}!</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent dark:text-[#b3a4ff]">{p.estimatedLevel}</span>
+                <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">🔥 {streak} kunlik seriya</span>
+              </div>
             </div>
           </div>
-          <div className="shrink-0 text-right">
-            <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-extrabold">{p.estimatedLevel}</span>
-            <div className="mt-1 text-[11px] text-indigo-100">taxminiy daraja</div>
-          </div>
+          <span className="shrink-0 rounded-full bg-surface2 px-3 py-1 text-xs font-extrabold">Lv {xp.level}</span>
         </div>
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-indigo-100">
-            <span>Tajriba darajasi {xp.level}</span>
+        <div className="relative mt-4">
+          <div className="flex items-center justify-between text-xs font-semibold text-muted">
+            <span>Keyingi darajagacha</span>
             <span>{fmt(s.xp)} XP</span>
           </div>
-          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi tajriba darajasigacha">
-            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${xp.pct}%` }} />
-          </div>
+          <ProgressBar value={xp.pct} className="mt-1.5" label="XP progress" />
         </div>
       </section>
 
-      {/* Learning Universe promo (3D world map) */}
-      <A
-        to="/universe"
-        className="uni-sky relative mt-4 flex items-center gap-3 overflow-hidden rounded-3xl border border-indigo-400/30 p-4 text-white shadow-lg shadow-indigo-900/30 transition active:scale-[0.99]"
-      >
-        <span className="relative z-10 text-4xl">🪐</span>
-        <span className="relative z-10 min-w-0 flex-1">
-          <span className="block text-xs font-bold uppercase tracking-wide text-cyan-200">Learning Universe</span>
-          <span className="block font-extrabold">5 ta sehrli olam sizni kutmoqda!</span>
-          <span className="block text-xs text-indigo-200">{universeOverall(s)}% egallandi · dunyolarni ochib, XP va Coin yig‘ing</span>
-        </span>
-        <Icon name="right" className="relative z-10 h-5 w-5 shrink-0" />
-      </A>
-
-      {/* Today's plan */}
-      <A
-        to="/games/daily"
-        className="mt-4 flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 shadow-sm transition hover:border-indigo-300"
-      >
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-pink-500 text-2xl">{gameInfo(dailyGameId())?.emoji ?? '🎮'}</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-bold uppercase tracking-wide text-muted">📅 Kunlik o‘yin</span>
-          <span className="block font-extrabold">{gameInfo(dailyGameId())?.title}</span>
-          <span className="block text-xs text-muted">{s.games.daily.date === t && s.games.daily.done ? 'Bugun bajarildi ✓' : `Hozir o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</span>
-        </span>
-        <Icon name="right" className="h-4 w-4 text-muted" />
-      </A>
-
-      {/* Coin shop promo */}
-      <A
-        to="/shop"
-        className="mt-4 flex items-center gap-3 rounded-3xl bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-white shadow-lg shadow-amber-500/25 transition active:scale-[0.99]"
-      >
-        <span className="text-4xl">🪙</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-bold uppercase tracking-wide text-amber-100">Do‘kon · Coin</span>
-          <span className="block font-extrabold">{fmt(s.coins.balance)} ta coin yig‘dingiz</span>
-          <span className="block text-xs text-amber-100">Kunlik vazifalar → ramkalar, avatrlar va sirli qutilar</span>
-        </span>
-        <Icon name="right" className="h-5 w-5 shrink-0" />
-      </A>
-
-      {/* Friendly battle promo */}
-      <A
-        to="/battle"
-        className="mt-3 flex items-center gap-3 rounded-3xl bg-gradient-to-r from-rose-500 to-orange-500 p-4 text-white shadow-lg shadow-rose-500/25 transition active:scale-[0.99]"
-      >
-        <span className="text-4xl">⚔️</span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xs font-bold uppercase tracking-wide text-rose-100">Do‘stona jang</span>
-          <span className="block font-extrabold">Raqibni yutib reytingni oshir!</span>
-          <span className="block text-xs text-rose-100">{s.battle.wins} g‘alaba · {s.battle.losses} mag‘lubiyat · Lingo darajangizda o‘ynaydi</span>
-        </span>
-        <Icon name="right" className="h-5 w-5 shrink-0" />
-      </A>
-
-      <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Hammasi →</A>}>
-        <Card>
+      {/* ---------- C. Continue learning ---------- */}
+      <Section title="Davom ettirish">
+        <Card className="!p-4">
           <div className="flex items-center gap-4">
-            <ProgressRing value={sum.pct}>
-              <span className="text-lg font-extrabold">{sum.pct}%</span>
+            <ProgressRing value={sum.pct} size={72} stroke={8}>
+              <span className="text-base font-extrabold">{sum.pct}%</span>
             </ProgressRing>
             <div className="min-w-0 flex-1">
-              <p className="font-bold">Kunlik maqsad: {p.dailyMinutes} daqiqa</p>
-              <p className="text-sm text-muted">{sum.doneCount}/{sum.count} mashq bajarildi · {sum.doneMin}/{sum.total} daqiqa</p>
-              <p className="mt-1 text-xs text-muted">So‘zlar: {Math.min(day?.words ?? 0, goal)}/{goal}</p>
+              <p className="truncate text-sm font-extrabold">{next ? next.title : 'Bugungi reja bajarildi 🎉'}</p>
+              <p className="mt-0.5 truncate text-xs text-muted">
+                {lastMeta
+                  ? `Oxirgi mashq: ${lastMeta.emoji} ${lastMeta.label} · ${sum.doneCount}/${sum.count} bugun`
+                  : `${sum.doneCount}/${sum.count} bugungi mashq · ${p.dailyMinutes} daqiqa maqsad`}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-muted">So‘zlar: {Math.min(day?.words ?? 0, goal)}/{goal} · {next?.reason ?? 'Yangi mashqlar kutmoqda'}</p>
             </div>
           </div>
-          <ul className="mt-4 space-y-2">
-            {plan.map((i) => (
-              <li key={i.id}>
-                <A to={i.route} className={cx('flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition hover:border-indigo-300', i.done ? 'border-emerald-300/60 bg-emerald-50 dark:border-emerald-400/30 dark:bg-emerald-500/10' : 'border-line bg-surface')}>
-                  <span className={cx('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base', i.done ? 'bg-emerald-500 text-white' : 'bg-surface2')}>
-                    {i.done ? <Icon name="check" className="h-4 w-4" /> : i.emoji}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className={cx('block truncate text-sm font-semibold', i.done && 'line-through opacity-70')}>{i.title}</span>
-                    <span className="block text-xs text-muted">{i.minutes} daq{i.progressLabel && !i.done ? ` · ${i.progressLabel}` : ''}</span>
-                  </span>
-                  <Icon name="right" className="h-4 w-4 text-muted" />
-                </A>
-              </li>
-            ))}
-          </ul>
-          <Button className="mt-4" size="lg" full icon="play" onClick={() => navigate(next ? next.route : '/vocab')}>
-            {next ? 'O‘rganishni davom ettirish' : 'Qo‘shimcha mashq qilish'}
+          <Button className="mt-4" size="lg" full icon="play" onClick={() => navigate(next ? next.route : '/universe')}>
+            {next ? 'Davom ettirish' : 'Universeni ochish'}
           </Button>
         </Card>
       </Section>
 
-      {/* Stats */}
+      {/* ---------- D. Learning Universe teaser ---------- */}
+      <Section title="Learning Universe">
+        <A
+          to="/universe"
+          className="uni-teaser relative block overflow-hidden rounded-2xl border border-accent/25 p-4 text-white shadow-lg shadow-accent/10 transition active:scale-[0.99]"
+          data-testid="home-universe"
+        >
+          <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden>
+            <span className="absolute right-[18%] top-[22%] h-1 w-1 rounded-full bg-white/80" />
+            <span className="absolute right-[38%] top-[64%] h-1 w-1 rounded-full bg-white/60" />
+            <span className="absolute right-[8%] top-[72%] h-1.5 w-1.5 rounded-full bg-[#50d5f5]/70" />
+            <span className="absolute right-[52%] top-[12%] h-1 w-1 rounded-full bg-white/50" />
+          </div>
+          <div className="relative flex items-center gap-4">
+            {/* mini planet + floating isles (CSS art, GPU-cheap) */}
+            <div className="relative h-20 w-20 shrink-0" aria-hidden>
+              <div className="teaser-ring teaser-float-slow absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full [transform:translate(-50%,-50%)_rotate(-18deg)_scaleY(0.42)]" />
+              <div className="teaser-planet teaser-float absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+              <span className="teaser-float-slow absolute -left-1 top-1 text-base">🌱</span>
+              <span className="teaser-float absolute -right-2 top-3 text-base">🌊</span>
+              <span className="teaser-float-slow absolute bottom-0 left-2 text-base">🌌</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#50d5f5]">5 ta sehrli olam</p>
+              <p className="mt-0.5 text-base font-extrabold leading-snug">Koinotni zabt eting</p>
+              <p className="mt-0.5 text-xs text-slate-300">{overall}% egallandi · yangi dunyolar va XP sizni kutmoqda</p>
+              <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white">
+                Kashf qilish <Icon name="right" className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </div>
+        </A>
+      </Section>
+
+      {/* ---------- E. Daily challenge ---------- */}
+      <Section title="Kunlik challenge" action={<A to="/shop" className="text-sm font-semibold text-accent dark:text-[#b3a4ff]">Vazifalar →</A>}>
+        <Card className="!p-2">
+          {missions.map((m) => (
+            <div key={m.quest.id} className="flex items-center gap-3 px-2 py-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-base">{m.quest.emoji}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-sm font-bold">{m.quest.title}</p>
+                  <span className="shrink-0 text-[11px] font-bold text-gold">+{m.quest.coins} 🪙</span>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <ProgressBar value={m.pct} className="h-1.5 flex-1" />
+                  <span className={cx('shrink-0 text-[11px] font-semibold', m.claimed ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted')}>
+                    {m.claimed ? 'olingan ✓' : `${m.done}/${m.quest.target}`}
+                  </span>
+                </div>
+              </div>
+              <Button size="sm" variant={m.claimable ? 'primary' : 'ghost'} disabled={!m.claimable} onClick={() => m.claimable && claimQuest(m.quest.id)}>
+                {m.claimed ? '✓' : 'Olish'}
+              </Button>
+            </div>
+          ))}
+          {/* daily game row */}
+          <A to="/games/daily" className="mt-1 flex items-center gap-3 rounded-xl border border-line bg-surface2/60 px-3 py-2.5 transition hover:border-accent/40">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-base">{daily?.emoji ?? '🎮'}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold">{daily?.title ?? 'Kunlik o‘yin'}</span>
+              <span className="block text-[11px] text-muted">{dailyDone ? 'Bugun bajarildi ✓' : `Hozir o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</span>
+            </span>
+            <Icon name="right" className="h-4 w-4 shrink-0 text-muted" />
+          </A>
+        </Card>
+      </Section>
+
+      {/* ---------- F. Quick access (skills) ---------- */}
+      <Section title="Tezkor kirish">
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+          {quick.map((q) => (
+            <A key={q.path} to={q.path} className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center transition hover:border-accent/40 active:scale-[0.97]">
+              <span className="text-2xl">{q.emoji}</span>
+              <span className="text-xs font-bold">{q.label}</span>
+              <span className="text-[10px] font-semibold text-muted">{q.count}</span>
+            </A>
+          ))}
+        </div>
+        <div className="mt-2.5 grid grid-cols-5 gap-2.5">
+          {apps.map((a) => (
+            <A key={a.path} to={a.path} className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface2/60 px-1 py-2.5 text-center transition hover:border-accent/40 active:scale-[0.97]" aria-label={a.label}>
+              <Icon name={a.icon} className="h-5 w-5 text-muted" />
+              <span className="text-[11px] font-bold text-muted">{a.label}</span>
+            </A>
+          ))}
+        </div>
+      </Section>
+
+      {/* ---------- Stats ---------- */}
       <div className="mt-6 grid grid-cols-2 gap-3">
-        <StatTile icon="flame" tone="amber" label="Kunlik seriya" value={`${streak} kun`} />
-        <StatTile icon="star" tone="violet" label="Jami XP" value={fmt(s.xp)} />
         <StatTile icon="check" tone="emerald" label="Tugatilgan darslar" value={totalLessons} hint="grammatika, o‘qish, tinglash" />
         <StatTile icon="cards" tone="indigo" label="Takrorlangan so‘zlar" value={totalReviews} hint={`${learned} ta o‘rganildi`} />
       </div>
 
-      {/* Chart */}
-      <Section title="So‘nggi 7 kun faolligi">
+      {/* ---------- G. Recent activity ---------- */}
+      <Section title="Yaqindagi faollik">
         <Card>
           <BarChart data={chart} />
           <p className="mt-3 text-xs text-muted">{LEVEL_DESC[p.estimatedLevel].title} · <LevelBadge level={p.estimatedLevel} /> → maqsad <LevelBadge level={p.targetLevel} /></p>
-          <div className="mt-2"><ProgressBar value={xp.pct} label="XP progress" /></div>
-        </Card>
-      </Section>
-
-      {/* Quick access */}
-      <Section title="Tezkor kirish">
-        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
-          {NAV_ALL.filter((n) => n.path !== '/').map((n) => (
-            <A key={n.path} to={n.path} className="flex flex-col items-center gap-1.5 rounded-2xl border border-line bg-surface px-2 py-3.5 text-center text-xs font-semibold transition hover:border-indigo-300">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-                <Icon name={n.icon} />
-              </span>
-              {n.label}
+          <div className="mt-4 border-t border-line pt-2">
+            {recent.length === 0 ? (
+              <p className="py-2 text-sm text-muted">Hali mashq bajarilmagan — yuqoridagi «Davom ettirish» bilan boshlang! 🚀</p>
+            ) : (
+              recent.map((q) => {
+                const meta = KIND_META[q.kind];
+                return (
+                  <div key={q.id} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{meta ? `${meta.emoji} ` : ''}{q.title}</p>
+                      <p className="text-[11px] text-muted">{new Date(q.date).toLocaleDateString('uz-UZ')}</p>
+                    </div>
+                    <span className={cx('shrink-0 text-xs font-extrabold', q.score / Math.max(1, q.total) >= 0.6 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500')}>
+                      {q.score}/{q.total}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+            <A to="/progress" className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-accent dark:text-[#b3a4ff]">
+              To‘liq progress va nishonlar ({Object.keys(s.badges).length}/{BADGES.length}) <Icon name="right" className="h-3.5 w-3.5" />
             </A>
-          ))}
-        </div>
+          </div>
+        </Card>
       </Section>
     </div>
   );

@@ -34,14 +34,15 @@ const HINT: Record<string, string> = {
 };
 
 export function More() {
-  const items = NAV_ALL.filter((n) => !['/', '/plan', '/tutor', '/vocab'].includes(n.path));
+  // tab roots are reachable from the bottom navigation — everything else lives here
+  const items = NAV_ALL.filter((n) => !['/', '/universe', '/tutor', '/learning', '/profile'].includes(n.path));
   return (
     <div>
       <PageHeader emoji="🧰" title="Boshqa bo‘limlar" subtitle="Barcha o‘quv vositalari" />
       <div className="grid gap-2.5 sm:grid-cols-2">
         {items.map((n) => (
-          <A key={n.path} to={n.path} className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+          <A key={n.path} to={n.path} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
               <Icon name={n.icon} />
             </span>
             <span className="min-w-0 flex-1">
@@ -51,8 +52,8 @@ export function More() {
             <Icon name="right" className="h-4 w-4 text-muted" />
           </A>
         ))}
-        <A to="/welcome" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"><Icon name="info" /></span>
+        <A to="/welcome" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]"><Icon name="info" /></span>
           <span className="min-w-0 flex-1">
             <span className="block font-bold">SmartLingo haqida</span>
             <span className="block truncate text-xs text-muted">Imkoniyatlar va savol-javoblar</span>
