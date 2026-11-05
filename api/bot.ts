@@ -20,9 +20,25 @@
 // - The invited learner's coins are granted IMMEDIATELY here (deterministic grant
 //   id => idempotent); the referrer's coins are paid by /api/progress the first
 //   time the invited learner actually syncs (see reward_referral RPC).
+// - /ref lets ANY user fetch their personal invite link right in the bot chat
+//   (with a native share button) — the feature lives in the bot, not only in the app.
+//
+// Feature announcement broadcast (/news, admin only):
+// - /news        -> preview: the exact message + how many users will receive it.
+// - /news ha     -> sends the announcement to EVERY current user (progress ∪
+//                  identities), each message containing that user's OWN referral
+//                  link + a native share button.
+// - Admins are listed in the ADMIN_TELEGRAM_IDS env var (comma-separated Telegram
+//   ids). With no env set the bot answers /news with the sender's own id and the
+//   setup instructions — fail closed, but self-documenting.
+// - Rate-safe (25/chunk + pauses, far below Telegram's ~30 msg/s), capped at 300
+//   per run; the report includes a continuation cursor ("/news ha <last_id>").
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, WEBAPP_URL, WEBHOOK_SECRET,
-//                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments, referrals).
+//                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments, referrals),
+//                    ADMIN_TELEGRAM_IDS (optional — enables /news).
+
+export const maxDuration = 60; // broadcast run fits well inside this budget
 
 interface Req {
   method?: string;
@@ -88,7 +104,95 @@ export function parseRefPayload(text: string): number | null {
   return n > 0 ? n : null;
 }
 
-async function tg(token: string, method: string, payload: unknown): Promise<{ ok: boolean; description?: string }> {
+// ---------------------------------------------------------------------------
+// Admin broadcast (/news) — small pure helpers (unit-tested in tests/broadcast.test.ts)
+// ---------------------------------------------------------------------------
+
+/** Telegram ids listed in ADMIN_TELEGRAM_IDS ("123, 456;789" — any separator). */
+export function adminIdsFromEnv(v: string | undefined | null): number[] {
+  return (v ?? '')
+    .split(/[,\s;]+/)
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0);
+}
+
+export interface NewsArgs {
+  confirm: boolean; // /news ha  (or a cursor given -> already a deliberate run)
+  cursor: number | null; // /news ha <last_sent_id> — continue after this id
+}
+
+/** Parses "/news", "/news ha", "/news ha 500" (and "@bot" mention forms). null = not /news. */
+export function parseNewsArgs(text: string): NewsArgs | null {
+  const m = /^\/news(?:@\w{1,32})?(?:\s+(\S+))?(?:\s+(\S+))?\s*$/.exec(text.trim());
+  if (!m) return null;
+  const args = [m[1], m[2]].filter((a): a is string => typeof a === 'string');
+  if (args.length === 0) return { confirm: false, cursor: null };
+  const cursorArg = args.find((a) => /^\d{1,15}$/.test(a));
+  const cursor = cursorArg ? Number(cursorArg) : null;
+  const confirm = args.some((a) => a.toLowerCase() === 'ha') || cursor !== null;
+  return { confirm, cursor };
+}
+
+/** Union + sort of user id rows fetched from several tables (junk ids dropped). */
+export function mergeSortedIds(...groups: { telegram_user_id: number }[][]): number[] {
+  const s = new Set<number>();
+  for (const g of groups) {
+    for (const r of g ?? []) {
+      const n = Number(r?.telegram_user_id);
+      if (Number.isInteger(n) && n > 0) s.add(n);
+    }
+  }
+  return [...s].sort((a, b) => a - b);
+}
+
+/** Personal deep link, or the plain app URL when the bot username is unknown. */
+export function referralLinkOf(uid: number, username: string | null | undefined, appUrl: string): string {
+  return username ? `https://t.me/${username}?start=ref${uid}` : appUrl;
+}
+
+/** The announcement every current user receives — personalized with THEIR link. */
+export function broadcastText(uid: number, username: string | null | undefined): string {
+  const linkLine = username
+    ? `\nSizning shaxsiy havolangiz:\n${referralLinkOf(uid, username, '')}\n`
+    : '';
+  return (
+    '🎁 YANGILIK — «Do‘stlarni taklif qiling»!\n\n' +
+    'Endi do‘stlaringiz bilan birga o‘rganish sizga Coin olib keladi:\n\n' +
+    `🪙 Do‘stingiz shaxsiy havolangiz orqali qo‘shilsa — SIZGA +${REFERRAL_COINS} Coin\n` +
+    `🎁 Unga ham darhol +${REFERRAL_COINS} Coin sovg‘a\n` +
+    '🔥 U birinchi mashqini qilishi bilan mukofotingiz avtomatik tushadi\n' +
+    linkLine +
+    '\nHavolani sinfdoshlaringizga, guruhlaringizga yuboring — qancha ko‘p do‘st, shuncha Coin! 💎\n\n' +
+    'Barcha takliflaringizni Profil → 🎁 Do‘stlarni taklif qiling bo‘limida kuzatib borasiz.'
+  );
+}
+
+/** /ref answer — the user's own invite card. */
+export function refText(uid: number, username: string | null | undefined): string {
+  if (username) {
+    const link = referralLinkOf(uid, username, '');
+    return (
+      `🎁 Do‘stlarni taklif qiling — har biriga +${REFERRAL_COINS} Coin!\n\n` +
+      `Sizning shaxsiy havolangiz:\n${link}\n\n` +
+      'Do‘stingiz havola orqali qo‘shilib, birinchi mashqini qilgach:\n' +
+      `• Sizga: 🪙 +${REFERRAL_COINS} Coin\n` +
+      `• Unga: 🪙 +${REFERRAL_COINS} Coin (darhol sovg‘a)\n\n` +
+      'Barcha takliflaringizni Profil → 🎁 Do‘stlarni taklif qiling bo‘limida kuzatib borasiz.'
+    );
+  }
+  return (
+    `🎁 Do‘stlarni taklif qiling — har biriga +${REFERRAL_COINS} Coin!\n\n` +
+    'Ilovani oching: Profil → 🎁 Do‘stlarni taklif qiling bo‘limida shaxsiy havolangiz va barcha statistikangiz turibdi.'
+  );
+}
+
+interface TgResult {
+  ok: boolean;
+  description?: string;
+  result?: unknown;
+}
+
+async function tg(token: string, method: string, payload: unknown): Promise<TgResult> {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: 'POST',
@@ -96,11 +200,46 @@ async function tg(token: string, method: string, payload: unknown): Promise<{ ok
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(12_000),
     });
-    return (await r.json().catch(() => ({ ok: false, description: 'bad_json' }))) as { ok: boolean; description?: string };
+    return (await r.json().catch(() => ({ ok: false, description: 'bad_json' }))) as TgResult;
   } catch (e) {
     console.error(`tg ${method} failed`, e instanceof Error ? e.message : String(e));
     return { ok: false };
   }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// The bot username (from getMe) is needed for personal deep links; cache it for
+// the lifetime of this serverless instance.
+let cachedBotUsername = '';
+async function botUsername(token: string): Promise<string | null> {
+  if (cachedBotUsername) return cachedBotUsername;
+  const r = await tg(token, 'getMe', {});
+  const u = (r.result as { username?: string } | undefined)?.username;
+  if (r.ok && typeof u === 'string' && /^\w{3,32}$/.test(u)) {
+    cachedBotUsername = u;
+    return u;
+  }
+  return null;
+}
+
+/** Native Telegram share sheet with the invite text prefilled (works everywhere). */
+function shareUrlOf(link: string, text: string): string {
+  return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+}
+
+// Keep the wording in sync with src/lib/referrals.ts inviteText().
+const inviteShareText = (link: string): string =>
+  `🚀 Ingliz tilini o‘rganishning eng qiziqarli yo‘li — SmartLingo AI!\n\nO‘yinlar, kunlik reja, Coin va sovg‘alar. Qo‘shil, birga o‘rganamiz! 👇\n${link}`;
+
+function refKeyboard(uid: number, username: string | null | undefined, appUrl: string) {
+  const rows: { text: string; url?: string; web_app?: { url: string } }[][] = [];
+  if (username) {
+    const link = referralLinkOf(uid, username, appUrl);
+    rows.push([{ text: '🔗 Havolani ulashish', url: shareUrlOf(link, inviteShareText(link)) }]);
+  }
+  rows.push([{ text: '🚀 Ilovani ochish', web_app: { url: appUrl } }]);
+  return { inline_keyboard: rows };
 }
 
 function supa(): { url: string; key: string } | null {
@@ -150,6 +289,74 @@ interface FromUser {
 }
 
 const webAppBtn = (url: string) => ({ inline_keyboard: [[{ text: '🚀 Ilovani ochish', web_app: { url } }]] });
+
+// ---------------------------------------------------------------------------
+// Broadcast recipients + sender
+// ---------------------------------------------------------------------------
+
+/**
+ * Every current user: anyone who ever synced progress OR opened the app with a
+ * public identity. Both tables are written by /api/progress — this union is the
+ * full audience. Ordered by id (stable continuation cursors).
+ */
+async function allUserIds(db: { url: string; key: string }, cursor: number | null): Promise<number[]> {
+  const q = async (table: string): Promise<{ telegram_user_id: number }[]> => {
+    try {
+      const r = await fetch(
+        `${db.url}/rest/v1/${table}?select=telegram_user_id&order=telegram_user_id.asc&limit=1000` +
+          (cursor ? `&telegram_user_id=gt.${cursor}` : ''),
+        { headers: sbHeaders(db.key), signal: AbortSignal.timeout(20_000) },
+      );
+      if (!r.ok) return [];
+      return (await r.json()) as { telegram_user_id: number }[];
+    } catch {
+      return [];
+    }
+  };
+  const [progressRows, identityRows] = await Promise.all([q('progress'), q('identities')]);
+  return mergeSortedIds(progressRows, identityRows);
+}
+
+// Telegram allows ~30 messages/second — stay far below it. The cap keeps one run
+// inside the function time budget; the report carries a continuation cursor.
+const BROADCAST_CAP = 300;
+const BROADCAST_CHUNK = 25;
+const BROADCAST_PAUSE_MS = 1100;
+
+/** One broadcast run. Resolves AFTER the last message was handed to Telegram. */
+async function runBroadcast(
+  db: { url: string; key: string },
+  token: string,
+  appUrl: string,
+  username: string | null,
+  cursor: number | null,
+): Promise<{ sent: number; failed: number; last: number; more: boolean }> {
+  const recipients = await allUserIds(db, cursor);
+  const targets = recipients.slice(0, BROADCAST_CAP);
+  let sent = 0;
+  let failed = 0;
+  for (let i = 0; i < targets.length; i += BROADCAST_CHUNK) {
+    const chunk = targets.slice(i, i + BROADCAST_CHUNK);
+    await Promise.all(
+      chunk.map(async (uid) => {
+        const r = await tg(token, 'sendMessage', {
+          chat_id: uid,
+          text: broadcastText(uid, username),
+          reply_markup: refKeyboard(uid, username, appUrl),
+          link_preview_options: { is_disabled: true },
+        });
+        if (r.ok) sent++;
+        else failed++;
+        return r.ok;
+      }),
+    );
+    if (i + BROADCAST_CHUNK < targets.length) await sleep(BROADCAST_PAUSE_MS);
+  }
+  return { sent, failed, last: targets.length ? targets[targets.length - 1] : 0, more: recipients.length > BROADCAST_CAP };
+}
+
+// Guards against the admin double-tapping "/news ha" on one warm instance.
+let broadcasting = false;
 
 /**
  * Records a referral and gifts the invited learner their coins.
@@ -335,12 +542,93 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     return;
   }
 
-  // ---------- 3) Regular messages (/start, /help, referral links, anything else) ----------
+  // ---------- 3) Regular messages (/start, /help, /ref, /news, referral links, anything else) ----------
   if (msg?.text) {
     const name = msg.from?.first_name ?? 'do‘st';
-    // Referral deep link: /start ref<referrer_id> (private chats only).
-    const ref = parseRefPayload(msg.text);
+    const text = msg.text.trim();
     const db = supa();
+
+    // ---- a) /ref — any user fetches their personal invite link right here ----
+    if (/^\/ref(?:@\w{1,32})?\s*$/.test(text)) {
+      const uid = msg.from?.id ?? msg.chat.id;
+      const username = await botUsername(token);
+      await tg(token, 'sendMessage', {
+        chat_id: msg.chat.id,
+        text: refText(uid, username),
+        reply_markup: refKeyboard(uid, username, url),
+        link_preview_options: { is_disabled: true },
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ---- b) /news — admin broadcast of the new feature (preview -> confirm) ----
+    const news = parseNewsArgs(text);
+    if (news) {
+      const admins = adminIdsFromEnv(process.env.ADMIN_TELEGRAM_IDS);
+      const fromId = msg.from?.id ?? 0;
+      if (!db) {
+        await tg(token, 'sendMessage', {
+          chat_id: msg.chat.id,
+          text: '⚠️ Ma’lumotlar bazasi (Supabase) sozlanmagan — yangilik yuborish imkonsiz.',
+        });
+      } else if (admins.length === 0) {
+        // Fail closed, but tell the owner exactly how to enable it.
+        await tg(token, 'sendMessage', {
+          chat_id: msg.chat.id,
+          text:
+            '🔒 /news — yangilik yuborish faqat admin uchun.\n\n' +
+            `Sizning Telegram ID: ${fromId || '—'}\n\n` +
+            'Yoqish uchun: Vercel → Settings → Environment Variables → yangi o‘zgaruvchi qo‘shing:\n' +
+            `ADMIN_TELEGRAM_IDS = ${fromId || '<sizning ID>'}\n\n` +
+            'So‘ng loyihani qayta deploy qiling (Deployments → Redeploy). Shundan keyin /news barcha foydalanuvchilarga yangilik yuboradi.',
+        });
+      } else if (!admins.includes(fromId)) {
+        await tg(token, 'sendMessage', { chat_id: msg.chat.id, text: '🔒 Bu buyruq faqat admin uchun.' });
+      } else if (broadcasting) {
+        await tg(token, 'sendMessage', {
+          chat_id: msg.chat.id,
+          text: '⏳ Oldingi yuborish hali davom etmoqda — bir necha soniyadan keyin /news bilan tekshiring.',
+        });
+      } else if (!news.confirm) {
+        // Preview: exact message + recipient count + the confirm command.
+        const [ids, username] = await Promise.all([allUserIds(db, null), botUsername(token)]);
+        await tg(token, 'sendMessage', {
+          chat_id: msg.chat.id,
+          text:
+            `📢 Yangilik yuborish\n\nQabul qiluvchilar: ${ids.length} ta foydalanuvchi.\n\n` +
+            'Xabar matni (har bir foydalanuvchi o‘z shaxsiy havolasini oladi):\n\n' +
+            '━━━━━━━━━━━━━━━━━━\n' +
+            broadcastText(fromId, username) +
+            '\n━━━━━━━━━━━━━━━━━━\n\n' +
+            '✅ Yuborishni tasdiqlash:  /news ha\n' +
+            '❌ Bekor qilish: hech narsa yubormang.',
+          link_preview_options: { is_disabled: true },
+        });
+      } else {
+        broadcasting = true;
+        try {
+          const username = await botUsername(token);
+          await tg(token, 'sendMessage', { chat_id: msg.chat.id, text: `⏳ Yuborilmoqda…` });
+          const r = await runBroadcast(db, token, url, username, news.cursor);
+          await tg(token, 'sendMessage', {
+            chat_id: msg.chat.id,
+            text:
+              '📣 Yuborish yakunlandi.\n\n' +
+              `✅ Yetib bordi: ${r.sent} ta\n` +
+              `⚠️ Yetib bormadi: ${r.failed} ta` +
+              (r.more ? `\n\n➡️ Foydalanuvchilar ko‘p — davom etish:  /news ha ${r.last}` : ''),
+          });
+        } finally {
+          broadcasting = false;
+        }
+      }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ---- c) Referral deep link: /start ref<referrer_id> (private chats only) ----
+    const ref = parseRefPayload(msg.text);
     if (ref && db && msg.from && msg.chat.id === msg.from.id) {
       const handled = await handleReferral(db, token, url, { id: msg.from.id, first_name: msg.from.first_name }, ref);
       if (handled) {
@@ -350,10 +638,12 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       // not accepted (existing learner, duplicate, self, or storage hiccup)
       // -> fall through to the regular welcome below.
     }
+
+    // ---- d) /start, /help — welcome (with the referral feature included) ----
     if (msg.text.startsWith('/start') || msg.text.startsWith('/help')) {
       await tg(token, 'sendMessage', {
         chat_id: msg.chat.id,
-        text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
+        text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n🎁 Do‘stlaringizni taklif qiling — har biriga +${REFERRAL_COINS} Coin (/ref)\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
         reply_markup: { inline_keyboard: [[{ text: '🚀 O‘rganishni boshlash', web_app: { url } }]] },
       });
     } else {
