@@ -45,6 +45,9 @@ interface LiveState {
   a1: LiveAns | null; // p1's answer for the CURRENT round
   a2: LiveAns | null;
   left: 'p1' | 'p2' | null; // who abandoned the battle (set on forfeit)
+  n?: number; // total answers RECORDED in this battle (user report: battles with zero answers
+              // must not move the rating — anything the clock/stale-forfeit finishes at n=0 aborts)
+  aborted?: true; // set when the battle finished without a single answer (connection issue)
 }
 
 interface BattleRow {
@@ -86,6 +89,7 @@ interface BattleView {
   oppScore?: number;
   winner: 'me' | 'opp' | 'draw' | null;
   myDelta?: number;
+  aborted?: boolean; // true = finished with zero answers (connection issue) — rating untouched
   createdAt: string;
 }
 
@@ -102,6 +106,7 @@ interface LiveSync {
   winner: 'me' | 'opp' | 'draw' | null;
   myDelta?: number;
   left: 'me' | 'opp' | null;
+  aborted?: boolean; // finished with zero answers — rating untouched, client shows a neutral screen
 }
 
 interface Req {
@@ -125,7 +130,8 @@ const PASSAGE_LEN = 160;
 const ROUND_GRACE_MS = 3000; // extra time on the server clock for network latency
 const START_DELAY_MS = 3500; // countdown between join and round 0
 const ADVANCE_DELAY_MS = 1500; // reveal pause between rounds
-const STALE_MS = 25_000; // no heartbeat for this long mid-battle = forfeit
+const STALE_MS = 40_000; // no heartbeat for this long mid-battle = forfeit (25s punished slow
+                         // mobile networks — user report: the duel ended 0:0 before question 1)
 const hits = new Map<string, { n: number; reset: number }>();
 
 function header(req: Req, name: string): string {
@@ -212,6 +218,7 @@ function view(row: BattleRow, uid: string): BattleView {
     oppScore: mine ? row.p2_score ?? undefined : row.p1_score ?? undefined,
     winner,
     myDelta: (mine ? row.p1_delta : row.p2_delta) ?? undefined,
+    aborted: row.status === 'finished' && row.live?.aborted === true ? true : undefined,
     createdAt: row.created_at,
   };
 }
@@ -236,6 +243,7 @@ function liveSync(row: BattleRow, uid: string): LiveSync {
     winner,
     myDelta: (isP1 ? row.p1_delta : row.p2_delta) ?? undefined,
     left: live.left == null ? null : live.left === (isP1 ? 'p1' : 'p2') ? 'me' : 'opp',
+    aborted: row.status === 'finished' && live.aborted === true ? true : undefined,
   };
 }
 
@@ -252,20 +260,29 @@ function deltasFor(row: BattleRow, side: 'p1' | 'p2' | 'draw'): { d1: number; d2
   return { d1, d2 };
 }
 
-/** Writes the finished-battle fields onto the row (caller PATCHes row). */
-function finishRow(row: BattleRow, side: 'p1' | 'p2' | 'draw', left?: 'p1' | 'p2' | null): void {
+/**
+ * Writes the finished-battle fields onto the row (caller PATCHes row).
+ * `opts.auto` marks machine-made endings (question clock / stale heartbeat). An AUTO finish
+ * with ZERO recorded answers is a connection failure, not a game: the battle is ABORTED —
+ * winner 0, both Elo deltas 0 — so nobody loses rating for a duel that never really started
+ * (user report: "savollar boshlanmadan jang tugadi 0:0 durrang -44 reyting"). Manual forfeits
+ * (the player pressed "tark etish") always count as a real loss, exactly as before.
+ */
+function finishRow(row: BattleRow, side: 'p1' | 'p2' | 'draw', left?: 'p1' | 'p2' | null, opts?: { auto?: boolean }): void {
   const live = row.live as LiveState;
+  const nothingHappened = opts?.auto === true && (live.n ?? 0) === 0;
   const { d1, d2 } = deltasFor(row, side);
   row.status = 'finished';
-  row.winner = side === 'draw' ? 0 : side === 'p1' ? row.p1 : row.p2;
+  row.winner = nothingHappened ? 0 : side === 'draw' ? 0 : side === 'p1' ? row.p1 : row.p2;
   row.p1_score = live.s1;
   row.p2_score = live.s2;
-  row.p1_delta = d1;
-  row.p2_delta = d2;
+  row.p1_delta = nothingHappened ? 0 : d1;
+  row.p2_delta = nothingHappened ? 0 : d2;
   live.round = row.questions.length;
   live.roundStart = null;
   live.a1 = null;
   live.a2 = null;
+  if (nothingHappened) live.aborted = true;
   if (left !== undefined) live.left = left;
 }
 
@@ -286,7 +303,7 @@ function resolveTimeouts(row: BattleRow): boolean {
   while (row.status === 'active' && live.roundStart != null && Date.now() > live.roundStart + qTimeMs(row.questions, live.round) + ROUND_GRACE_MS && guard++ < 16) {
     live.round += 1;
     if (live.round >= row.questions.length) {
-      finishRow(row, naturalSide(live));
+      finishRow(row, naturalSide(live), undefined, { auto: true });
       return true;
     }
     live.roundStart += qTimeMs(row.questions, live.round - 1); // keep the cadence when catching up
@@ -370,6 +387,20 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         res.status(200).json({ battle: null });
         return;
       }
+      // Waiting-phase heartbeat: the challenger polls `get` every ~3s while waiting for a
+      // joiner. Without this their `seen` column stays frozen at open-time, and the joiner's
+      // very first sync saw a 60s-old heartbeat -> instant 0:0 forfeit before question 1
+      // (user report: the battle ended before the questions started).
+      if (row.status !== 'finished') {
+        const seen = Date.now();
+        if (String(row.p1) === uid) {
+          row.seen1 = seen;
+          await sbFetch(db, `battles?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ seen1: seen }) }).catch(() => undefined);
+        } else {
+          row.seen2 = seen;
+          await sbFetch(db, `battles?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify({ seen2: seen }) }).catch(() => undefined);
+        }
+      }
       res.status(200).json({ battle: view(row, uid) });
       return;
     }
@@ -395,17 +426,26 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         else row.seen2 = Date.now();
         changed = resolveTimeouts(row);
         // Opponent vanished (closed the app / left the page) -> forfeit, I win.
+        // Three guards keep slow networks out of trouble (user report: "ulandi lekin sekin",
+        // the duel died before question 1):
+        //  1. oppSeen == null -> the opponent has not polled ONCE since the battle went
+        //     active (join resets pre-activation heartbeats) — never forfeit on that;
+        //  2. the current question must actually be OPEN (roundStart in the past) — the
+        //     3.5s countdown is a grace period, not a deadline;
+        //  3. 40s of silence (was 25s) — enough to survive a flaky mobile connection.
         const oppSeen = isP1 ? row.seen2 : row.seen1;
-        if (row.status === 'active' && oppSeen != null && Date.now() - oppSeen > STALE_MS && live.roundStart != null) {
-          finishRow(row, isP1 ? 'p1' : 'p2', isP1 ? 'p2' : 'p1');
+        const roundOpen = live.roundStart != null && Date.now() > live.roundStart;
+        if (row.status === 'active' && oppSeen != null && Date.now() - oppSeen > STALE_MS && roundOpen) {
+          finishRow(row, isP1 ? 'p1' : 'p2', isP1 ? 'p2' : 'p1', { auto: true });
           changed = true;
         }
       }
       if (changed) {
         // Conditional write: only lands if the round has not moved underneath us.
+        // The heartbeat rides along, so a sync that changed something costs ONE db write.
         const r = await sbFetch(db, `battles?id=eq.${row.id}&status=eq.active&live->>round=eq.${readRound}`, {
           method: 'PATCH', headers: { prefer: 'return=representation' },
-          body: JSON.stringify({ live, status: row.status, winner: row.winner, p1_score: row.p1_score, p2_score: row.p2_score, p1_delta: row.p1_delta, p2_delta: row.p2_delta }),
+          body: JSON.stringify({ live, status: row.status, winner: row.winner, p1_score: row.p1_score, p2_score: row.p2_score, p1_delta: row.p1_delta, p2_delta: row.p2_delta, ...(isP1 ? { seen1: row.seen1 } : { seen2: row.seen2 }) }),
         });
         if (r.ok) {
           const arr = (await r.json().catch(() => [])) as BattleRow[];
@@ -415,6 +455,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
               res.status(200).json({ live: fresh.live ? liveSync(fresh, uid) : { legacy: true } });
               return;
             }
+          } else {
+            // written (heartbeat included) — no extra PATCH needed
+            res.status(200).json({ live: liveSync(row, uid) });
+            return;
           }
         }
       }
@@ -449,7 +493,9 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         p1_avatar: cleanText(body?.avatar, 8) || null, p2_avatar: null,
         p1_score: null, p2_score: null, p1_done: false, p2_done: false,
         status: 'open', questions, winner: null, p1_delta: null, p2_delta: null,
-        live: freshLive(), seen1: Date.now(), seen2: null,
+        live: freshLive(), seen1: null, seen2: null,
+        // seen1 starts null: a pre-activation heartbeat means nothing, and a frozen one must
+        // never look like an abandoned battle once an opponent joins
         created_at: new Date().toISOString(),
       };
       const r = await sbFetch(db, 'battles', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify(row) });
@@ -480,6 +526,8 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       live.s1 = 0; live.s2 = 0;
       live.a1 = null; live.a2 = null;
       live.left = null;
+      live.n = 0; // zero answers so far — an auto-finish before the first answer aborts, rating untouched
+      delete live.aborted;
       const patched: Partial<BattleRow> = {
         p2: Number(uid),
         p2_name: cleanText(body?.name, 24) || 'O‘quvchi',
@@ -487,6 +535,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         p2_avatar: cleanText(body?.avatar, 8) || null,
         status: 'active',
         live,
+        // Reset p1's pre-activation heartbeat: while p1 waited for a joiner (possibly minutes,
+        // polling only `get`) their `seen1` went stale. Without the reset the joiner's first
+        // sync instantly "forfeited" p1 — the 0:0/-44-before-question-1 bug.
+        seen1: null,
         seen2: Date.now(),
       };
       // only one joiner wins the race: patch WHERE status is still open
@@ -527,6 +579,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           const ans: LiveAns = { c: correct ? 1 : 0, t };
           if (isP1) live.a1 = ans;
           else live.a2 = ans;
+          live.n = (live.n ?? 0) + 1; // a real answer happened — the battle is "played" from now on
           let scored = false;
           if (correct) {
             // first correct answer takes the point (the t-comparison guards the rare
