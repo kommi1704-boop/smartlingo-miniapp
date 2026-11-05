@@ -1,11 +1,20 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/store';
 import { equipAvatar, equipFrame, isOwnedActive, renewFrame, updateProfile } from '../store/actions';
 import { BADGES, rankInfo, ratingOf, streakOf, xpProgress } from '../lib/gamification';
+import { fetchBilling } from '../lib/billing';
+import {
+  REFERRAL_COINS,
+  achievementText,
+  buildReferralLink,
+  copyText,
+  inviteText,
+  myTelegramId,
+} from '../lib/referrals';
 import { INTEREST_CHIPS, MAX_INTERESTS } from '../lib/aiUsage';
 import { DEFAULT_AVATAR, FREE_AVATARS, FRAMES, PREMIUM_AVATARS, RATING_FRAMES, nameStyleClasses, titleById } from '../lib/shop';
 import { cx, fileToAvatarDataUrl, fmt } from '../lib/utils';
-import { haptic } from '../lib/telegram';
+import { haptic, shareToTelegram } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { A, navigate } from '../lib/router';
 import { SkillProfileCard } from './Start';
@@ -16,6 +25,82 @@ import { Icon } from '../components/Icon';
 function daysLeft(iso?: string): number {
   if (!iso) return 0;
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 3600 * 1000)));
+}
+
+/** "Do'stlarni taklif qiling" — referral link, share cards and live stats. */
+function InviteCard({ streak, xpTotal, level }: { streak: number; xpTotal: number; level: number }) {
+  const [ref, setRef] = useState<{ invited: number; earned: number } | null>(null);
+  const [bot, setBot] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetchBilling()
+      .then((info) => {
+        if (!alive) return;
+        setRef(info.ref ?? null);
+        setBot(info.botUsername ?? null);
+      })
+      .catch(() => undefined); // billing off -> sharing still works with the plain app link
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const uid = myTelegramId();
+  const link = uid ? buildReferralLink(uid, bot, window.location.origin) : window.location.origin;
+
+  const shareInvite = () => {
+    haptic('light');
+    shareToTelegram(link, inviteText(link));
+  };
+  const shareResult = () => {
+    haptic('light');
+    shareToTelegram(link, achievementText(link, streak, xpTotal, level));
+  };
+  const copy = async () => {
+    haptic('light');
+    const ok = await copyText(link);
+    toast(ok ? 'Havola nusxalandi ✓ Do‘stlaringizga yuboring!' : 'Nusxalab bo‘lmadi — havolani qo‘lda nusxalang', ok ? 'success' : 'warn');
+  };
+
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="pointer-events-none absolute -right-6 -top-8 text-[7rem] opacity-[0.06]" aria-hidden>
+        🎁
+      </div>
+      <div className="flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-2xl dark:bg-amber-500/20" aria-hidden>
+          🎁
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-extrabold">Har bir do‘st uchun 🪙 {REFERRAL_COINS} Coin!</p>
+          <p className="mt-0.5 text-xs text-muted">
+            Havolangizni yuboring: do‘stingiz darhol {REFERRAL_COINS} Coin oladi, siz esa uning birinchi mashqidan keyin mukofotasini.
+          </p>
+        </div>
+      </div>
+      {ref && ref.invited > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <StatTile icon="user" tone="emerald" label="Taklif qilingan do‘stlar" value={ref.invited} />
+          <StatTile icon="coins" tone="amber" label="Yig‘ilgan mukofot" value={fmt(ref.earned)} />
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button size="sm" icon="share" onClick={shareInvite}>
+          Ulashish
+        </Button>
+        <Button size="sm" variant="secondary" icon="link" onClick={() => void copy()}>
+          Nusxalash
+        </Button>
+        <Button size="sm" variant="ghost" icon="flame" onClick={shareResult}>
+          Natijamni ulashish
+        </Button>
+      </div>
+      <p className="mt-2.5 text-[11px] text-muted">
+        Har bir ulashilgan natija ham taklif havolasi bo‘lib ishlaydi — do‘stlaringiz shu link orqali qo‘shilsa, mukofot sizniki.
+      </p>
+    </Card>
+  );
 }
 
 export function Profile() {
@@ -89,6 +174,11 @@ export function Profile() {
           )}
         </div>
       </div>
+
+      {/* Invite friends (referral + share cards) */}
+      <Section title="🎁 Do‘stlarni taklif qiling">
+        <InviteCard streak={streak} xpTotal={s.xp} level={xp.level} />
+      </Section>
 
       {/* Skill levels (per-skill CEFR estimates + confidence) */}
       <Section title="🌍 Til ko‘nikmalari">

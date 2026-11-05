@@ -44,12 +44,23 @@ export interface PaymentHistoryItem {
   date: string;
 }
 
+export interface CoinGrant {
+  id: string; // "gr_..." — server-side gift (referral rewards today, campaigns later)
+  coins: number;
+  source: string; // 'referral_invite' | 'referral_bonus'
+}
+
 export interface BillingInfo {
   enabled: boolean;
   packages?: CoinPackage[];
   tinyLeft?: number;
   history?: PaymentHistoryItem[];
   pending?: { id: string; coins: number; packageId: string }[];
+  grants?: CoinGrant[];
+  /** Referral stats for the invite card. */
+  ref?: { invited: number; earned: number };
+  /** Bot username from getMe — used to build t.me/<bot>?start=ref<uid> invite links. */
+  botUsername?: string | null;
 }
 
 const headers = () => ({ 'Content-Type': 'application/json', 'X-Telegram-Init-Data': tgInitData() });
@@ -96,33 +107,47 @@ export async function fetchBilling(): Promise<BillingInfo> {
 }
 
 /**
- * Adds every not-yet-applied succeeded payment to the existing coin wallet,
- * exactly once per payment id (per device), then acks the server.
- * Returns the total coins credited by THIS call.
+ * Adds every not-yet-applied credit (paid Stars purchases AND coin gifts such as
+ * referral rewards) to the existing coin wallet, exactly once per id (per device),
+ * then acks the server. Returns the total coins credited by THIS call.
  */
 export async function applyPendingCredits(info: BillingInfo, opts: { notify?: boolean } = {}): Promise<number> {
+  if (!isTelegram()) return 0;
   const pending = info.pending ?? [];
-  if (pending.length === 0 || !isTelegram()) return 0;
+  const grants = info.grants ?? [];
+  if (pending.length === 0 && grants.length === 0) return 0;
   const done = appliedList();
-  const fresh = pending.filter((p) => p.coins > 0 && !done.includes(p.id));
-  if (fresh.length === 0) {
+  const freshPays = pending.filter((p) => p.coins > 0 && !done.includes(p.id));
+  const freshGrants = (grants ?? []).filter((g) => g.coins > 0 && !done.includes(g.id));
+  if (freshPays.length === 0 && freshGrants.length === 0) {
     // already applied locally but maybe not acked — ack again, cheap and idempotent
     void ackIds(pending.map((p) => p.id));
+    void ackGrantIds(grants.map((g) => g.id));
     return 0;
   }
-  let total = 0;
-  const ids: string[] = [];
-  for (const p of fresh) {
+  let payTotal = 0;
+  let giftTotal = 0;
+  const payIds: string[] = [];
+  const grantIds: string[] = [];
+  for (const p of freshPays) {
     addCoins(p.coins, { silent: true });
     markApplied(p.id);
-    ids.push(p.id);
-    total += p.coins;
+    payIds.push(p.id);
+    payTotal += p.coins;
   }
-  if (total > 0 && opts.notify !== false) {
-    toast(`🪙 +${total} Coin hisobingizga qo‘shildi — Stars to‘lovi tasdiqlandi`, 'success', 3600);
+  for (const g of freshGrants) {
+    addCoins(g.coins, { silent: true });
+    markApplied(g.id);
+    grantIds.push(g.id);
+    giftTotal += g.coins;
   }
-  await ackIds(ids);
-  return total;
+  if (opts.notify !== false) {
+    if (payTotal > 0) toast(`🪙 +${payTotal} Coin hisobingizga qo‘shildi — Stars to‘lovi tasdiqlandi`, 'success', 3600);
+    if (giftTotal > 0) toast(`🎉 +${giftTotal} Coin hisobingizga qo‘shildi — do‘st taklifi mukofoti!`, 'success', 3600);
+  }
+  await ackIds(payIds);
+  await ackGrantIds(grantIds);
+  return payTotal + giftTotal;
 }
 
 async function ackIds(ids: string[]): Promise<void> {
@@ -131,6 +156,16 @@ async function ackIds(ids: string[]): Promise<void> {
     await fetch(`${BASE}/api/payments`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'ack', ids }) });
   } catch {
     /* the next fetch will re-offer unacked ids — safe */
+  }
+}
+
+/** Acknowledges applied coin gifts (same owner-guarded PATCH the server runs). */
+async function ackGrantIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  try {
+    await fetch(`${BASE}/api/payments`, { method: 'POST', headers: headers(), body: JSON.stringify({ action: 'ack_grants', ids }) });
+  } catch {
+    /* the next fetch will re-offer unacked grants — safe */
   }
 }
 
@@ -143,6 +178,25 @@ export async function checkPendingCredits(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+/** Best-effort poll for ONE payment id (after a paid invoice closes). Returns true when it showed up. */
+async function pollCredits(payId: string): Promise<boolean> {
+  for (let i = 0; i < 10; i++) {
+    await new Promise((res) => setTimeout(res, 700));
+    try {
+      const info = await fetchBilling();
+      const hit = (info.pending ?? []).some((p) => p.id === payId);
+      const paid = (info.history ?? []).some((h) => h.id === payId && (h.status === 'succeeded' || h.status === 'refunded'));
+      if (hit || paid) {
+        await applyPendingCredits(info);
+        return true;
+      }
+    } catch {
+      /* keep polling */
+    }
+  }
+  return false;
 }
 
 // ===== Purchase =====
@@ -200,24 +254,8 @@ export async function buyPackage(packageId: string): Promise<BuyResult> {
   if (status === 'paid') {
     // The webhook may take a moment — poll the ledger briefly; even if it is slow,
     // checkPendingCredits() at the next app start picks the credit up.
-    for (let i = 0; i < 10; i++) {
-      await new Promise((res) => setTimeout(res, 700));
-      try {
-        const info = await fetchBilling();
-        const hit = (info.pending ?? []).some((p) => p.id === payId);
-        if (hit) {
-          await applyPendingCredits(info);
-          return 'paid';
-        }
-        if ((info.history ?? []).some((h) => h.id === payId && (h.status === 'succeeded' || h.status === 'refunded'))) {
-          await applyPendingCredits(info);
-          return 'paid';
-        }
-      } catch {
-        /* keep polling */
-      }
-    }
-    return 'maybe_paid';
+    const credited = await pollCredits(payId);
+    return credited ? 'paid' : 'maybe_paid';
   }
 
   // closed without paying — tell the server so the history shows it
