@@ -38,6 +38,8 @@ await call('setChatMenuButton', { menu_button: { type: 'web_app', text: 'O‘rga
 await call('setMyCommands', {
   commands: [
     { command: 'start', description: 'SmartLingo AI ni ochish' },
+    { command: 'ref', description: 'Do‘st taklifi — shaxsiy havolangiz' },
+    { command: 'news', description: 'Yangilik yuborish (admin)' },
     { command: 'help', description: 'Yordam' },
   ],
 });
