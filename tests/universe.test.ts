@@ -102,8 +102,8 @@ ok(worldDone(s1, 'kingdom') === 1, 'kingdom counts COMPLETED grammar lessons onl
 ok(worldDone(s1, 'ocean') === 1, 'ocean counts completed listening lessons');
 ok(worldDone(s1, 'galaxy') === 0, 'galaxy ignores non-completed reading');
 ok(worldDone(s1, 'mountain') === 3, 'mountain counts speaking prompts done');
-ok(worldProgress(s1, 'kingdom') === Math.round((1 / WORLD_TOTALS.kingdom) * 100), 'kingdom percentage derived from 34 lessons');
-ok(worldProgress(s1, 'ocean') === 20, 'ocean: 1 of 5 listening = 20%');
+ok(worldProgress(s1, 'kingdom') === Math.round((1 / WORLD_TOTALS.kingdom) * 100), `kingdom percentage derived from ${WORLD_TOTALS.kingdom} lessons`);
+ok(worldProgress(s1, 'ocean') === Math.round((1 / LISTENING.length) * 100), `ocean: 1 of ${LISTENING.length} listening = ${Math.round((1 / LISTENING.length) * 100)}% (dynamic — stays correct when material is added)`);
 
 // ---------- 4) Unlock ladder (real XP thresholds) ----------
 section('worldUnlocked (XP-level milestones)');
@@ -117,10 +117,11 @@ ok(!worldUnlocked(fakeState({ xp: xpForLevel(5) - 1 }), 'galaxy'), 'galaxy locke
 section('universeOverall / recommendedWorld');
 const s2 = fakeState({
   lessons: Object.fromEntries(
-    [...Array(17).keys()].map((i) => [`grammar:g${String(i + 1).padStart(2, '0')}`, { bestScore: 5, total: 5, attempts: 1, completed: true, lastDate: '' }]),
+    [...Array(Math.ceil(GRAMMAR.length / 2)).keys()].map((i) => [`grammar:g${String(i + 1).padStart(2, '0')}`, { bestScore: 5, total: 5, attempts: 1, completed: true, lastDate: '' }]),
   ) as PersistedState['lessons'],
 });
-ok(universeOverall(s2) === 10, 'half of grammar = 50% of one world = 10% overall (equal world weights)');
+const expectedOverall = Math.round(Math.round((Math.ceil(GRAMMAR.length / 2) / GRAMMAR.length) * 100) / 5);
+ok(universeOverall(s2) === expectedOverall, `half of grammar = ${Math.round((Math.ceil(GRAMMAR.length / 2) / GRAMMAR.length) * 100)}% of one world = ${expectedOverall}% overall (equal world weights)`);
 ok(universeOverall(fakeState()) === 0, 'fresh learner = 0%');
 ok(recommendedWorld(fakeState()) === 'forest', 'fresh learner is pointed at the forest');
 const s3 = fakeState({ xp: xpForLevel(2), lessons: Object.fromEntries(['grammar:g01', 'grammar:g02'].map((k) => [k, { bestScore: 5, total: 5, attempts: 1, completed: true, lastDate: '' }])) as PersistedState['lessons'] });
