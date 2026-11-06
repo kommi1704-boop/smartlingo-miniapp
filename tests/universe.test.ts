@@ -37,6 +37,7 @@ import {
   type WorldId,
 } from '../src/lib/universe';
 import { xpForLevel } from '../src/lib/gamification';
+import { today } from '../src/lib/dates';
 import { VOCAB } from '../src/data/vocab';
 import { GRAMMAR } from '../src/data/grammar';
 import { READING } from '../src/data/reading';
@@ -147,12 +148,15 @@ const ms = missionsFor(fakeState());
 ok(ms.length === 3, 'exactly three missions per day');
 ok(ms.every((m) => m.quest.coins > 0 && m.quest.target > 0), 'missions carry real coin rewards and targets');
 ok(
-  missionsFor(fakeState({ quests: { date: '', progress: { words: 7, xp: 100, games: 2, lessons: 1, tutor: 3, speaking: 1, writing: 1, resources: 1 }, claimed: [] } })).every((m) => m.done > 0),
+  missionsFor(fakeState({ quests: { date: today(), progress: { words: 7, xp: 100, games: 2, lessons: 1, tutor: 3, speaking: 1, writing: 1, resources: 1 }, claimed: [] } })).every((m) => m.done > 0),
   'progress binds to the existing quest counters',
 );
-const done = missionsFor(fakeState({ quests: { date: '', progress: { [ms[0].quest.counter]: ms[0].quest.target }, claimed: [] } }));
+// Stale date (app reopened after midnight, no activity yet) -> today starts at zero.
+const stale = missionsFor(fakeState({ quests: { date: '2020-01-01', progress: { words: 25, xp: 100, games: 2, lessons: 1, tutor: 3, speaking: 1, writing: 1, resources: 1 }, claimed: ['q-words10', 'q-xp50', 'q-lesson1'] } }));
+ok(stale.every((m) => m.done === 0 && !m.claimed && !m.claimable), 'stale date -> fresh missions (no yesterday progress/claims)');
+const done = missionsFor(fakeState({ quests: { date: today(), progress: { [ms[0].quest.counter]: ms[0].quest.target }, claimed: [] } }));
 ok(done[0].claimable && done[0].pct === 100, 'reaching the target makes the mission claimable');
-const claimed = missionsFor(fakeState({ quests: { date: '', progress: { [ms[0].quest.counter]: ms[0].quest.target }, claimed: [ms[0].quest.id] } }));
+const claimed = missionsFor(fakeState({ quests: { date: today(), progress: { [ms[0].quest.counter]: ms[0].quest.target }, claimed: [ms[0].quest.id] } }));
 ok(claimed[0].claimed && !claimed[0].claimable, 'claimed missions cannot be claimed twice');
 
 // ---------- 7) Unlock hint ----------
