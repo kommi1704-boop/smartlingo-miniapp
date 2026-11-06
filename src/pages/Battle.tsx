@@ -32,7 +32,6 @@ interface BattleOutcome {
   result: 'win' | 'loss' | 'draw';
   delta: number; // applied rating change
   rated: boolean;
-  aborted?: boolean; // connection-failure finish (zero answers) — no rating, no history entry
 }
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -260,19 +259,9 @@ export function Battle() {
   // ===== Finish paths =====
 
   const finish = useCallback(
-    (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number, serverWinner?: 'me' | 'opp' | 'draw' | null, aborted?: boolean) => {
+    (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
       resolvedRef.current = true; // battle resolved normally — leaving now is free
-      // PvP results come from the SERVER's winner field, not from the score: a 0:0 forfeit
-      // loss used to render as "Durrang -44" (user report). AI battles stay score-based.
-      const result: BattleOutcome['result'] =
-        vs === 'player' && serverWinner ? (serverWinner === 'me' ? 'win' : serverWinner === 'opp' ? 'loss' : 'draw') : battleResultOf(you, them);
-      if (aborted) {
-        // The duel never really happened (nobody answered — connection died). Nothing counts:
-        // no rating, no coins, no history entry — just tell the player what happened.
-        setOutcome({ vs, opponent, you, them, result: 'draw', delta: 0, rated: false, aborted: true });
-        setPhase('result');
-        return;
-      }
+      const result = battleResultOf(you, them);
       const rated = vs === 'player' || ratedLeft > 0;
       const rawDelta = vs === 'ai' ? eloDelta(rating, rating, scoreOf(result), aiK(rating)) : serverDelta ?? 0;
       const delta = rated ? rawDelta : 0;
@@ -323,7 +312,7 @@ export function Battle() {
             setWaitNote('Raqib hali javob bermadi. Kutishda davom etamizmi?');
             return;
           }
-          finish(view.meScore ?? you, view.oppScore ?? 0, 'player', view.oppName, view.myDelta ?? 0, view.winner, view.aborted === true);
+          finish(view.meScore ?? you, view.oppScore ?? 0, 'player', view.oppName, view.myDelta ?? 0);
         } catch {
           if (waitRunRef.current !== run) return;
           toast('Ulanish xatosi — natija saqlanmadi', 'warn');
@@ -339,8 +328,8 @@ export function Battle() {
   }, []);
 
   const onLiveFinish = useCallback(
-    (you: number, them: number, delta: number, winner: 'me' | 'opp' | 'draw' | null, aborted: boolean) => {
-      finish(you, them, 'player', oppNameRef.current, delta, winner, aborted);
+    (you: number, them: number, delta: number) => {
+      finish(you, them, 'player', oppNameRef.current, delta);
     },
     [finish],
   );
@@ -453,21 +442,14 @@ export function Battle() {
   if (phase === 'result' && outcome) {
     const win = outcome.result === 'win';
     const draw = outcome.result === 'draw';
-    const aborted = outcome.aborted === true;
     return (
       <div>
         <Bar emoji="⚔️" title="Jang tugadi" onBack={() => setPhase('lobby')} />
         <Card className="pop-in relative text-center">
-          {win && !aborted && <Confetti count={44} />}
-          <div className="flex justify-center"><Mascot mood={aborted ? 'think' : win ? 'cheer' : draw ? 'happy' : 'think'} size={92} /></div>
-          <p className="mt-1 text-2xl font-extrabold">
-            {aborted ? '📡 Jang bekor qilindi' : win ? '🏆 G‘alaba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            {aborted
-              ? 'Ulanish uzilishi tufayli hech kim javob bermadi — bu jang hisobga olinmadi.'
-              : `${outcome.opponent}ga qarshi`}
-          </p>
+          {win && <Confetti count={44} />}
+          <div className="flex justify-center"><Mascot mood={win ? 'cheer' : draw ? 'happy' : 'think'} size={92} /></div>
+          <p className="mt-1 text-2xl font-extrabold">{win ? '🏆 G‘alaba!' : draw ? '🤝 Durrang!' : '💪 Mag‘lubiyat'}</p>
+          <p className="mt-1 text-sm text-muted">{outcome.opponent}ga qarshi</p>
           <div className="mt-4 flex items-center justify-center gap-4">
             <div className="text-center">
               <div className="text-3xl">{myAvatar}</div>
@@ -487,7 +469,7 @@ export function Battle() {
             </Pill>
             {outcome.rated && <Pill tone="amber" className="!px-3 !py-1.5">🪙 +{win ? WIN_COINS : draw ? DRAW_COINS : LOSS_COINS} Coin</Pill>}
           </div>
-          {!outcome.rated && !aborted && (
+          {!outcome.rated && (
             <p className="mt-2 text-xs text-muted">Kunlik {AI_BATTLES_PER_DAY} ta reytingli AI jangi tugadi — bu jang mashq rejimida o‘tdi.</p>
           )}
           {outcome.vs === 'player' && oppIdRef.current && (
@@ -514,7 +496,7 @@ export function Battle() {
       <p className="-mt-3 mb-4 text-sm text-muted">Raqibni yutib reytingni oshir!</p>
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-rose-500 to-orange-500 p-5 text-white shadow-lg shadow-rose-500/25">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent to-[#4f46e5] p-5 text-white shadow-lg shadow-accent/30">
         <div className="pointer-events-none absolute -right-3 -top-5 text-[6.5rem] opacity-20 select-none">⚔️</div>
         <div className="flex items-center gap-3">
           {myPhoto ? (
@@ -524,7 +506,7 @@ export function Battle() {
           )}
           <div className="min-w-0 flex-1">
             <p className={cx('truncate font-extrabold', nameCls)}>{myName}</p>
-            <p className="mt-0.5 text-sm text-rose-100">
+            <p className="mt-0.5 text-sm text-indigo-100">
               <span className="rounded-full bg-white/20 px-2.5 py-0.5 font-bold">{rank.tier.name}</span>{' '}
               <b className="text-white">{fmt(rating)} reyting</b>
             </p>
@@ -944,7 +926,7 @@ interface LiveDuelProps {
   oppName: string;
   oppId?: string | null; // opponent's user id — when present their name opens the public profile
   oppAvatar: string;
-  onFinish: (you: number, them: number, delta: number, winner: 'me' | 'opp' | 'draw' | null, aborted: boolean) => void;
+  onFinish: (you: number, them: number, delta: number) => void;
   onScore: (you: number, them: number) => void;
   onQuitRequest: () => void;
   onLegacy: () => void; // battle row predates live duels -> fall back to the async flow
@@ -961,7 +943,6 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
   const syncRef = useRef<LiveSync | null>(null);
   const pickRef = useRef<number | null>(null);
   const inflightRef = useRef(false);
-  const errsRef = useRef(0); // mirror of errs for the poll loop (adaptive backoff)
   const offsetRef = useRef(0); // serverNow - clientNow, for a shared clock
   const prevRef = useRef<{ round: number; mine: number; theirs: number } | null>(null);
 
@@ -977,14 +958,13 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       syncRef.current = v;
       setSync(v);
       setErrs(0);
-      errsRef.current = 0;
       const mine = me === 'p1' ? v.s1 : v.s2;
       const theirs = me === 'p1' ? v.s2 : v.s1;
       onScore(mine, theirs);
       if (v.status === 'finished') {
         if (!finishedRef.current) {
           finishedRef.current = true;
-          onFinish(mine, theirs, v.myDelta ?? 0, v.winner, v.aborted === true);
+          onFinish(mine, theirs, v.myDelta ?? 0);
         }
         return;
       }
@@ -1014,11 +994,8 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
   );
 
   // Round-state poll — also the heartbeat that keeps me "online" on the server.
-  // A self-rescheduling timeout (not a fixed interval) so a run of failures backs the poll
-  // off to 2.5s instead of hammering a struggling network every 1.2s.
   useEffect(() => {
     let alive = true;
-    let timer: ReturnType<typeof setTimeout> | null = null;
     const run = async () => {
       if (inflightRef.current || finishedRef.current) return;
       inflightRef.current = true;
@@ -1026,24 +1003,17 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
         const v = await syncPvp(battleId);
         if (alive) apply(v);
       } catch {
-        if (alive) {
-          errsRef.current += 1;
-          setErrs(errsRef.current);
-        }
+        if (alive) setErrs((e) => e + 1);
       } finally {
         inflightRef.current = false;
       }
     };
-    const loop = async () => {
-      await run();
-      if (!alive) return;
-      timer = setTimeout(() => void loop(), errsRef.current >= 3 ? 2500 : 1200);
-    };
-    void loop();
+    void run();
+    const poll = setInterval(() => void run(), 1200);
     const tick = setInterval(() => setNow(Date.now()), 100);
     return () => {
       alive = false;
-      if (timer) clearTimeout(timer);
+      clearInterval(poll);
       clearInterval(tick);
     };
   }, [battleId, apply]);
@@ -1069,10 +1039,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       .then((r) => {
         if (!finishedRef.current) apply(r);
       })
-      .catch(() => {
-        errsRef.current += 1;
-        setErrs(errsRef.current);
-      });
+      .catch(() => setErrs((e) => e + 1));
   }
 
   if (!sync || !q) {

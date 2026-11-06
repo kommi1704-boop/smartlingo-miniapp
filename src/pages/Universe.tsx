@@ -89,27 +89,27 @@ export default function Universe() {
 
   return (
     <div className="pb-2">
-      {/* ---------- Top HUD ---------- */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-        <button onClick={() => goBack('/')} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition hover:bg-surface2" aria-label="Orqaga">
+      {/* ---------- Top HUD (compact single row — XP/Coin live in the sticky header on phones) ---------- */}
+      <div className="flex items-center gap-2">
+        <button onClick={() => goBack('/')} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink transition hover:bg-surface2 md:hidden" aria-label="Orqaga">
           <Icon name="left" className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="bg-gradient-to-r from-indigo-400 via-violet-300 to-cyan-300 bg-clip-text text-lg font-extrabold text-transparent md:text-2xl">
+          <h1 className="truncate bg-gradient-to-r from-indigo-700 via-violet-700 to-cyan-700 bg-clip-text text-lg font-extrabold text-transparent dark:from-indigo-400 dark:via-violet-300 dark:to-cyan-300 md:text-2xl">
             🪐 Learning Universe
           </h1>
-          <p className="hidden text-[11px] text-muted sm:block">Har bir dars — yangi sarguzasgt</p>
+          <p className="hidden truncate text-[11px] text-muted sm:block">Har bir dars — yangi sarguzasgt</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff]" title="Tajriba darajasi">
             Lv {xp.level}
           </span>
-          <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff]" title="Umumiy XP">
+          <span className="hidden rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff] sm:inline" title="Umumiy XP">
             ⭐ {fmt(s.xp)}
           </span>
           <button
             onClick={() => navigate('/shop')}
-            className="rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-[#231a05] shadow-sm shadow-gold/30"
+            className="hidden rounded-full bg-gold px-2.5 py-1 text-xs font-bold text-[#231a05] shadow-sm shadow-gold/30 sm:block"
             title="Do‘konga o‘tish"
           >
             🪙 {fmt(s.coins.balance)}
@@ -118,7 +118,7 @@ export default function Universe() {
       </div>
 
       {/* ---------- Interactive map ---------- */}
-      <div className="uni-sky relative mt-3 h-[54vh] min-h-[400px] overflow-hidden rounded-[2rem] border border-indigo-400/20 md:h-[62vh]" data-testid="universe-map">
+      <div className="uni-sky relative mt-3 min-h-[320px] overflow-hidden rounded-[2rem] border border-indigo-400/20 sm:h-[54vh] sm:min-h-[420px] md:h-[62vh]" data-testid="universe-map">
         {mode3d ? (
           <SceneGuard onFail={() => setMode3d(false)}>
             <Suspense
@@ -137,31 +137,61 @@ export default function Universe() {
         ) : (
           /* --- lightweight 2D fallback (same model, same interactions) --- */
           <>
-            {statuses.map((st) => (
-              <button
-                key={st.world.id}
-                onClick={() => setSelected(st.world.id)}
-                style={{ left: `${st.world.map.x}%`, top: `${st.world.map.y}%` }}
-                className={cx(
-                  'uni-float absolute w-[11.5rem] rounded-2xl border p-3 text-left transition active:scale-95',
-                  selected === st.world.id ? 'border-cyan-300/70 bg-slate-900/90' : 'border-white/10 bg-slate-900/60 hover:border-white/25',
-                )}
-                aria-label={st.world.name}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{st.world.emoji}</span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-extrabold text-white">{st.world.name}</span>
-                    <span className={cx('block text-[10px] font-bold', st.unlocked ? 'text-cyan-300' : 'text-slate-400')}>
-                      {st.unlocked ? `${st.progress}%` : `🔒 ${st.world.unlockLevel}-daraja`}
+            {/* phones: stacked world cards — a percentage-positioned map always clips on narrow screens */}
+            <div className="space-y-2 p-3 sm:hidden">
+              {statuses.map((st) => (
+                <button
+                  key={st.world.id}
+                  onClick={() => setSelected(st.world.id)}
+                  className={cx(
+                    'flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.98]',
+                    selected === st.world.id ? 'border-cyan-300/70 bg-slate-900/90' : 'border-white/10 bg-slate-900/60',
+                  )}
+                  aria-label={st.world.name}
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-2xl" style={{ background: `${st.world.color}22`, border: `1px solid ${st.world.color}55` }}>
+                    {st.world.emoji}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-extrabold text-white">{st.world.name}</span>
+                    <span className="mt-1.5 flex h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                      <span className="block h-full rounded-full transition-all" style={{ width: `${st.progress}%`, background: st.world.color }} />
                     </span>
                   </span>
-                </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${st.progress}%`, background: st.world.color }} />
-                </div>
-              </button>
-            ))}
+                  <span className={cx('shrink-0 text-[11px] font-bold', st.unlocked ? 'text-cyan-300' : 'text-slate-400')}>
+                    {st.unlocked ? `${st.progress}%` : `🔒 ${st.world.unlockLevel}-daraja`}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {/* sm+: free-form island map (cards centered on their anchor so they never clip at the edges) */}
+            <div className="hidden sm:block">
+              {statuses.map((st) => (
+                <button
+                  key={st.world.id}
+                  onClick={() => setSelected(st.world.id)}
+                  style={{ left: `${st.world.map.x}%`, top: `${st.world.map.y}%` }}
+                  className={cx(
+                    'uni-float absolute w-[11.5rem] -translate-x-1/2 -translate-y-1/2 rounded-2xl border p-3 text-left transition active:scale-95',
+                    selected === st.world.id ? 'border-cyan-300/70 bg-slate-900/90' : 'border-white/10 bg-slate-900/60 hover:border-white/25',
+                  )}
+                  aria-label={st.world.name}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{st.world.emoji}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-extrabold text-white">{st.world.name}</span>
+                      <span className={cx('block text-[10px] font-bold', st.unlocked ? 'text-cyan-300' : 'text-slate-400')}>
+                        {st.unlocked ? `${st.progress}%` : `🔒 ${st.world.unlockLevel}-daraja`}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${st.progress}%`, background: st.world.color }} />
+                  </div>
+                </button>
+              ))}
+            </div>
           </>
         )}
 

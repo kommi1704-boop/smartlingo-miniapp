@@ -117,7 +117,7 @@ export function Dashboard() {
       </section>
 
       {/* ---------- C. Continue learning ---------- */}
-      <Section title="Davom ettirish">
+      <Section title="Davom ettirish" action={<A to="/plan" className="text-sm font-semibold text-accent dark:text-[#b3a4ff]">Reja →</A>}>
         <Card className="!p-4">
           <div className="flex items-center gap-4">
             <ProgressRing value={sum.pct} size={72} stroke={8}>

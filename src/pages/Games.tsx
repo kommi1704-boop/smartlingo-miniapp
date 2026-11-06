@@ -42,7 +42,7 @@ export function GamesHub() {
         to="/games/daily"
         className={cx(
           'relative mb-4 block overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 text-white shadow-lg transition active:scale-[0.99]',
-          dailyDone ? 'from-emerald-500 to-teal-600 shadow-emerald-500/25' : `${dailyInfo.color} shadow-indigo-500/25`,
+          dailyDone ? 'from-emerald-500 to-teal-600 shadow-emerald-500/25' : 'from-accent to-[#4f46e5] shadow-accent/30',
         )}
       >
         <div className="flex items-center gap-3">

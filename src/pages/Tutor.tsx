@@ -101,11 +101,15 @@ export function Tutor() {
           <h1 className="text-lg font-extrabold leading-tight">Lingo</h1>
           <div className="flex items-center gap-1.5">
             {live === null ? <Pill>Tekshirilmoqda…</Pill> : live ? <Pill tone="green">Jonli AI</Pill> : <Pill tone="amber">Demo rejim</Pill>}
-            <span className="truncate text-xs text-muted">Darajangiz: {p.estimatedLevel}</span>
+            <span className="hidden truncate text-xs text-muted sm:inline">Darajangiz: {p.estimatedLevel}</span>
           </div>
         </div>
-        <Button variant="secondary" size="sm" icon="refresh" onClick={() => setHistoryOpen(true)} aria-label="Suhbatlar tarixi">Tarix</Button>
-        <Button size="sm" icon="plus" onClick={newChat} aria-label="Yangi suhbat">Yangi</Button>
+        <Button variant="secondary" size="sm" icon="refresh" onClick={() => setHistoryOpen(true)} aria-label="Suhbatlar tarixi">
+          <span className="hidden sm:inline">Tarix</span>
+        </Button>
+        <Button size="sm" icon="plus" onClick={newChat} aria-label="Yangi suhbat">
+          <span className="hidden sm:inline">Yangi</span>
+        </Button>
       </header>
 
       {live === false && (
