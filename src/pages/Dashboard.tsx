@@ -181,7 +181,7 @@ export function Dashboard() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-base">{m.quest.emoji}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-sm font-bold">{m.quest.title}</p>
+                  <p className="min-w-0 truncate text-sm font-bold">{m.quest.title}</p>
                   <span className="shrink-0 text-[11px] font-bold text-gold">+{m.quest.coins} 🪙</span>
                 </div>
                 <div className="mt-1 flex items-center gap-2">
@@ -191,9 +191,13 @@ export function Dashboard() {
                   </span>
                 </div>
               </div>
-              <Button size="sm" variant={m.claimable ? 'primary' : 'ghost'} disabled={!m.claimable} onClick={() => m.claimable && claimQuest(m.quest.id)}>
-                {m.claimed ? '✓' : 'Olish'}
-              </Button>
+              {m.claimed ? (
+                <span className="flex h-8 shrink-0 items-center rounded-xl bg-emerald-500/15 px-2.5 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400">✓ Olingan</span>
+              ) : (
+                <Button size="sm" variant={m.claimable ? 'primary' : 'ghost'} disabled={!m.claimable} className="w-16 shrink-0" onClick={() => m.claimable && claimQuest(m.quest.id)}>
+                  Olish
+                </Button>
+              )}
             </div>
           ))}
           {/* daily game row */}

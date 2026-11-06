@@ -214,10 +214,10 @@ function Bubble({ role, children, demo, link }: { role: 'user' | 'assistant'; ch
   return (
     <div className={cx('flex items-end gap-1.5', mine ? 'justify-end' : 'justify-start')}>
       {!mine && <Mascot size={30} animate={false} className="mb-1" />}
-      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-white' : 'rounded-bl-lg bg-surface2')}>
+      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-gradient-to-br from-accent to-violet-500 text-white' : 'rounded-bl-lg bg-surface2')}>
         <p className="whitespace-pre-line">{children}</p>
         {link && (
-          <A to={link.route} className="mt-2 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">
+          <A to={link.route} className="mt-2 inline-flex items-center gap-1 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold text-white">
             {link.label} <Icon name="right" className="h-3.5 w-3.5" />
           </A>
         )}

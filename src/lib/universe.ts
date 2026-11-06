@@ -9,7 +9,7 @@
 // renders the HUD, the world sheet and the daily missions. All activities launch the
 // EXISTING pages (routes below must exist in App.tsx — tests pin them).
 import type { PersistedState } from '../types';
-import { todaysQuests, type QuestDef } from './shop';
+import { questStateOf, todaysQuests, type QuestDef } from './shop';
 import { xpLevel } from './gamification';
 import { VOCAB } from '../data/vocab';
 import { GRAMMAR } from '../data/grammar';
@@ -232,9 +232,12 @@ export interface MissionView {
  * lessons completed, games played) — verified exactly like in the Shop page.
  */
 export function missionsFor(s: PersistedState): MissionView[] {
+  // questStateOf normalizes by date — without it the Home daily challenge would
+  // show YESTERDAY's progress/claims until the first activity of the new day.
+  const qs = questStateOf(s);
   return todaysQuests().map((quest) => {
-    const done = Math.min(quest.target, s.quests.progress[quest.counter] ?? 0);
-    const claimed = s.quests.claimed.includes(quest.id);
+    const done = Math.min(quest.target, qs.progress[quest.counter] ?? 0);
+    const claimed = qs.claimed.includes(quest.id);
     return {
       quest,
       done,

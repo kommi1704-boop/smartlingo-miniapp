@@ -12,6 +12,7 @@ import { Button, Empty } from './components/ui';
 import { Landing } from './pages/Landing';
 import { Onboarding, Assessment, SkillProbes, Result } from './pages/Start';
 import { Dashboard } from './pages/Dashboard';
+import { Learn } from './pages/Learn';
 import { Roadmap } from './pages/Roadmap';
 import { Plan } from './pages/Plan';
 import { Tutor } from './pages/Tutor';
@@ -92,6 +93,7 @@ export function App() {
   let body;
   switch (first) {
     case undefined: body = <Dashboard />; break;
+    case 'learning': body = <Learn />; break;
     case 'roadmap': body = <Roadmap />; break;
     case 'plan': body = <Plan />; break;
     case 'tutor': body = <Tutor />; break;
