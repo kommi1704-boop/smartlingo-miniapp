@@ -9,12 +9,12 @@ import { buildPlan, planSummary } from '../lib/plan';
 import { streakOf, xpProgress, BADGES } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import { isOwnedActive, claimQuest } from '../store/actions';
-import { lastDays, shortDay, today } from '../lib/dates';
+import { today } from '../lib/dates';
 import { Button, Card, LevelBadge, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { BarChart } from '../components/BarChart';
 import { Avatar } from '../components/Avatar';
-import { Mascot } from '../components/Mascot';
+import { LingoBubble, Mascot, type Mood } from '../components/Mascot';
+import { CountUp, DotChart, StreakWeek } from '../components/Alive';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
@@ -50,9 +50,24 @@ export function Dashboard() {
   const nameCls = nameStyleClasses(s.shop.equipped, isOwnedActive);
   const goal = s.settings.dailyWordGoal;
   const next = plan.find((i) => !i.done);
-  const chart = lastDays(7).map((k) => ({ label: shortDay(k), value: s.activity[k]?.xp ?? 0, highlight: k === t }));
   const missions = missionsFor(s);
   const overall = universeOverall(s);
+
+  // Lingo reacts to the learner's real state
+  const hour = new Date().getHours();
+  const everActive = Object.keys(s.activity).length > 0;
+  const lingoMood: Mood = sum.allDone ? 'proud' : hour >= 22 || hour < 5 ? 'sleep' : everActive && streak === 0 ? 'sad' : !everActive ? 'wow' : streak >= 7 ? 'love' : 'happy';
+  const greet = hour < 5 ? 'Tungi boyqush' : hour < 11 ? 'Xayrli tong' : hour < 18 ? 'Salom' : 'Xayrli kech';
+  const lingoLine = useMemo(() => {
+    if (lingoMood === 'sleep') return 'Zzz… kech bo‘ldi! Bitta qisqa mashq qilamiz-u, keyin dam olamiz 🌙';
+    if (lingoMood === 'sad') return 'Kechagi kunni o‘tkazib yuboribsan… Bugun bitta mashq bilan seriyani qaytaramiz! 💪';
+    if (lingoMood === 'proud') return 'Zo‘r! Bugungi reja tayyor 🎉 Endi o‘yin yoki jang vaqti!';
+    if (lingoMood === 'wow') return 'Salom! Men Lingo. Birga birinchi mashqni boshlaymizmi? ✨';
+    if (lingoMood === 'love') return `${streak} kunlik seriya! Sen eng zo‘r o‘quvchisan 💜`;
+    if (streak >= 3) return `${streak} kunlik seriya! Olovni o‘chirmaylik 🔥`;
+    return next ? `Bugun «${next.title}» dan boshlaymizmi? Men tayyorman!` : 'Bugun yangi so‘zlar o‘rganamizmi?';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lingoMood, streak, next?.title]);
 
   const totalLessons = Object.values(s.lessons).filter((l) => l.completed).length;
   const totalReviews = Object.values(s.vocab).reduce((a, v) => a + v.reviews, 0);
@@ -85,36 +100,57 @@ export function Dashboard() {
 
   return (
     <div>
-      {/* ---------- B. Personalized greeting ---------- */}
-      <section className="feature-ring relative overflow-hidden rounded-2xl bg-surface p-4 sm:p-5">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-accent/20 blur-3xl" aria-hidden />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-2xl bg-surface2 p-1">
-              {s.shop.equipped.avatar ? (
-                <Avatar emoji={s.shop.equipped.avatar} size={56} />
-              ) : (
-                <Mascot mood={sum.allDone ? 'cheer' : streak > 0 ? 'happy' : 'wow'} size={56} />
-              )}
-            </div>
-            <div className="min-w-0">
-              <h1 className={cx('truncate text-xl font-extrabold leading-tight sm:text-2xl', nameCls)}>Salom, {p.name}!</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent dark:text-[#b3a4ff]">{p.estimatedLevel}</span>
-                <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">🔥 {streak} kunlik seriya</span>
-              </div>
-            </div>
+      {/* ---------- B. Alive hero: Lingo + speech bubble + XP ---------- */}
+      <section className="aurora rise-in rounded-3xl p-4 shadow-xl shadow-accent/25 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {s.shop.equipped.avatar && <Avatar emoji={s.shop.equipped.avatar} size={30} />}
+            <h1 className={cx('truncate text-lg font-extrabold leading-tight sm:text-xl', nameCls)}>{greet}, {p.name}!</h1>
           </div>
-          <span className="shrink-0 rounded-full bg-surface2 px-3 py-1 text-xs font-extrabold">Lv {xp.level}</span>
+          <span className="glass-card shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold !text-white">{p.estimatedLevel}</span>
         </div>
-        <div className="relative mt-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-muted">
-            <span>Keyingi darajagacha</span>
-            <span>{fmt(s.xp)} XP</span>
+
+        <div className="mt-3 flex items-end gap-2">
+          <Mascot mood={lingoMood} size={96} title="Lingo — bosing, javob beradi" />
+          <div className="min-w-0 flex-1 pb-3">
+            <LingoBubble text={lingoLine} />
           </div>
-          <ProgressBar value={xp.pct} className="mt-1.5" label="XP progress" />
+        </div>
+
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs font-bold text-white/80">
+            <span>Daraja {xp.level}</span>
+            <span><CountUp value={xp.into} /> / {fmt(xp.need)} XP</span>
+          </div>
+          <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-white/15" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi darajagacha">
+            <div className="xp-fill h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, xp.pct)}%` }} />
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <A to="/progress" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
+            <span className="block text-[11px] font-semibold text-white/70">Seriya</span>
+            <span className="text-base font-black"><span className="flame-dance">🔥</span> <CountUp value={streak} /></span>
+          </A>
+          <A to="/progress" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
+            <span className="block text-[11px] font-semibold text-white/70">Jami XP</span>
+            <span className="text-base font-black">⭐ <CountUp value={s.xp} /></span>
+          </A>
+          <A to="/shop" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
+            <span className="block text-[11px] font-semibold text-white/70">Coin</span>
+            <span className="text-base font-black"><span className="coin-spin">🪙</span> <CountUp value={s.coins.balance} /></span>
+          </A>
         </div>
       </section>
+
+      {/* ---------- Weekly streak (hex badges) ---------- */}
+      <Card className="glass-card rise-in mt-3 !p-4" >
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-extrabold">Haftalik seriya</p>
+          <span className="text-xs font-bold text-gold">{streak > 0 ? `🔥 ${streak} kun ketma-ket` : 'Bugun boshlang!'}</span>
+        </div>
+        <StreakWeek activity={s.activity} />
+      </Card>
 
       {/* ---------- C. Continue learning ---------- */}
       <Section title="Davom ettirish" action={<A to="/plan" className="text-sm font-semibold text-accent dark:text-[#b3a4ff]">Reja →</A>}>
@@ -215,9 +251,9 @@ export function Dashboard() {
       {/* ---------- F. Quick access (skills) ---------- */}
       <Section title="Tezkor kirish">
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
-          {quick.map((q) => (
-            <A key={q.path} to={q.path} className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center transition hover:border-accent/40 active:scale-[0.97]">
-              <span className="text-2xl">{q.emoji}</span>
+          {quick.map((q, i) => (
+            <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className="rise-in tap flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center transition hover:border-accent/40">
+              <span className="text-3xl drop-shadow-[0_4px_8px_rgba(115,87,255,0.35)]">{q.emoji}</span>
               <span className="text-xs font-bold">{q.label}</span>
               <span className="text-[10px] font-semibold text-muted">{q.count}</span>
             </A>
@@ -242,7 +278,7 @@ export function Dashboard() {
       {/* ---------- G. Recent activity ---------- */}
       <Section title="Yaqindagi faollik">
         <Card>
-          <BarChart data={chart} />
+          <DotChart activity={s.activity} />
           <p className="mt-3 text-xs text-muted">{LEVEL_DESC[p.estimatedLevel].title} · <LevelBadge level={p.estimatedLevel} /> → maqsad <LevelBadge level={p.targetLevel} /></p>
           <div className="mt-4 border-t border-line pt-2">
             {recent.length === 0 ? (

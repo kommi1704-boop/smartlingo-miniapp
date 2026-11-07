@@ -37,7 +37,8 @@ export function Button({ variant = 'primary', size = 'md', full, icon, className
       type="button"
       {...rest}
       className={cx(
-        'inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+        'tap inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+        variant === 'primary' && size === 'lg' && 'btn-shine',
         sz,
         VARIANT[variant],
         full && 'w-full',
@@ -100,7 +101,7 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
 }
 
 // ---------- Progress ----------
-export function ProgressBar({ value, className, color = 'bg-gradient-to-r from-accent to-accent2', label }: { value: number; className?: string; color?: string; label?: string }) {
+export function ProgressBar({ value, className, color = 'xp-fill', label }: { value: number; className?: string; color?: string; label?: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
     <div
@@ -126,7 +127,7 @@ export function ProgressRing({ value, size = 84, stroke = 9, children }: { value
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-surface2" />
         <circle
           cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round"
-          stroke="url(#ringGrad)" strokeDasharray={c} strokeDashoffset={c - (v / 100) * c} className="transition-all duration-700"
+          stroke="url(#ringGrad)" strokeDasharray={c} strokeDashoffset={c - (v / 100) * c} className="ring-draw transition-all duration-700" style={{ ['--ring-full' as string]: c }}
         />
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">

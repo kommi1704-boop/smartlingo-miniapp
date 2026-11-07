@@ -6,6 +6,7 @@ import { useApp } from '../store/store';
 import { isXpBoosted } from '../store/actions';
 import { streakOf, xpProgress } from '../lib/gamification';
 import { ProgressBar } from './ui';
+import { Mascot } from './Mascot';
 
 export interface NavItem {
   path: string;
@@ -149,7 +150,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </A>
             <div className="flex items-center gap-1.5">
               <StatPill to="/progress" label="Kunlik seriya va progress" className="bg-gold/15 text-gold">
-                🔥 {streak}
+                <span className="flame-dance">🔥</span> {streak}
               </StatPill>
               <StatPill to="/progress" label="XP va daraja" className="bg-accent/15 text-accent dark:text-[#b3a4ff]">
                 ⭐ {fmt(s.xp)}
@@ -165,23 +166,21 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="mx-auto h-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6">{children}</div>
         </main>
 
-        {/* Mobile bottom navigation — 5 destinations */}
-        <nav className="glass safe-bottom shrink-0 border-t border-line md:hidden" aria-label="Pastki menyu">
-          <ul className="flex">
+        {/* Mobile bottom navigation — floating pill, active tab expands with its label */}
+        <nav className="safe-bottom shrink-0 px-3 pb-2 pt-1 md:hidden" aria-label="Pastki menyu">
+          <ul className="nav-pill mx-auto flex max-w-md items-center gap-1 rounded-[28px] p-1.5">
             {TABS.map((t) => {
               const active = isActive(path, t.path);
               return (
-                <li key={t.path} className="flex-1">
+                <li key={t.path} className={cx('transition-all duration-300', active ? 'flex-[2.1]' : 'flex-1')}>
                   <A
                     to={t.path}
                     aria-current={active ? 'page' : undefined}
-                    className={cx('flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold transition', active ? 'text-accent dark:text-[#b3a4ff]' : 'text-muted')}
+                    aria-label={t.label}
+                    className={cx('tap flex h-11 items-center justify-center gap-1.5 rounded-full text-[12px] font-extrabold', active ? 'nav-dot nav-bounce text-white' : 'text-muted')}
                   >
-                    <span className={cx('flex h-7 w-12 items-center justify-center rounded-full transition', active && 'bg-accent/15')}>
-                      <Icon name={t.icon} className="h-5 w-5" />
-                    </span>
-                    {t.label}
-                    <span className={cx('h-0.5 w-4 rounded-full transition-all', active ? 'bg-accent dark:bg-[#b3a4ff]' : 'bg-transparent')} />
+                    {t.path === '/tutor' ? <Mascot size={active ? 26 : 28} animate={false} interactive={false} mood={active ? 'cheer' : 'happy'} /> : <Icon name={t.icon} className="h-[22px] w-[22px]" />}
+                    {active && <span>{t.label}</span>}
                   </A>
                 </li>
               );
