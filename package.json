@@ -4,9 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "SmartLingo AI — Telegram Mini App for Uzbek-speaking learners of English (ages 8–17)",
-  "engines": {
-    "node": ">=20.19"
-  },
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
