@@ -264,6 +264,77 @@ Setup (one-time, on top of the billing setup):
 3. The referral reward is 50 Coin (`REFERRAL_COINS`) — change it in `api/bot.ts`,
    `api/progress.ts` and `src/lib/referrals.ts` together (tests cross-check all three).
 
+---
+
+## 6e. Friend Quiz — "Do'st quizi" (optional, needs Supabase + bot)
+
+A learner builds an English quiz from the app's OWN verified content and challenges friends
+through Telegram. Everything runs on the existing infrastructure: the same bot, the same
+wallet, the same Supabase security model (RLS on, no client policies, service-role API only).
+
+**How it works**
+
+1. **Create** (`/friendquiz` → Yaratish): title (≤ 60 chars) + category (So'z boyligi /
+   Grammatika / Aralash / Tasodifiy) + difficulty (Boshlang'ich Pre-A1·A1 / Elementar A2 /
+   O'rta B1 / Yuqori B2+) + size. **5 questions free, 10 questions for 50 Coins.**
+   Questions are picked SERVER-SIDE from `api/quizBank.ts` — ~1 250 items generated from the
+   app's reviewed grammar lessons, the battle pool and the 380+ reviewed words (deterministic,
+   no duplicates inside a quiz, the creator's last 5 quizzes are excluded). Question order AND
+   option order are shuffled per quiz.
+2. **Share**: the app offers `https://t.me/<bot>?start=quiz_<id>` (bot username from `getMe`,
+   same as referrals). The bot webhook answers `/start quiz_<id>` with an invitation card and a
+   Mini App button carrying `?fq=<id>`; the app also resolves `start_param` and the hash route.
+3. **Play** (`/friendquiz/play/<id>`): one attempt per player (DB-level `UNIQUE (quiz_id,
+   player_id)`), progress bar, refresh recovery (the in-progress draft is cached on the device),
+   correct answers and explanations are NEVER sent before submission. Anti-cheat: submissions
+   faster than 0.7 s/question are rejected; grading is server-side from the stored copy.
+4. **Results**: score ring, shareable result card (gold theme unlock: 20 Coins), full answer
+   review after submission, per-quiz leaderboard (medals, fastest-first tie-break), and the
+   creator gets a Telegram notification (kind `quiz`, respecting their preferences).
+
+**Coin rules**: the cost is fixed server-side; spends are journaled in `coin_spends`
+(deterministic ids — retries never double-journal) and failed creations are refunded through
+the EXISTING `coin_grants` ledger (applied by the Mini App exactly once, like referral
+rewards). Completing a friend quiz grants a small XP bonus locally; opening a quiz grants
+nothing.
+
+**Setup (one-time):** re-run the full `supabase/schema.sql` (adds `friend_quizzes`,
+`friend_quiz_attempts`, `coin_spends`) and redeploy. No new env vars.
+
+---
+
+## 6f. Notifications — "Bildirishnomalar" (optional, needs Supabase + bot)
+
+One dispatcher (`api/notify.ts`) decides every Telegram push: category preference → pause →
+quiet hours (Asia/Tashkent) → send → record. Delivery attempts land in
+`notification_history` with DETERMINISTIC ids (`n_<kind>_<uid>_<event>`), so webhook retries
+and double cron ticks can never send the same message twice.
+
+**User settings** (`/notify`, linked from Settings and every message footer):
+per-category switches (streak / news / motivation / achievements / quiz / battle / weekly),
+temporary pause (2 h / 24 h / 7 d), quiet hours (e.g. 22:00–08:00 — wrap-safe), and the last
+20 delivery records including transparent skips ("Tinch soatida", "Pauzada", "Muzlatgich
+bilan himoyalangan"). Opt-out copy stays positive — no guilt, no pressure. `achievements`
+(rewards already earned) bypass pause and quiet hours by design.
+
+**Event wiring**: Friend Quiz submissions notify the creator (`quiz`); battle finishes notify
+both players (`battle`, aborted duels stay silent); the streak reminder is the SAME 18:00
+Tashkent cron as before (`api/reminders.ts`, `0 13 * * *`), now preference-aware and
+idempotent; a second cron (`api/weekly.ts`, `5 13 * * *`) sends the Monday weekly challenge to
+active learners, dispatches admin-scheduled campaigns and resumes interrupted ones.
+
+**Admin Notification Manager** (`/api/admin-notify`, authorized by the SAME `ADMIN_TELEGRAM_IDS`
+list as the existing `/news` command — fail closed): create/edit campaigns, attach an image
+URL, add a button, pick the audience (all / active last 7 days / inactive), preview with a
+live recipient count, send a test to yourself, send chunked (300/run, rate-safe with pauses)
+or schedule it, then watch sent/failed counts. Nothing is ever broadcast automatically — a
+message goes out only through an explicit admin send/schedule, and every recipient keeps
+their `news` preference.
+
+**Setup (one-time):** re-run the full `supabase/schema.sql` (adds `notification_preferences`,
+`notification_history`, `notification_campaigns`) and redeploy (the weekly cron registers
+itself). Admins: set `ADMIN_TELEGRAM_IDS` in Vercel (already needed by `/news`).
+
 
 ## 7. Known limits
 
@@ -285,20 +356,29 @@ was blocked). Since then the project is verified in a normal environment on ever
 - `npm run build` (vite) — succeeds.
 - Unit suites (run with `npx tsx tests/<file>.ts`): `phase2.test.ts` (58), `ai-handlers.test.ts` (32),
   `billing-profile.test.ts` (70 — catalog parity, Tiny Pack budget, payload format, rating clamps,
-  XP windows, streaks, public-profile projection + privacy leak checks), `handlers-smoke.test.ts` (9).
-- The new screens (Tanga do‘koni incl. confirm/cancel/paid modals + credit application,
-  leaderboards incl. weekly/monthly tabs, public profile incl. cosmetics and ranks) were
-  exercised end-to-end in a real headless Chromium on desktop and mobile viewports with mocked
-  APIs and a stubbed Telegram SDK — no console errors.
-- The live Stars flow itself (real invoice, webhook, refund) can only be proven against a real
-  bot + Supabase + a real 1-Star purchase; the server logic is covered by unit tests as far as
-  possible without those secrets.
+  XP windows, streaks, public-profile projection + privacy leak checks), `handlers-smoke.test.ts` (9),
+  `broadcast.test.ts` (31), `battle-live.test.ts` (36), `viral.test.ts` (34),
+  `quiz.test.ts` (82 — bank integrity, selection/dedup/widening, option-shuffle answer remap,
+  deep-link parsing, cost parity, schema guards, answer-stripping guards) and
+  `notify.test.ts` (61 — category/quiet/pause gating, 30-day pause cap, sanitizer clamps,
+  deterministic idempotency ids, campaign send + retry (fake transport proves zero double-sends),
+  audience filters, cron wiring guards).
+- The Friend Quiz + Notifications screens were exercised end-to-end in a real headless Chromium
+  (mobile + desktop viewports, mocked API): create free & paid quizzes (wallet debit verified),
+  play → submit → result card → gold unlock → leaderboard, refresh recovery, duplicate
+  submission block, insufficient-coins block, deep link `?fq=` routing, preference toggles,
+  pause, quiet hours and history — no console errors.
+- The live Telegram delivery itself (real bot messages, real cron fire) can only be proven with
+  the production secrets; the dispatch logic is covered by unit tests as far as possible
+  without those secrets.
 
 ## 9. Where to change things
 
 | What | File |
 |---|---|
 | Words / grammar / reading / listening / placement / speaking / writing | `src/data/*.ts` |
+| Friend Quiz question bank | `api/quizBank.ts` (built from `src/data/*`) |
+| Notification kinds / labels / gating | `api/notify.ts` + `src/types.notify.ts` |
 | Resource links | `src/data/resources.ts` |
 | Colours & dark theme | `src/index.css` |
 | Level logic, spaced repetition, plan, roadmap | `src/lib/` |
