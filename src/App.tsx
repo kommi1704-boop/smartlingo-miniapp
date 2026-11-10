@@ -33,6 +33,11 @@ import { Profile } from './pages/Profile';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
 import { PublicProfile } from './pages/PublicProfile';
+import { QuizFriends } from './pages/QuizFriends';
+import { QuizPlay } from './pages/QuizPlay';
+import { QuizDetail } from './pages/QuizDetail';
+import { Notify } from './pages/Notify';
+import { resolveQuizDeepLink } from './lib/quizApi';
 
 // The 3D Learning Universe (three.js) ships as its own lazy chunk — it is only
 // downloaded when a learner actually opens the world map.
@@ -62,6 +67,15 @@ export function App() {
   useEffect(() => {
     if (isTelegram() && s.profile) void checkPendingCredits();
   }, [s.profile]);
+
+  // Friend-quiz deep link (?fq=… from the bot invitation / start_param). Runs after
+  // onboarding too — the query survives the welcome page, so a brand-new learner
+  // lands on the quiz right after creating their profile.
+  useEffect(() => {
+    if (!hasProfile) return;
+    const id = resolveQuizDeepLink();
+    if (id && !path.startsWith('/friendquiz/')) navigate(`/friendquiz/play/${id}`, { replace: true });
+  }, [hasProfile, path]);
 
   // Telegram native Back button
   const showBack = !!first && !TAB_ROOTS.includes(path);
@@ -124,6 +138,17 @@ export function App() {
       );
       break;
     case 'leaderboard': body = <Leaderboard />; break;
+    case 'friendquiz':
+      body =
+        seg[1] === 'play' && seg[2] ? (
+          <QuizPlay quizId={seg[2]} />
+        ) : seg[1] === 'view' && seg[2] ? (
+          <QuizDetail quizId={seg[2]} />
+        ) : (
+          <QuizFriends />
+        );
+      break;
+    case 'notify': body = <Notify />; break;
     case 'u': body = seg[1] && /^\d{1,15}$/.test(seg[1]) ? <PublicProfile uid={seg[1]} /> : (
       <Empty emoji="🔍" title="O‘quvchi topilmadi" text="Bunday sahifa yo‘q." action={<Button onClick={() => navigate('/leaderboard')}>Reyting jadvali</Button>} />
     );

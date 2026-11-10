@@ -93,6 +93,7 @@ export function Dashboard() {
   const apps = [
     { path: '/games', label: 'O‘yinlar', icon: 'game' as const },
     { path: '/battle', label: 'Janglar', icon: 'swords' as const },
+    { path: '/friendquiz', label: 'Quiz', icon: 'target' as const },
     { path: '/shop', label: 'Do‘kon', icon: 'cart' as const },
     { path: '/leaderboard', label: 'Reyting', icon: 'trophy' as const },
     { path: '/progress', label: 'Progress', icon: 'chart' as const },
@@ -259,7 +260,7 @@ export function Dashboard() {
             </A>
           ))}
         </div>
-        <div className="mt-2.5 grid grid-cols-5 gap-2.5">
+        <div className="mt-2.5 grid grid-cols-6 gap-2.5">
           {apps.map((a) => (
             <A key={a.path} to={a.path} className="flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface2/60 px-1 py-2.5 text-center transition hover:border-accent/40 active:scale-[0.97]" aria-label={a.label}>
               <Icon name={a.icon} className="h-5 w-5 text-muted" />

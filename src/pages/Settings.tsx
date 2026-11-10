@@ -7,6 +7,7 @@ import { tutorIsLive } from '../lib/api';
 import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/sync';
 import { isTelegram, shareToTelegram } from '../lib/telegram';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
+import { Icon } from '../components/Icon';
 import { BACKGROUNDS } from '../lib/theme';
 import { VoicePicker } from '../components/VoicePicker';
 import { MINUTES } from '../data/options';
@@ -190,6 +191,22 @@ export function Settings() {
               ? 'Lingo server orqali sun’iy intellekt bilan ishlayapti. Maxfiy kalit brauzerda saqlanmaydi.'
               : 'Jonli AI ulanmagan, shuning uchun Lingo tayyor javoblar va oddiy qoidalar bilan ishlaydi. README faylida AI ni ulash yo‘riqnomasi bor.'}
           </p>
+        </Card>
+      </Section>
+
+      <Section title="Bildirishnomalar">
+        <Card
+          onClick={() => navigate('/notify')}
+          className="flex cursor-pointer items-center gap-3 transition hover:border-accent/40"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+            <Icon name="bell" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold">Bildirishnoma sozlamalari</span>
+            <span className="block text-xs text-muted">Turlari, tinch soatlari, pauza va tarix</span>
+          </span>
+          <Icon name="right" className="h-4 w-4 text-muted" />
         </Card>
       </Section>
 

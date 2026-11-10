@@ -510,6 +510,23 @@ function spend(price: number): boolean {
   return true;
 }
 
+/**
+ * Public coin debit for new paid features (Friend Quiz 10-question quizzes,
+ * premium result cards) — the SAME wallet and rules as every shop purchase.
+ * The caller journals the spend on the server (coin_spends) and refunds locally
+ * when the server could not complete the operation.
+ */
+export function spendCoins(price: number): boolean {
+  return spend(price);
+}
+
+/** Returns Coins to the wallet (server-confirmed refunds / failed operations). */
+export function refundCoins(amount: number, message?: string): void {
+  if (amount <= 0) return;
+  addCoins(amount, { silent: true });
+  if (message) toast(message, 'success');
+}
+
 function markOwned(id: string, days?: number): void {
   const now = Date.now();
   setState((st) => ({

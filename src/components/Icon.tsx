@@ -53,6 +53,7 @@ const P: Record<string, string> = {
   grad: 'M12 4 2 9l10 5 10-5z M6.5 11.5V16c0 1.4 2.5 3 5.5 3s5.5-1.6 5.5-3v-4.5 M22 9v5',
   shield: 'M12 22s8-3.6 8-10V5.5L12 2 4 5.5V12c0 6.4 8 10 8 10z',
   rocket: 'M12 15c-2 0-5-1-5-1s1.5-8.5 5-12c3.5 3.5 5 12 5 12s-3 1-5 1z M7 14l-3 3v4l3-1 M17 14l3 3v4l-3-1 M9.5 22h5',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8 M10.3 21a1.94 1.94 0 0 0 3.4 0 M4 5c1-1 2.5-1.8 4-2',
 };
 
 export type IconName = keyof typeof P;

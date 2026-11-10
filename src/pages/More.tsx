@@ -18,6 +18,8 @@ import { GAMES } from '../lib/games';
 const HINT: Record<string, string> = {
   '/games': `${GAMES.length} ta o‘yin, yulduzlar va kunlik challenge`,
   '/battle': 'Do‘stona jang — raqib yoki Lingo AI, reyting uchun',
+  '/friendquiz': 'Do‘stlarga quiz yuboring, jadvalda bellashing',
+  '/notify': 'Qaysi xabarlar kelishini o‘zingiz tanlang',
   '/leaderboard': 'Reyting jadvali — eng kuchli o‘quvchilar',
   '/shop': 'Coin do‘koni — ramkalar, avatrlar, sovg‘alar',
   '/stars': 'Telegram Stars bilan Coin olish',

@@ -37,6 +37,8 @@ export const NAV_ALL: NavItem[] = [
   { path: '/resources', label: 'Resurslar', icon: 'globe' },
   { path: '/profile', label: 'Profil', icon: 'user' },
   { path: '/settings', label: 'Sozlamalar', icon: 'settings' },
+  { path: '/friendquiz', label: 'Do‘st quizi', icon: 'target' },
+  { path: '/notify', label: 'Bildirishnomalar', icon: 'bell' },
 ];
 
 /** Groups for the desktop sidebar / hub pages: label + members. */
@@ -51,11 +53,11 @@ export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   },
   {
     title: 'O‘yin va raqobat',
-    items: [NAV_ALL[12], NAV_ALL[13], NAV_ALL[14]],
+    items: [NAV_ALL[12], NAV_ALL[13], NAV_ALL[14], NAV_ALL[21]],
   },
   {
     title: 'Shaxsiy',
-    items: [NAV_ALL[15], NAV_ALL[16], NAV_ALL[17], NAV_ALL[19], NAV_ALL[20]],
+    items: [NAV_ALL[15], NAV_ALL[16], NAV_ALL[17], NAV_ALL[19], NAV_ALL[20], NAV_ALL[22]],
   },
 ];
 
