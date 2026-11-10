@@ -5,7 +5,7 @@ The interface is in Uzbek (Latin script); English appears only inside the exerci
 
 **Stack:** React 19 + TypeScript + Vite 7 + Tailwind CSS v4. No backend is needed to run it.
 Progress is stored on the user's device (localStorage). Two optional serverless functions
-(`api/tutor.ts`, `api/bot.ts`) add the bot's /start button and a live AI tutor.
+(`api/ai.ts` — AI gateway, `api/bot.ts`) add the bot's /start button and a live AI tutor.
 
 ---
 
@@ -303,9 +303,24 @@ nothing.
 
 ---
 
+## 6e-1. Vercel Hobby plan: 12 Serverless Functions limit (IMPORTANT)
+
+The free (Hobby) plan allows **max 12 Serverless Functions per deployment**. The api/
+folder is kept at 11 functions by merging related handlers; old URLs still work via
+`vercel.json` `rewrites`, so NO frontend or webhook URL ever changed:
+
+| Public URL (unchanged) | Served by |
+|---|---|
+| `/api/tutor`, `/api/generate-text`, `/api/roadmap`, `/api/explain-mistake`, `/api/writing-check` | `api/ai.ts` (`?k=tutor/gentext/roadmap/explain/writing`) |
+| `/api/weekly` (cron) | `api/admin-notify.ts` (`?k=weekly`) |
+| `/api/notify.ts`, `/api/quizBank.ts` | shared libraries under `api/_lib/` (never counted as functions) |
+
+When adding a new endpoint on the Hobby plan, either add it as a new `k` case inside an
+existing function + rewrite, or upgrade to Pro (20+ functions).
+
 ## 6f. Notifications — "Bildirishnomalar" (optional, needs Supabase + bot)
 
-One dispatcher (`api/notify.ts`) decides every Telegram push: category preference → pause →
+One dispatcher (`api/_lib/notify.ts` — a shared library, not a function) decides every Telegram push: category preference → pause →
 quiet hours (Asia/Tashkent) → send → record. Delivery attempts land in
 `notification_history` with DETERMINISTIC ids (`n_<kind>_<uid>_<event>`), so webhook retries
 and double cron ticks can never send the same message twice.
@@ -320,8 +335,9 @@ bilan himoyalangan"). Opt-out copy stays positive — no guilt, no pressure. `ac
 **Event wiring**: Friend Quiz submissions notify the creator (`quiz`); battle finishes notify
 both players (`battle`, aborted duels stay silent); the streak reminder is the SAME 18:00
 Tashkent cron as before (`api/reminders.ts`, `0 13 * * *`), now preference-aware and
-idempotent; a second cron (`api/weekly.ts`, `5 13 * * *`) sends the Monday weekly challenge to
-active learners, dispatches admin-scheduled campaigns and resumes interrupted ones.
+idempotent; a second cron (`5 13 * * *`) sends the Monday weekly challenge to active learners,
+dispatches admin-scheduled campaigns and resumes interrupted ones. The cron function lives in
+`api/admin-notify.ts` (served at `/api/weekly` through a rewrite — see the note below).
 
 **Admin Notification Manager** (`/api/admin-notify`, authorized by the SAME `ADMIN_TELEGRAM_IDS`
 list as the existing `/news` command — fail closed): create/edit campaigns, attach an image
@@ -377,8 +393,8 @@ was blocked). Since then the project is verified in a normal environment on ever
 | What | File |
 |---|---|
 | Words / grammar / reading / listening / placement / speaking / writing | `src/data/*.ts` |
-| Friend Quiz question bank | `api/quizBank.ts` (built from `src/data/*`) |
-| Notification kinds / labels / gating | `api/notify.ts` + `src/types.notify.ts` |
+| Friend Quiz question bank | `api/_lib/quizBank.ts` (built from `src/data/*`) |
+| Notification kinds / labels / gating | `api/_lib/notify.ts` + `src/types.notify.ts` |
 | Resource links | `src/data/resources.ts` |
 | Colours & dark theme | `src/index.css` |
 | Level logic, spaced repetition, plan, roadmap | `src/lib/` |

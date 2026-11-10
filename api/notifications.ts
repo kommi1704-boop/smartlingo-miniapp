@@ -10,7 +10,7 @@
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
-import { NOTIFY_KINDS, KIND_LABELS_UZ, sanitizePrefs, defaultPrefs, type NotifyPrefs, type NotifyKind } from './notify';
+import { NOTIFY_KINDS, KIND_LABELS_UZ, sanitizePrefs, defaultPrefs, type NotifyPrefs, type NotifyKind } from './_lib/notify';
 
 interface Req {
   method?: string;

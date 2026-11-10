@@ -29,7 +29,7 @@ import { defaultState } from '../src/store/store';
 import { VOCAB } from '../src/data/vocab';
 import type { PersistedState, QuizHistoryItem, VocabWord, Level } from '../src/types';
 import { LEVELS } from '../src/types';
-import { parseRoadmap } from '../api/roadmap';
+import { parseRoadmap } from '../api/ai';
 
 const D = (iso: string) => new Date(iso).toISOString();
 

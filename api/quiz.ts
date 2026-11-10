@@ -28,8 +28,8 @@ import crypto from 'node:crypto';
 import {
   CATEGORY_IDS, DIFFICULTY_IDS, BANK_STATS, selectQuestions, shuffledQuizOf,
   type QuizCategory, type QuizDifficulty, type BankQuestion,
-} from './quizBank';
-import { dispatch } from './notify';
+} from './_lib/quizBank';
+import { dispatch } from './_lib/notify';
 import { uztDay } from './progress';
 
 export const EXTENDED_QUIZ_COINS = 50; // 10-question quiz

@@ -3,6 +3,14 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/tutor", "destination": "/api/ai?k=tutor" },
+    { "source": "/api/generate-text", "destination": "/api/ai?k=gentext" },
+    { "source": "/api/roadmap", "destination": "/api/ai?k=roadmap" },
+    { "source": "/api/explain-mistake", "destination": "/api/ai?k=explain" },
+    { "source": "/api/writing-check", "destination": "/api/ai?k=writing" },
+    { "source": "/api/weekly", "destination": "/api/admin-notify?k=weekly" }
+  ],
   "crons": [
     {
       "path": "/api/reminders",

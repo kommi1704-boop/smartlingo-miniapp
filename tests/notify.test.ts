@@ -37,7 +37,7 @@ function section(name: string): void {
 import {
   NOTIFY_KINDS, KIND_LABELS_UZ, DEFAULT_CATEGORIES, defaultPrefs, sanitizePrefs, gate, inQuietHours,
   uztHour, historyIdOf, type NotifyPrefs,
-} from '../api/notify';
+} from '../api/_lib/notify';
 import { audienceIds, campaignText, AUDIENCES, runCampaignSend } from '../api/admin-notify';
 import { presenceFromState } from '../api/progress';
 
@@ -133,7 +133,9 @@ section('integration wiring (static checks)');
   ok(reminders.includes('reminded_on: today'), 'streak cron keeps the 1/day presence guard');
   ok(reminders.includes("'skipped_block'"), 'freeze holders get a transparent skip record');
 
-  const weekly = readFileSync(new URL('../api/weekly.ts', import.meta.url), 'utf8');
+  // weekly.ts was merged into admin-notify.ts (Vercel Hobby 12-function limit);
+  // the cron URL /api/weekly still works via a vercel.json rewrite (?k=weekly).
+  const weekly = readFileSync(new URL('../api/admin-notify.ts', import.meta.url), 'utf8');
   ok(weekly.includes("'weekly'"), 'weekly cron sends kind weekly');
   ok(weekly.includes("status=eq.scheduled,scheduled_at=lte.") || weekly.includes('scheduled_at=lte.'), 'weekly cron dispatches due scheduled campaigns');
   ok(weekly.includes("status=eq.sending"), 'weekly cron resumes interrupted campaigns');

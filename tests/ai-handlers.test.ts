@@ -14,9 +14,11 @@ process.env.GROQ_API_KEY = 'gsk_test_key';
 process.env.SUPABASE_URL = 'https://supabase.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc_role_key';
 
-import writingHandler, { buildSystemPrompt as writingPrompt, sanitizeCheck } from '../api/writing-check';
-import explainHandler, { buildSystemPrompt as explainPrompt, sanitizeExplain } from '../api/explain-mistake';
-import generateHandler, { buildSystemPrompt as generatePrompt, sanitizeText } from '../api/generate-text';
+// AI handlers were merged into ONE function (api/ai.ts) for the Vercel Hobby
+// 12-function limit; the old URLs still work via vercel.json rewrites.
+import { writingHandler, buildWritingPrompt as writingPrompt, sanitizeCheck } from '../api/ai';
+import { explainHandler, buildExplainPrompt as explainPrompt, sanitizeExplain } from '../api/ai';
+import { generateHandler, buildGeneratePrompt as generatePrompt, sanitizeText } from '../api/ai';
 
 // ---------- tiny test harness ----------
 let passed = 0;

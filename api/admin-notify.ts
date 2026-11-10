@@ -23,7 +23,8 @@
 //                    SUPABASE_SERVICE_ROLE_KEY, ADMIN_TELEGRAM_IDS.
 import crypto from 'node:crypto';
 import { adminIdsFromEnv } from './bot';
-import { NOTIFY_KINDS, dispatch, sbHeaders, type DbCtx, type NotifyKind } from './notify';
+import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify';
+import { uztDay } from './progress';
 
 export const AUDIENCES = ['all', 'active', 'inactive'] as const;
 export type Audience = (typeof AUDIENCES)[number];
@@ -34,6 +35,7 @@ const SEND_CAP = 300; // per invocation; the response carries a continuation cur
 
 interface Req {
   method?: string;
+  url?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 }
@@ -198,7 +200,18 @@ export async function runCampaignSend(
 
 // ---------------------------------------------------------------------------
 
+function kOf(req: Req): string {
+  try {
+    return new URL(req.url ?? '', 'http://local').searchParams.get('k') ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export default async function handler(req: Req, res: Res): Promise<void> {
+  // Hobby-plan function-count limit: /api/weekly (Vercel cron) is served by this same
+  // function via a vercel.json rewrite (?k=weekly) — auth and behavior unchanged.
+  if (kOf(req) === 'weekly') return weeklyHandler(req, res);
   res.setHeader('Cache-Control', 'no-store');
   const db = supa();
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -463,5 +476,118 @@ function safeParse(s: string): unknown {
     return JSON.parse(s);
   } catch {
     return undefined;
+  }
+}
+
+// =============================================================================
+// SECTION: weekly.ts (cron, ?k=weekly) — moved verbatim from api/weekly.ts
+// =============================================================================
+const WEEKLY_TEXT =
+  '🏁 Haftalik challenge boshlandi!\n\n' +
+  'Shu hafta ichida 5 ta mashqni bajaring va +50 XP bonus oling! Har kuni kichik qadam — hafta oxirida katta natija. 🚀\n\n' +
+  'Do‘stlaringizni ham challenge’ga taklif qiling — birga o‘rganish ancha qiziqarli!';
+
+async function weeklyHandler(req: Req, res: Res): Promise<void> {
+  const secret = process.env.CRON_SECRET?.trim();
+  const viaCronHeader = header(req, 'x-vercel-cron') === '1';
+  const viaSecret = secret ? header(req, 'authorization') === `Bearer ${secret}` : false;
+  if (!viaCronHeader && !viaSecret) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const appUrl = process.env.WEBAPP_URL?.trim().replace(/\/+$/, '');
+  const dbUrl = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '');
+  const dbKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!token || !appUrl || !dbUrl || !dbKey) {
+    res.status(503).json({ error: 'not_configured' });
+    return;
+  }
+  const db: DbCtx = { url: dbUrl, key: dbKey };
+  const q = new URL(req.url ?? '', 'http://local').searchParams;
+  const force = q.get('force') === '1' && viaSecret;
+  const today = uztDay();
+  const isMonday = new Date(`${today}T12:00:00Z`).getUTCDay() === 1;
+  const out: Record<string, unknown> = { ok: true, day: today };
+
+  try {
+    // ---------- 1) weekly challenge (Mondays, active learners, prefs respected) ----------
+    if (isMonday || force) {
+      const prefs = await fetchPrefsMap(db);
+      const active = await audienceIds(db, 'active');
+      const targets = active.filter((uid) => {
+        const p = prefs.get(uid);
+        return !p || p.categories.weekly !== false; // default-on; explicit opt-out wins
+      });
+      let sent = 0;
+      let skipped = 0;
+      let failed = 0;
+      const chunk = targets.slice(0, 300);
+      for (let i = 0; i < chunk.length; i += 15) {
+        const part = chunk.slice(i, i + 15);
+        const results = await Promise.all(
+          part.map(async (uid) => {
+            const r = await dispatch(db, token, appUrl, {
+              uid,
+              kind: 'weekly',
+              eventKey: `weekly:${today}`,
+              text: WEEKLY_TEXT,
+              button: { label: '🏁 Challenge’ga qo‘shilish', webApp: true },
+            });
+            return r.status;
+          }),
+        );
+        for (const s of results) {
+          if (s === 'sent') sent++;
+          else if (s === 'failed') failed++;
+          else skipped++;
+        }
+        if (i + 15 < chunk.length) await new Promise((r) => setTimeout(r, 1500));
+      }
+      out.weekly = { targets: targets.length, sent, failed, skipped, hour: uztHour() };
+    } else {
+      out.weekly = { skipped: 'not_monday' };
+    }
+
+    // ---------- 2) due scheduled campaigns + 3) continuations ----------
+    const nowIso = new Date().toISOString();
+    const r = await fetch(
+      `${dbUrl}/rest/v1/notification_campaigns?select=*&or=(and(status=eq.scheduled,scheduled_at=lte.${nowIso}),status=eq.sending)&order=created_at.asc&limit=5`,
+      { headers: sbHeaders(dbKey), signal: AbortSignal.timeout(20_000) },
+    );
+    const campaigns = r.ok ? ((await r.json().catch(() => [])) as CampaignRow[]) : [];
+    const campaignResults: Record<string, unknown>[] = [];
+    for (const c of campaigns) {
+      const cursor = c.status === 'sending' ? c.last_uid : null;
+      if (c.status !== 'sending') {
+        await fetch(`${dbUrl}/rest/v1/notification_campaigns?id=eq.${c.id}`, {
+          method: 'PATCH',
+          headers: sbHeaders(dbKey),
+          body: JSON.stringify({ status: 'sending', sent_count: 0, failed_count: 0, updated_at: nowIso }),
+          signal: AbortSignal.timeout(15_000),
+        }).catch(() => undefined);
+      }
+      const run = await runCampaignSend(db, token, appUrl, { ...c, status: 'sending' }, cursor);
+      await fetch(`${dbUrl}/rest/v1/notification_campaigns?id=eq.${c.id}`, {
+        method: 'PATCH',
+        headers: sbHeaders(dbKey),
+        body: JSON.stringify({
+          status: run.more ? 'sending' : 'sent',
+          sent_at: run.more ? c.sent_at : new Date().toISOString(),
+          sent_count: c.sent_count + run.sent,
+          failed_count: c.failed_count + run.failed,
+          last_uid: run.more ? run.last : null,
+          updated_at: new Date().toISOString(),
+        }),
+        signal: AbortSignal.timeout(15_000),
+      }).catch(() => undefined);
+      campaignResults.push({ id: c.id, ...run });
+    }
+    out.campaigns = campaignResults;
+    res.status(200).json(out);
+  } catch (e) {
+    console.error('weekly failure', e instanceof Error ? e.message : String(e));
+    res.status(502).json({ error: 'storage_error' });
   }
 }
