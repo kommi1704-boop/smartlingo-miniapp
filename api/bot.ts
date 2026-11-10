@@ -104,6 +104,40 @@ export function parseRefPayload(text: string): number | null {
   return n > 0 ? n : null;
 }
 
+/**
+ * Parses "/start quiz_<fq_...>" — the Friend Quiz invitation deep link
+ * (t.me/<bot>?start=quiz_fq_xxx). Returns the quiz id, or null for other text.
+ * Kept separate from the referral payload: a /start can carry only one payload.
+ */
+export function parseQuizPayload(text: string): string | null {
+  const m = /^\/start(?:@\w{1,32})?\s+(quiz_fq_[0-9a-z_]{3,40})\s*$/i.exec(text.trim());
+  return m ? m[1].slice(5) : null;
+}
+
+/** Uzbek labels for the invitation card (kept tiny — the webhook never loads the question bank). */
+export const QUIZ_CATEGORY_LABELS: Record<string, string> = {
+  vocab: 'So‘z boyligi',
+  grammar: 'Grammatika',
+  mixed: 'Aralash',
+  random: 'Tasodifiy',
+};
+export const QUIZ_DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: 'Boshlang‘ich',
+  elementary: 'Elementar',
+  intermediate: 'O‘rta',
+  advanced: 'Yuqori',
+};
+
+/** The invitation text a friend receives when the creator shares quiz_<id>. */
+export function quizInviteText(creatorName: string, title: string, size: number, category: string, difficulty: string): string {
+  return (
+    `🎯 ${creatorName} sizni quiz’ga taklif qildi!\n\n` +
+    `«${title}»\n` +
+    `• ${size} ta savol · ${QUIZ_CATEGORY_LABELS[category] ?? category} · ${QUIZ_DIFFICULTY_LABELS[difficulty] ?? difficulty}\n\n` +
+    'Javoblaringiz do‘stingizga yuboriladi — natijalar jadvalida o‘z o‘rningizni egallang! 🏆'
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Admin broadcast (/news) — small pure helpers (unit-tested in tests/broadcast.test.ts)
 // ---------------------------------------------------------------------------
@@ -562,6 +596,58 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       return;
     }
 
+    // ---- a2) /quiz — feature explainer ----
+    if (/^\/quiz(?:@\w{1,32})?\s*$/.test(text)) {
+      await tg(token, 'sendMessage', {
+        chat_id: msg.chat.id,
+        text:
+          '🎯 Do‘st quizi nima?\n\n' +
+          'Ilovada o‘zingizga quiz tuzasiz, so‘ng havolani do‘stlaringizga yuborasiz. Ular javob beradi, natijalar umumiy jadvalga tushadi!\n\n' +
+          '• 5 savol — bepul\n• 10 savol — 🪙 50 Coin\n• Har quizda so‘z boyligi, grammatika yoki aralash savollar\n\n' +
+          'Boshlash uchun ilovani oching: 🎯 Do‘st quizi bo‘limi.',
+        reply_markup: webAppBtn(url),
+      });
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ---- a3) /start quiz_<id> — Friend Quiz invitation deep link ----
+    const quizPayload = parseQuizPayload(msg.text);
+    if (quizPayload && db && msg.from && msg.chat.id === msg.from.id) {
+      let handled = false;
+      try {
+        const r = await fetch(`${db.url}/rest/v1/friend_quizzes?select=id,title,creator_name,category,difficulty,size,status&id=eq.${encodeURIComponent(quizPayload)}&limit=1`, {
+          headers: sbHeaders(db.key),
+          signal: AbortSignal.timeout(15_000),
+        });
+        const rows = r.ok ? ((await r.json()) as { id: string; title: string; creator_name: string; category: string; difficulty: string; size: number; status: string }[]) : [];
+        const quiz = rows[0];
+        if (quiz && quiz.status === 'active') {
+          await tg(token, 'sendMessage', {
+            chat_id: msg.chat.id,
+            text: quizInviteText(quiz.creator_name || 'Do‘stingiz', quiz.title, quiz.size, quiz.category, quiz.difficulty),
+            reply_markup: {
+              inline_keyboard: [[{ text: '🚀 Quizni boshlash', web_app: { url: `${url}?fq=${quiz.id}` } }]],
+            },
+            link_preview_options: { is_disabled: true },
+          });
+        } else {
+          await tg(token, 'sendMessage', {
+            chat_id: msg.chat.id,
+            text: '🔎 Bu quiz topilmadi yoki allaqachon yopilgan. Do‘stingizdan yangi havola so‘rang yoki ilovada o‘zingiz quiz tuzing!',
+            reply_markup: webAppBtn(url),
+          });
+        }
+        handled = true;
+      } catch {
+        handled = false; // storage hiccup -> fall through to the normal welcome
+      }
+      if (handled) {
+        res.status(200).json({ ok: true });
+        return;
+      }
+    }
+
     // ---- b) /news — admin broadcast of the new feature (preview -> confirm) ----
     const news = parseNewsArgs(text);
     if (news) {
@@ -643,7 +729,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     if (msg.text.startsWith('/start') || msg.text.startsWith('/help')) {
       await tg(token, 'sendMessage', {
         chat_id: msg.chat.id,
-        text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n🎁 Do‘stlaringizni taklif qiling — har biriga +${REFERRAL_COINS} Coin (/ref)\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
+        text: `Assalomu alaykum, ${name}! 👋😊\n\nSmartLingo AI ga xush kelibsiz! Men sizga ingliz tilini qiziqarli va oson o‘rganishda yordam beraman.\n\n✨ Qisqa test bilan darajangizni aniqlang\n📅 O‘zingizga mos kunlik reja oling\n💬 Lingo bilan mashq qiling\n🔥 XP yig‘ing va seriyangizni davom ettiring\n🎯 Do‘stlaringizga quiz tuzib yuboring (/quiz)\n🎁 Do‘stlaringizni taklif qiling — har biriga +${REFERRAL_COINS} Coin (/ref)\n\nBoshlashga tayyormisiz? Pastdagi tugmani bosing 👇`,
         reply_markup: { inline_keyboard: [[{ text: '🚀 O‘rganishni boshlash', web_app: { url } }]] },
       });
     } else {

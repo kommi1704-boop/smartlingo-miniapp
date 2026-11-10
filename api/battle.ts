@@ -26,6 +26,7 @@
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Schema: supabase/schema.sql adds `alter table battles add column if not exists live jsonb`.
 import crypto from 'node:crypto';
+import { dispatch } from './notify';
 
 interface Quiz {
   id: string;
@@ -292,6 +293,37 @@ function naturalSide(live: LiveState): 'p1' | 'p2' | 'draw' {
 }
 
 /**
+ * Friend-battle finished -> both players get a short Telegram note (kind 'battle').
+ * Best-effort and idempotent (deterministic eventKey per battle per user, so poll
+ * retries can never double-send). Aborted battles (zero answers / connection
+ * issues) stay silent — there is nothing to celebrate.
+ */
+function notifyBattleEnd(db: { url: string; key: string }, token: string, appUrl: string, row: BattleRow): void {
+  try {
+    if (row.status !== 'finished' || !row.p2) return;
+    if ((row.live as LiveState | null)?.aborted) return;
+    const s1 = row.p1_score ?? 0;
+    const s2 = row.p2_score ?? 0;
+    const line = (name: string, you: number, them: number, delta: number | null): string => {
+      const verdict = you > them ? 'G‘alaba sizniki! 🏆' : you < them ? 'Bu safar raqib kuchli bo‘ldi — keyingi jangda ochasiz! 💪' : 'Durrang! Ikkala jangchi ham kuchli ekan 🤝';
+      return `⚔️ «${name}» bilan jang yakunlandi!\n\nNatija: ${you}:${them}${delta ? ` (reyting ${delta > 0 ? '+' : ''}${delta})` : ''}\n\n${verdict}`;
+    };
+    void dispatch(db, token, appUrl, {
+      uid: row.p1, kind: 'battle', eventKey: `finished:${row.id}`,
+      text: line(row.p2_name || 'Raqib', s1, s2, row.p1_delta),
+      button: { label: '⚔️ Janglar', webApp: true },
+    });
+    void dispatch(db, token, appUrl, {
+      uid: row.p2, kind: 'battle', eventKey: `finished:${row.id}`,
+      text: line(row.p1_name || 'Raqib', s2, s1, row.p2_delta),
+      button: { label: '⚔️ Janglar', webApp: true },
+    });
+  } catch {
+    /* notifications are best-effort — never touch the battle flow */
+  }
+}
+
+/**
  * Advances past every question whose clock ran out with nobody scoring (server is the clock
  * authority). Mutates row.live / row status; returns true when something changed.
  */
@@ -336,6 +368,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
   res.setHeader('Cache-Control', 'no-store');
   const db = supa();
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  const appUrl = process.env.WEBAPP_URL?.trim().replace(/\/+$/, '') ?? '';
   const enabled = Boolean(db && botToken);
 
   const initData = header(req, 'x-telegram-init-data');
@@ -457,6 +490,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
             }
           } else {
             // written (heartbeat included) — no extra PATCH needed
+            if (row.status === 'finished') notifyBattleEnd(db, botToken, appUrl, row); // idempotent
             res.status(200).json({ live: liveSync(row, uid) });
             return;
           }
@@ -613,6 +647,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           if (r.ok) {
             const arr = (await r.json().catch(() => [])) as BattleRow[];
             if (arr.length === 0) wrote = false; // lost the race — the round already moved
+            else if ((row.status as string) === 'finished') notifyBattleEnd(db, botToken, appUrl, row); // idempotent
           }
         }
       }
@@ -645,6 +680,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         if (r.ok) {
           const arr = (await r.json().catch(() => [])) as BattleRow[];
           if (arr.length > 0) {
+            notifyBattleEnd(db, botToken, appUrl, row); // forfeit finish — both sides are told
             res.status(200).json({ live: liveSync(row, uid) });
             return;
           }
@@ -691,6 +727,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const r = await sbFetch(db, `battles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patched) });
       if (!r.ok) throw new Error(`supabase_${r.status}`);
       const fresh = (await getRow(db, id)) ?? row;
+      if (fresh.status === 'finished') notifyBattleEnd(db, botToken, appUrl, fresh); // legacy async finish
       res.status(200).json({ battle: view(fresh, uid) });
       return;
     }

@@ -312,3 +312,171 @@ alter table public.identities enable row level security;
 drop trigger if exists identities_touch on public.identities;
 create trigger identities_touch before update on public.identities
   for each row execute function public.touch_updated_at();
+
+-- ============================================================================
+-- ============================================================================
+-- Friend Quiz ("Do'st quizi") + Notification System — added together, same
+-- security model as every table above: RLS ON, NO policies. Browsers can NOT
+-- read or write these rows; only the Vercel server functions (service-role
+-- key, initData verified) may. The client NEVER talks to Supabase directly.
+-- Both blocks are idempotent: safe to re-run the whole file.
+-- ============================================================================
+
+-- Friend Quiz: a quiz a learner builds from the verified question bank and
+-- shares through a Telegram deep link. `questions` keeps the correct answers —
+-- it stays on the server forever; clients only ever receive answer-stripped
+-- copies. "random" reuses the mixed pool; category stays explicit for clarity.
+create table if not exists public.friend_quizzes (
+  id           text        primary key,      -- "fq_<uid>_<rand>" (unpredictable -> not enumerable)
+  creator_id   bigint      not null,
+  creator_name text        not null default '',
+  title        text        not null,
+  category     text        not null,         -- vocab | grammar | mixed | random
+  difficulty   text        not null,         -- beginner | elementary | intermediate | advanced
+  size         int         not null,         -- 5 (free) | 10 (50 Coins)
+  cost_coins   int         not null default 0,
+  status       text        not null default 'active', -- active | closed
+  questions    jsonb       not null,         -- Quiz[] WITH answers — server-only
+  spend_id     text,                         -- coin_spends.id when creation cost Coins
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.friend_quizzes enable row level security;
+
+create index if not exists friend_quizzes_creator_idx
+  on public.friend_quizzes (creator_id, created_at desc);
+
+create index if not exists friend_quizzes_created_idx
+  on public.friend_quizzes (created_at desc);
+
+drop trigger if exists friend_quizzes_touch on public.friend_quizzes;
+create trigger friend_quizzes_touch before update on public.friend_quizzes
+  for each row execute function public.touch_updated_at();
+
+-- One row per SUBMITTED attempt. The composite unique index is the
+-- duplicate-submission guard at the database level: a second submission by the
+-- same player for the same quiz can never land, whatever the client does.
+create table if not exists public.friend_quiz_attempts (
+  id            text        primary key,    -- "fqa_<rand>"
+  quiz_id       text        not null,
+  player_id     bigint      not null,
+  player_name   text        not null default '',
+  player_avatar text,
+  score         int         not null,       -- server-computed, client input is only option indices
+  total         int         not null,
+  answers       jsonb       not null,       -- picked option index per question
+  duration_ms   int         not null default 0,
+  created_at    timestamptz not null default now()
+);
+
+alter table public.friend_quiz_attempts enable row level security;
+
+-- the anti-double-submit guard + the per-quiz leaderboard read
+create unique index if not exists friend_quiz_attempts_unique
+  on public.friend_quiz_attempts (quiz_id, player_id);
+
+create index if not exists friend_quiz_attempts_player_idx
+  on public.friend_quiz_attempts (player_id, created_at desc);
+
+-- Coin spend journal ("Validate all payments server-side"). The wallet itself
+-- stays where it is today (device-owned state.coins.balance + the existing
+-- payments/coin_grants ledgers) — NO new wallet. This table only JOURNALS the
+-- spends the Mini App reports for quiz features, with deterministic ids so a
+-- retry can never journal the same spend twice, and refund marks so failed
+-- creations are auditable (the refund itself flows through coin_grants, which
+-- the client already applies exactly once).
+create table if not exists public.coin_spends (
+  id               text        primary key,  -- deterministic idempotency key
+  telegram_user_id bigint      not null,
+  coins            int         not null,
+  purpose          text        not null,     -- 'quiz_create_10' | 'quiz_card'
+  ref_id           text,                     -- quiz id / card theme owner id
+  status           text        not null default 'spent', -- spent | refunded
+  refunded_at      timestamptz,
+  created_at       timestamptz not null default now()
+);
+
+alter table public.coin_spends enable row level security;
+
+create index if not exists coin_spends_user_idx
+  on public.coin_spends (telegram_user_id, created_at desc);
+
+-- ============================================================================
+-- Notification system ("Bildirishnomalar"). Three small tables:
+--   preferences — what the learner allows (per category, quiet hours, pause)
+--   history     — every delivery attempt (also the idempotency ledger: the
+--                 primary key makes a duplicate event send at most once)
+--   campaigns   — admin-written announcements (draft -> scheduled -> sent)
+-- ============================================================================
+
+-- Categories (jsonb keys, all default ON — respect means the user can say no):
+--   streak | news | motivation | achievements | quiz | battle | weekly
+create table if not exists public.notification_preferences (
+  telegram_user_id bigint      primary key,
+  categories       jsonb       not null default '{"streak":true,"news":true,"motivation":true,"achievements":true,"quiz":true,"battle":true,"weekly":true}',
+  quiet_enabled    boolean     not null default false,
+  quiet_start      int,                      -- 0..23, Asia/Tashkent hour
+  quiet_end        int,                      -- 0..23
+  paused_until     timestamptz,              -- temporary pause (noop when in the past)
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.notification_preferences enable row level security;
+
+drop trigger if exists notification_preferences_touch on public.notification_preferences;
+create trigger notification_preferences_touch before update on public.notification_preferences
+  for each row execute function public.touch_updated_at();
+
+-- One row per (event, user). id is DETERMINISTIC ("n_<kind>_<uid>_<event key>")
+-- so webhook retries / double cron runs can never send the same notification
+-- twice — the primary key is the final say, exactly like coin_grants.
+create table if not exists public.notification_history (
+  id               text        primary key,
+  telegram_user_id bigint      not null,
+  kind             text        not null,   -- streak|news|motivation|achievements|quiz|battle|weekly
+  status           text        not null default 'sent', -- sent|failed|skipped_pref|skipped_quiet|skipped_paused|skipped_block
+  error            text,
+  sent_at          timestamptz not null default now()
+);
+
+alter table public.notification_history enable row level security;
+
+create index if not exists notification_history_user_idx
+  on public.notification_history (telegram_user_id, sent_at desc);
+
+create index if not exists notification_history_kind_idx
+  on public.notification_history (kind, sent_at desc);
+
+-- Admin campaigns. Written only by admins (ADMIN_TELEGRAM_IDS, same list the
+-- /news command uses). Nothing is auto-broadcast: a message reaches users only
+-- after an admin explicitly sends/schedules it, and every recipient still has
+-- the 'news' category enabled (quiet hours + pause respected).
+create table if not exists public.notification_campaigns (
+  id           text        primary key,    -- "nc_<rand>"
+  admin_id     bigint      not null,
+  title        text        not null,       -- internal name (never sent)
+  text         text        not null,       -- message body (Uzbek)
+  image_url    text,
+  button_label text,
+  button_url   text,
+  audience     text        not null default 'all', -- all | active | inactive
+  category     text        not null default 'news',
+  status       text        not null default 'draft', -- draft|scheduled|sending|sent|failed|cancelled
+  scheduled_at timestamptz,
+  sent_at      timestamptz,
+  sent_count   int         not null default 0,
+  failed_count int         not null default 0,
+  last_uid     bigint,                     -- continuation cursor for chunked sending
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.notification_campaigns enable row level security;
+
+create index if not exists notification_campaigns_status_idx
+  on public.notification_campaigns (status, scheduled_at);
+
+drop trigger if exists notification_campaigns_touch on public.notification_campaigns;
+create trigger notification_campaigns_touch before update on public.notification_campaigns
+  for each row execute function public.touch_updated_at();
