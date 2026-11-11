@@ -190,6 +190,35 @@ async function sbFetch(db: { url: string; key: string }, path: string, init: Req
   return fetch(`${db.url}/rest/v1/${path}`, { ...init, headers: { ...sbHeaders(db.key), ...(init.headers ?? {}) }, signal: AbortSignal.timeout(15_000) });
 }
 
+/**
+ * Turns a failed PostgREST response into a precise, PII-free error for the server log, e.g.
+ *   supabase_404:PGRST205 (battle:list)  -> table missing  (supabase/schema.sql was not run)
+ *   supabase_400:PGRST204 (battle:join)  -> column missing  (schema.sql is older than the code)
+ *   supabase_401/403                     -> wrong SUPABASE_SERVICE_ROLE_KEY
+ * Before this, every Supabase failure was logged as just "supabase_<status>" or swallowed.
+ */
+async function sbFail(r: Response, what: string): Promise<Error> {
+  let code = '';
+  try {
+    const j = (await r.json()) as { code?: unknown };
+    if (j && typeof j.code === 'string') code = `:${j.code.slice(0, 12)}`;
+  } catch {
+    /* body is not JSON */
+  }
+  return new Error(`supabase_${r.status}${code} (${what})`);
+}
+
+/**
+ * Optimistic-concurrency guard for the conditional PATCH on `live`: the write only lands if the
+ * round AND the answer counter are still what this request read. Round alone was not enough —
+ * two players answering WRONG in the same round both read an empty round, and the second write
+ * silently erased the first player's answer (the round then hung until the question clock ran out).
+ * Rows without a counter (legacy) fall back to the round-only guard.
+ */
+function liveGuard(round: number, n: number | undefined): string {
+  return `live->>round=eq.${round}${n === undefined ? '' : `&live->>n=eq.${n}`}`;
+}
+
 function expectedScore(you: number, opp: number): number {
   return 1 / (1 + 10 ** ((opp - you) / 400));
 }
@@ -298,7 +327,10 @@ function naturalSide(live: LiveState): 'p1' | 'p2' | 'draw' {
  * retries can never double-send). Aborted battles (zero answers / connection
  * issues) stay silent — there is nothing to celebrate.
  */
-function notifyBattleEnd(db: { url: string; key: string }, token: string, appUrl: string, row: BattleRow): void {
+async function notifyBattleEnd(db: { url: string; key: string }, token: string, appUrl: string, row: BattleRow): Promise<void> {
+  // MUST be awaited by the caller: on Vercel the function is frozen as soon as the response is
+  // sent, so a fire-and-forget dispatch died half-way and left the notification_history row
+  // stuck in 'sending' forever — and the deterministic id then blocked every retry.
   try {
     if (row.status !== 'finished' || !row.p2) return;
     if ((row.live as LiveState | null)?.aborted) return;
@@ -308,16 +340,18 @@ function notifyBattleEnd(db: { url: string; key: string }, token: string, appUrl
       const verdict = you > them ? 'G‘alaba sizniki! 🏆' : you < them ? 'Bu safar raqib kuchli bo‘ldi — keyingi jangda ochasiz! 💪' : 'Durrang! Ikkala jangchi ham kuchli ekan 🤝';
       return `⚔️ «${name}» bilan jang yakunlandi!\n\nNatija: ${you}:${them}${delta ? ` (reyting ${delta > 0 ? '+' : ''}${delta})` : ''}\n\n${verdict}`;
     };
-    void dispatch(db, token, appUrl, {
-      uid: row.p1, kind: 'battle', eventKey: `finished:${row.id}`,
-      text: line(row.p2_name || 'Raqib', s1, s2, row.p1_delta),
-      button: { label: '⚔️ Janglar', webApp: true },
-    });
-    void dispatch(db, token, appUrl, {
-      uid: row.p2, kind: 'battle', eventKey: `finished:${row.id}`,
-      text: line(row.p1_name || 'Raqib', s2, s1, row.p2_delta),
-      button: { label: '⚔️ Janglar', webApp: true },
-    });
+    await Promise.allSettled([
+      dispatch(db, token, appUrl, {
+        uid: row.p1, kind: 'battle', eventKey: `finished:${row.id}`,
+        text: line(row.p2_name || 'Raqib', s1, s2, row.p1_delta),
+        button: { label: '⚔️ Janglar', webApp: true },
+      }),
+      dispatch(db, token, appUrl, {
+        uid: row.p2, kind: 'battle', eventKey: `finished:${row.id}`,
+        text: line(row.p1_name || 'Raqib', s2, s1, row.p2_delta),
+        button: { label: '⚔️ Janglar', webApp: true },
+      }),
+    ]);
   } catch {
     /* notifications are best-effort — never touch the battle flow */
   }
@@ -400,7 +434,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     if (req.method === 'GET' && action === 'list') {
       const since = new Date(Date.now() - OPEN_LIST_TTL_MS).toISOString();
       const r = await sbFetch(db, `battles?select=*&status=eq.open&p1=neq.${uid}&created_at=gte.${since}&order=created_at.asc&limit=20`);
-      if (!r.ok) throw new Error(`supabase_${r.status}`);
+      if (!r.ok) throw await sbFail(r, 'battle:list');
       const rows = (await r.json()) as BattleRow[];
       res.status(200).json({
         list: rows.map((b) => ({ id: b.id, uid: String(b.p1), name: b.p1_name || 'Raqib', rating: b.p1_rating, avatar: b.p1_avatar ?? undefined, createdAt: b.created_at })),
@@ -453,6 +487,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const isP1 = String(row.p1) === uid;
       const live = row.live;
       const readRound = live.round;
+      const readN = live.n;
       let changed = false;
       if (row.status === 'active') {
         if (isP1) row.seen1 = Date.now();
@@ -476,7 +511,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       if (changed) {
         // Conditional write: only lands if the round has not moved underneath us.
         // The heartbeat rides along, so a sync that changed something costs ONE db write.
-        const r = await sbFetch(db, `battles?id=eq.${row.id}&status=eq.active&live->>round=eq.${readRound}`, {
+        const r = await sbFetch(db, `battles?id=eq.${row.id}&status=eq.active&${liveGuard(readRound, readN)}`, {
           method: 'PATCH', headers: { prefer: 'return=representation' },
           body: JSON.stringify({ live, status: row.status, winner: row.winner, p1_score: row.p1_score, p2_score: row.p2_score, p1_delta: row.p1_delta, p2_delta: row.p2_delta, ...(isP1 ? { seen1: row.seen1 } : { seen2: row.seen2 }) }),
         });
@@ -490,14 +525,19 @@ export default async function handler(req: Req, res: Res): Promise<void> {
             }
           } else {
             // written (heartbeat included) — no extra PATCH needed
-            if (row.status === 'finished') notifyBattleEnd(db, botToken, appUrl, row); // idempotent
+            if (row.status === 'finished') await notifyBattleEnd(db, botToken, appUrl, row); // idempotent
             res.status(200).json({ live: liveSync(row, uid) });
             return;
           }
+        } else {
+          console.error('battle sync write failed', (await sbFail(r, 'battle:sync')).message); // keep serving the read
         }
       }
       // Heartbeat only: never touches `live`, so it cannot clobber a concurrent answer.
-      await sbFetch(db, `battles?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify(isP1 ? { seen1: row.seen1 } : { seen2: row.seen2 }) });
+      // Best-effort: a hiccup here used to throw -> 502 on every poll while Supabase was slow.
+      if (row.status !== 'finished') {
+        await sbFetch(db, `battles?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify(isP1 ? { seen1: row.seen1 } : { seen2: row.seen2 }) }).catch(() => undefined);
+      }
       res.status(200).json({ live: liveSync(row, uid) });
       return;
     }
@@ -533,7 +573,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         created_at: new Date().toISOString(),
       };
       const r = await sbFetch(db, 'battles', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify(row) });
-      if (!r.ok && r.status !== 409) throw new Error(`supabase_${r.status}`);
+      if (!r.ok && r.status !== 409) throw await sbFail(r, 'battle:open');
       res.status(200).json({ battle: view(row, uid) });
       return;
     }
@@ -577,7 +617,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       };
       // only one joiner wins the race: patch WHERE status is still open
       const r = await sbFetch(db, `battles?id=eq.${id}&status=eq.open`, { method: 'PATCH', body: JSON.stringify(patched) });
-      if (!r.ok) throw new Error(`supabase_${r.status}`);
+      if (!r.ok) throw await sbFail(r, 'battle:join');
       const fresh = await getRow(db, id);
       if (!fresh || String(fresh.p2) !== uid) {
         res.status(409).json({ error: 'not_joinable' });
@@ -590,72 +630,91 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     // ---- POST / my answer for the current live round ----
     if (action === 'answer') {
       const id = cleanText(body?.id, 60);
-      const row = await getRow(db, id);
+      let row = await getRow(db, id);
       if (!row || (String(row.p1) !== uid && String(row.p2) !== uid) || !row.live) {
         res.status(409).json({ error: 'not_active' });
         return;
       }
-      const live = row.live;
       const isP1 = String(row.p1) === uid;
       const round = Math.round(Number(body?.round));
-      const correct = Number(body?.correct) === 1;
+      // Correctness is decided HERE whenever the client says which option it picked (`choice`):
+      // the server holds the questions, so a modified client can no longer claim "I was correct".
+      // The legacy `correct` flag is only honoured for old cached clients that send no `choice`
+      // (remove that fallback once every client is on the new bundle).
+      const choice = Number.isInteger(body?.choice) ? (body?.choice as number) : null;
+      const asked = row.questions[round];
+      const correct = choice !== null && asked ? choice === asked.answer : Number(body?.correct) === 1;
       const t = Math.max(0, Math.min(120_000, Math.round(Number(body?.t) || 0)));
       if (row.status === 'finished') {
         res.status(200).json({ live: liveSync(row, uid) });
         return;
       }
       const seen = Date.now();
-      resolveTimeouts(row);
       let wrote = false;
-      if (row.status === 'active' && live.roundStart != null && round === live.round) {
-        const myAns = isP1 ? live.a1 : live.a2;
-        if (myAns == null) {
-          const ans: LiveAns = { c: correct ? 1 : 0, t };
-          if (isP1) live.a1 = ans;
-          else live.a2 = ans;
-          live.n = (live.n ?? 0) + 1; // a real answer happened — the battle is "played" from now on
-          let scored = false;
-          if (correct) {
-            // first correct answer takes the point (the t-comparison guards the rare
-            // simultaneous-correct race that slips past the conditional write)
-            const oppAns = isP1 ? live.a2 : live.a1;
-            if (!(oppAns && oppAns.c === 1 && oppAns.t <= ans.t)) {
-              if (isP1) live.s1 += 1;
-              else live.s2 += 1;
-              scored = true;
-            }
-          }
-          const bothAnswered = live.a1 != null && live.a2 != null;
-          if (scored || bothAnswered) {
-            // next question right away; the short delay gives both clients a reveal pause
-            live.round += 1;
-            if (live.round >= row.questions.length) {
-              finishRow(row, naturalSide(live));
-            } else {
-              live.roundStart = Date.now() + ADVANCE_DELAY_MS;
-              live.a1 = null;
-              live.a2 = null;
-            }
-          }
-          // else: I answered wrong — wait for the opponent or the buzzer
-          // Conditional write: only lands if the round is still the one I read.
-          const r = await sbFetch(db, `battles?id=eq.${row.id}&status=eq.active&live->>round=eq.${round}`, {
-            method: 'PATCH', headers: { prefer: 'return=representation' },
-            body: JSON.stringify({ live, status: row.status, winner: row.winner, p1_score: row.p1_score, p2_score: row.p2_score, p1_delta: row.p1_delta, p2_delta: row.p2_delta, ...(isP1 ? { seen1: seen } : { seen2: seen }) }),
-          });
-          wrote = r.ok;
-          if (r.ok) {
-            const arr = (await r.json().catch(() => [])) as BattleRow[];
-            if (arr.length === 0) wrote = false; // lost the race — the round already moved
-            else if ((row.status as string) === 'finished') notifyBattleEnd(db, botToken, appUrl, row); // idempotent
+      // Up to 3 attempts: the write below is conditional (round + answer counter), so when the
+      // opponent's answer lands between my read and my write the write is refused — instead of
+      // dropping MY answer (it used to vanish and the round hung until the clock ran out) I
+      // re-read the fresh row and apply my answer on top of theirs.
+      for (let attempt = 0; attempt < 3 && !wrote; attempt++) {
+        if (attempt > 0) {
+          const again = await getRow(db, id);
+          if (!again || !again.live) break;
+          row = again;
+        }
+        const live = row.live as LiveState;
+        if (row.status === 'finished') break;
+        const readN = live.n; // counter BEFORE this answer
+        resolveTimeouts(row);
+        if (!(row.status === 'active' && live.roundStart != null && round === live.round)) break; // late / wrong round
+        if ((isP1 ? live.a1 : live.a2) != null) break; // duplicate answer
+        const ans: LiveAns = { c: correct ? 1 : 0, t };
+        if (isP1) live.a1 = ans;
+        else live.a2 = ans;
+        live.n = (live.n ?? 0) + 1; // a real answer happened — the battle is "played" from now on
+        let scored = false;
+        if (correct) {
+          // first correct answer takes the point (the t-comparison guards the rare
+          // simultaneous-correct race that slips past the conditional write)
+          const oppAns = isP1 ? live.a2 : live.a1;
+          if (!(oppAns && oppAns.c === 1 && oppAns.t <= ans.t)) {
+            if (isP1) live.s1 += 1;
+            else live.s2 += 1;
+            scored = true;
           }
         }
+        const bothAnswered = live.a1 != null && live.a2 != null;
+        if (scored || bothAnswered) {
+          // next question right away; the short delay gives both clients a reveal pause
+          live.round += 1;
+          if (live.round >= row.questions.length) {
+            finishRow(row, naturalSide(live));
+          } else {
+            live.roundStart = Date.now() + ADVANCE_DELAY_MS;
+            live.a1 = null;
+            live.a2 = null;
+          }
+        }
+        // else: I answered wrong — wait for the opponent or the buzzer
+        const r = await sbFetch(db, `battles?id=eq.${row.id}&status=eq.active&${liveGuard(round, readN)}`, {
+          method: 'PATCH', headers: { prefer: 'return=representation' },
+          body: JSON.stringify({ live, status: row.status, winner: row.winner, p1_score: row.p1_score, p2_score: row.p2_score, p1_delta: row.p1_delta, p2_delta: row.p2_delta, ...(isP1 ? { seen1: seen } : { seen2: seen }) }),
+        });
+        if (!r.ok) {
+          console.error('battle answer write failed', (await sbFail(r, 'battle:answer')).message);
+          break;
+        }
+        const arr = (await r.json().catch(() => [])) as BattleRow[];
+        if (arr.length > 0) {
+          wrote = true;
+          if ((row.status as string) === 'finished') await notifyBattleEnd(db, botToken, appUrl, row); // idempotent
+        }
+        // arr.length === 0 -> lost the race: loop re-reads the row and tries again
       }
       if (!wrote) {
         // nothing to change (late / duplicate / lost race) — refresh my heartbeat and
         // return the CURRENT server state so the client catches up
-        const fresh = (await getRow(db, row.id)) ?? row;
-        await sbFetch(db, `battles?id=eq.${row.id}`, { method: 'PATCH', body: JSON.stringify(isP1 ? { seen1: seen } : { seen2: seen }) }).catch(() => undefined);
+        const fresh = (await getRow(db, id)) ?? row;
+        await sbFetch(db, `battles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(isP1 ? { seen1: seen } : { seen2: seen }) }).catch(() => undefined);
         res.status(200).json({ live: fresh.live ? liveSync(fresh, uid) : { legacy: true } });
         return;
       }
@@ -680,7 +739,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         if (r.ok) {
           const arr = (await r.json().catch(() => [])) as BattleRow[];
           if (arr.length > 0) {
-            notifyBattleEnd(db, botToken, appUrl, row); // forfeit finish — both sides are told
+            await notifyBattleEnd(db, botToken, appUrl, row); // forfeit finish — both sides are told
             res.status(200).json({ live: liveSync(row, uid) });
             return;
           }
@@ -725,16 +784,17 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         patched.p2_delta = clampDelta(PVP_K * (1 - result - expectedScore(row.p2_rating ?? row.p1_rating, row.p1_rating)));
       }
       const r = await sbFetch(db, `battles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patched) });
-      if (!r.ok) throw new Error(`supabase_${r.status}`);
+      if (!r.ok) throw await sbFail(r, 'battle:submit');
       const fresh = (await getRow(db, id)) ?? row;
-      if (fresh.status === 'finished') notifyBattleEnd(db, botToken, appUrl, fresh); // legacy async finish
+      if (fresh.status === 'finished') await notifyBattleEnd(db, botToken, appUrl, fresh); // legacy async finish
       res.status(200).json({ battle: view(fresh, uid) });
       return;
     }
 
     res.status(400).json({ error: 'bad_action' });
   } catch (e) {
-    console.error('battle failure', e instanceof Error ? e.message : String(e));
+    // PII-free: action + error code only (no ids, names or answers)
+    console.error('battle failure', `${req.method ?? '?'} ${req.method === 'GET' ? q0(urlQuery) : q0(safeBody(req))}`, e instanceof Error ? e.message : String(e));
     res.status(502).json({ error: 'storage_error' });
   }
 }
@@ -742,9 +802,18 @@ export default async function handler(req: Req, res: Res): Promise<void> {
 async function getRow(db: { url: string; key: string }, id: string): Promise<BattleRow | null> {
   if (!/^[a-z0-9_]{3,60}$/i.test(id)) return null;
   const r = await sbFetch(db, `battles?select=*&id=eq.${id}&limit=1`);
-  if (!r.ok) return null;
+  // A Supabase failure is NOT "battle not found": it used to return null here, so a database
+  // outage / missing table looked like a vanished battle (404 not_found / {battle:null}) and the
+  // real cause never reached the log. Now it surfaces as 502 storage_error + a precise log line.
+  if (!r.ok) throw await sbFail(r, 'battle:getRow');
   const rows = (await r.json()) as BattleRow[];
   return rows[0] ?? null;
+}
+
+/** The `action` of a request, for log lines only. */
+function q0(x: Record<string, unknown> | undefined): string {
+  const a = x?.action;
+  return typeof a === 'string' ? `action=${a.slice(0, 16)}` : 'action=?';
 }
 
 function parseQuery(url: string): Record<string, string> {

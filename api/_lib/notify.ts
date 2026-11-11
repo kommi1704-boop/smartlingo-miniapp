@@ -204,7 +204,11 @@ export async function dispatch(db: DbCtx, token: string, appUrl: string, input: 
       body: JSON.stringify({ id, telegram_user_id: input.uid, kind: input.kind, status: 'sending' }),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!ins.ok) return { status: 'failed', id };
+    if (!ins.ok) {
+      // e.g. 404 PGRST205 = notification_history table missing (schema.sql not re-run)
+      console.error('notify reserve failed', `supabase_${ins.status}`);
+      return { status: 'failed', id };
+    }
     const rows = (await ins.json().catch(() => [])) as { id: string }[];
     if (!Array.isArray(rows) || rows.length === 0) return { status: 'duplicate', id }; // already reserved
 
@@ -238,9 +242,13 @@ export async function dispatch(db: DbCtx, token: string, appUrl: string, input: 
 /** The standard footer: the optional action button + "Sozlamalar" (one tap to opt out). */
 function buildKeyboard(input: NotifyInput, appUrl: string) {
   const rows: ({ text: string; url: string } | { text: string; web_app: { url: string } })[][] = [];
+  // Telegram rejects the WHOLE message ("BUTTON_URL_INVALID" / "Wrong HTTP URL") when a web_app
+  // button has an empty or non-https url — which is what happened on every battle/quiz notification
+  // while WEBAPP_URL was unset. Without a valid app URL we send the text without app buttons.
+  const appOk = /^https:\/\/\S+$/.test(appUrl);
   if (input.button?.url) rows.push([{ text: input.button.label, url: input.button.url }]);
-  else if (input.button?.webApp) rows.push([{ text: input.button.label, web_app: { url: appUrl } }]);
-  if (!input.noSettingsFooter) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}#/notify` } }]);
+  else if (input.button?.webApp && appOk) rows.push([{ text: input.button.label, web_app: { url: appUrl } }]);
+  if (!input.noSettingsFooter && appOk) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}#/notify` } }]);
   return rows.length ? { inline_keyboard: rows } : null;
 }
 

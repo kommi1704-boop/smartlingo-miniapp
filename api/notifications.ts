@@ -101,7 +101,7 @@ async function loadPrefs(db: { url: string; key: string }, uid: number): Promise
 }
 
 async function savePrefs(db: { url: string; key: string }, uid: number, prefs: NotifyPrefs): Promise<void> {
-  await fetch(`${db.url}/rest/v1/notification_preferences?on_conflict=telegram_user_id`, {
+  const r = await fetch(`${db.url}/rest/v1/notification_preferences?on_conflict=telegram_user_id`, {
     method: 'POST',
     headers: { ...sbHeaders(db.key), prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({
@@ -115,6 +115,9 @@ async function savePrefs(db: { url: string; key: string }, uid: number, prefs: N
     }),
     signal: AbortSignal.timeout(15_000),
   });
+  // Without this check a rejected write (missing table, bad key) answered 200 with the NEW values,
+  // so Settings showed "saved" while nothing was stored and the next load reverted it.
+  if (!r.ok) throw new Error(`supabase_${r.status} (notifications:save)`);
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {

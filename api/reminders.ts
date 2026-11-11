@@ -87,11 +87,12 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const rows = (await r.json()) as PresenceRow[];
 
     // freeze holders are protected by the product rule — record the WHY (transparent history)
-    for (const u of rows) {
-      if ((u.freezes ?? 0) > 0 && u.reminded_on !== today) {
-        void recordSkip(db, u.telegram_user_id, 'streak', `streak:${today}`, 'skipped_block');
-      }
-    }
+    // awaited: un-awaited writes are frozen with the function once the response is sent
+    await Promise.allSettled(
+      rows
+        .filter((u) => (u.freezes ?? 0) > 0 && u.reminded_on !== today)
+        .map((u) => recordSkip(db, u.telegram_user_id, 'streak', `streak:${today}`, 'skipped_block')),
+    );
 
     const prefs = await fetchPrefsMap(db);
     const targets = rows.filter((u) => (u.freezes ?? 0) <= 0 && u.reminded_on !== today).slice(0, 300);
