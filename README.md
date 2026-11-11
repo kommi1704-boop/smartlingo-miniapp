@@ -313,14 +313,14 @@ folder is kept at 11 functions by merging related handlers; old URLs still work 
 |---|---|
 | `/api/tutor`, `/api/generate-text`, `/api/roadmap`, `/api/explain-mistake`, `/api/writing-check` | `api/ai.ts` (`?k=tutor/gentext/roadmap/explain/writing`) |
 | `/api/weekly` (cron) | `api/admin-notify.ts` (`?k=weekly`) |
-| `/api/notify.ts`, `/api/quizBank.ts` | shared libraries under `api/_lib/` (never counted as functions) |
+| `/api/notify.ts`, `/api/quizBank.ts` | shared libraries under `server/` (never counted as functions) |
 
 When adding a new endpoint on the Hobby plan, either add it as a new `k` case inside an
 existing function + rewrite, or upgrade to Pro (20+ functions).
 
 ## 6f. Notifications — "Bildirishnomalar" (optional, needs Supabase + bot)
 
-One dispatcher (`api/_lib/notify.ts` — a shared library, not a function) decides every Telegram push: category preference → pause →
+One dispatcher (`server/notify.ts` — shared server library (kept OUTSIDE api/ per Vercel guidance)) decides every Telegram push: category preference → pause →
 quiet hours (Asia/Tashkent) → send → record. Delivery attempts land in
 `notification_history` with DETERMINISTIC ids (`n_<kind>_<uid>_<event>`), so webhook retries
 and double cron ticks can never send the same message twice.
@@ -393,8 +393,8 @@ was blocked). Since then the project is verified in a normal environment on ever
 | What | File |
 |---|---|
 | Words / grammar / reading / listening / placement / speaking / writing | `src/data/*.ts` |
-| Friend Quiz question bank | `api/_lib/quizBank.ts` (built from `src/data/*`) |
-| Notification kinds / labels / gating | `api/_lib/notify.ts` + `src/types.notify.ts` |
+| Friend Quiz question bank | `server/quizBank.ts` (built from `src/data/*`) |
+| Notification kinds / labels / gating | `server/notify.ts` + `src/types.notify.ts` |
 | Resource links | `src/data/resources.ts` |
 | Colours & dark theme | `src/index.css` |
 | Level logic, spaced repetition, plan, roadmap | `src/lib/` |

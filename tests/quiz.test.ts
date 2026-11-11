@@ -29,7 +29,7 @@ function section(name: string): void {
 import {
   BANK_STATS, CATEGORY_IDS, DIFFICULTY_IDS, DIFFICULTY_LEVELS, categoryPool,
   selectQuestions, shuffledQuizOf,
-} from '../api/_lib/quizBank';
+} from '../server/quizBank';
 import { EXTENDED_QUIZ_COINS, CARD_THEME_COINS, MAX_TITLE_LEN, MIN_MS_PER_QUESTION } from '../api/quiz';
 import { parseQuizPayload, parseRefPayload, quizInviteText, QUIZ_CATEGORY_LABELS, QUIZ_DIFFICULTY_LABELS } from '../api/bot';
 import { quizDeepLink } from '../src/lib/quizApi';

@@ -37,7 +37,7 @@ function section(name: string): void {
 import {
   NOTIFY_KINDS, KIND_LABELS_UZ, DEFAULT_CATEGORIES, defaultPrefs, sanitizePrefs, gate, inQuietHours,
   uztHour, historyIdOf, type NotifyPrefs,
-} from '../api/_lib/notify';
+} from '../server/notify';
 import { audienceIds, campaignText, AUDIENCES, runCampaignSend } from '../api/admin-notify';
 import { presenceFromState } from '../api/progress';
 
