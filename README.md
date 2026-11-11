@@ -313,14 +313,34 @@ folder is kept at 11 functions by merging related handlers; old URLs still work 
 |---|---|
 | `/api/tutor`, `/api/generate-text`, `/api/roadmap`, `/api/explain-mistake`, `/api/writing-check` | `api/ai.ts` (`?k=tutor/gentext/roadmap/explain/writing`) |
 | `/api/weekly` (cron) | `api/admin-notify.ts` (`?k=weekly`) |
-| `/api/notify.ts`, `/api/quizBank.ts` | shared libraries under `server/` (never counted as functions) |
+| `/api/notify.ts`, `/api/quizBank.ts` | shared libraries under `api/_lib/` (never counted as functions) |
 
 When adding a new endpoint on the Hobby plan, either add it as a new `k` case inside an
 existing function + rewrite, or upgrade to Pro (20+ functions).
 
+### 6e-2. One-URL deployment self-test (offline banner troubleshooting)
+
+If the Battle / Friend Quiz pages show the "offline" banner, the server probe answered
+`enabled: false` — that is an ENV-VARIABLE problem on Vercel, not a file/schema problem.
+Two built-in diagnostics (no secrets are ever returned):
+
+1. Open `https://<your-domain>/api/admin-notify?k=diag` in a browser. It reports:
+   - `env` — which of `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`,
+     `WEBAPP_URL`, `ADMIN_TELEGRAM_IDS` are present (true/false);
+   - `bot` — `getMe` result (`ok` + bot `username`) — proves the token is valid;
+   - `tables` — `ok` / `http_404` (missing table → re-run `supabase/schema.sql`) per table;
+   - `ok: true` = everything ready.
+2. The offline banners themselves now show the exact missing env var name
+   (e.g. "Serverda yetishmayapti: TELEGRAM_BOT_TOKEN").
+
+Fix flow: Vercel → Project → Settings → Environment Variables → add the missing var(s)
+→ Deployments → Redeploy → wait for 🟢 Ready → re-open `?k=diag`.
+Also: the Mini App must be opened through the bot's menu button (the Vercel domain) —
+`npm run dev` or any other host has no `/api/*` and will always show the banner.
+
 ## 6f. Notifications — "Bildirishnomalar" (optional, needs Supabase + bot)
 
-One dispatcher (`server/notify.ts` — shared server library (kept OUTSIDE api/ per Vercel guidance)) decides every Telegram push: category preference → pause →
+One dispatcher (`api/_lib/notify.ts` — a shared library, not a function) decides every Telegram push: category preference → pause →
 quiet hours (Asia/Tashkent) → send → record. Delivery attempts land in
 `notification_history` with DETERMINISTIC ids (`n_<kind>_<uid>_<event>`), so webhook retries
 and double cron ticks can never send the same message twice.
@@ -393,11 +413,35 @@ was blocked). Since then the project is verified in a normal environment on ever
 | What | File |
 |---|---|
 | Words / grammar / reading / listening / placement / speaking / writing | `src/data/*.ts` |
-| Friend Quiz question bank | `server/quizBank.ts` (built from `src/data/*`) |
-| Notification kinds / labels / gating | `server/notify.ts` + `src/types.notify.ts` |
+| Friend Quiz question bank | `api/_lib/quizBank.ts` (built from `src/data/*`) |
+| Notification kinds / labels / gating | `api/_lib/notify.ts` + `src/types.notify.ts` |
 | Resource links | `src/data/resources.ts` |
 | Colours & dark theme | `src/index.css` |
 | Level logic, spaced repetition, plan, roadmap | `src/lib/` |
 | Saving data (swap to Supabase here) | `src/lib/repository.ts` |
 | Screens | `src/pages/` |
 | Server functions | `api/` |
+
+## 10. "Learning Playground" design system (visual identity)
+
+The UI was rebuilt around a colorful, playful identity (see the brief: SMARTLINGO —
+LEARNING PLAYGROUND). Everything is token-driven, so screens stay consistent:
+
+- **Palette** (CSS vars in `src/index.css`): Fresh Green `#58CC83` (learning/success),
+  Sky Blue `#48B8F5` (AI/knowledge), Sunshine Yellow `#FFD84D` (XP/coins/rewards),
+  Soft Lavender `#B9A0F7` (special/premium), Coral `#FF8978` (challenges/attention).
+  Light background `#F5FAF7 -> #F0F7FF`, cards `#FFFFFF`, ink `#24334A`, muted `#738096`.
+- **Skill color identity**: Vocabulary = green, Grammar = blue, Reading = purple,
+  Listening = yellow, Speaking = coral, Writing = sky blue.
+- **Typography**: Nunito (rounded, friendly, still professional) loaded in `index.html`.
+- **Atmosphere**: pastel gradient backdrop with slowly drifting geometric shapes
+  (circles, rings, stars, plus-signs, "Aa") — pure CSS/SVG, GPU-cheap, honors
+  `prefers-reduced-motion`. The Settings "Orqa fon" alternates still work.
+- **Signature 3D press**: primary buttons sit on a darker bottom edge that compresses
+  on tap (`shadow-[0_3px_0_...]` + `active:translate-y-[2px]`).
+- **Micro-animations**: nav bounce, xp bar shine, medal-pop, wiggle, float-y,
+  coin-spin, streak flame — all existing ones kept, a few new ones added.
+- **Mascot**: the original Lingo SVG character is recolored to the green identity.
+- Dark theme remains fully supported (Settings -> Mavzu) with the same hues.
+- Reusable primitives live in `src/components/ui.tsx` (Button/Card/Pill/Chip/
+  ProgressBar/ProgressRing/Tabs/PageHeader/Empty/Notice/StatTile/Modal/Section).
