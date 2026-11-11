@@ -28,8 +28,8 @@ import crypto from 'node:crypto';
 import {
   CATEGORY_IDS, DIFFICULTY_IDS, BANK_STATS, selectQuestions, shuffledQuizOf,
   type QuizCategory, type QuizDifficulty, type BankQuestion,
-} from './_lib/quizBank';
-import { dispatch } from './_lib/notify';
+} from '../server/quizBank';
+import { dispatch } from '../server/notify';
 import { uztDay } from './progress';
 
 export const EXTENDED_QUIZ_COINS = 50; // 10-question quiz
@@ -174,32 +174,14 @@ function botUsername(token: string): Promise<string | null> {
   return botUsernamePromise;
 }
 
-/**
- * Turns a failed PostgREST response into a precise, PII-free error for the server log, e.g.
- *   supabase_404:PGRST205 (quiz:get)   -> table missing (supabase/schema.sql was not re-run)
- *   supabase_400:PGRST204 (quiz:create) -> column missing
- *   supabase_401/403                    -> wrong SUPABASE_SERVICE_ROLE_KEY
- */
-async function sbFail(r: Response, what: string): Promise<Error> {
-  let code = '';
+async function sbGet<T>(db: { url: string; key: string }, path: string): Promise<T[] | null> {
   try {
-    const j = (await r.json()) as { code?: unknown };
-    if (j && typeof j.code === 'string') code = `:${j.code.slice(0, 12)}`;
+    const r = await fetch(`${db.url}/rest/v1/${path}`, { headers: sbHeaders(db.key), signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return null;
+    return (await r.json()) as T[];
   } catch {
-    /* body is not JSON */
+    return null;
   }
-  return new Error(`supabase_${r.status}${code} (${what})`);
-}
-
-/**
- * GET rows. A Supabase failure now THROWS (-> 502 storage_error + a precise log line). It used to
- * return null, which every caller read as "no rows": a missing table / outage looked like
- * "quiz not found" (404) and the daily-limit counters silently read 0 (limits bypassed).
- */
-async function sbGet<T>(db: { url: string; key: string }, path: string, what = 'read'): Promise<T[]> {
-  const r = await fetch(`${db.url}/rest/v1/${path}`, { headers: sbHeaders(db.key), signal: AbortSignal.timeout(15_000) });
-  if (!r.ok) throw await sbFail(r, `quiz:${what}`);
-  return (await r.json()) as T[];
 }
 
 /** Daily quota counters (Asia/Tashkent day). */
@@ -214,59 +196,42 @@ async function todayCounts(db: { url: string; key: string }, uid: number): Promi
 
 /** Bank keys used in the creator's most recent quizzes -> keeps new quizzes fresh (no immediate repeats). */
 async function recentBankKeys(db: { url: string; key: string }, uid: number): Promise<string[]> {
+  const rows = await sbGet<{ questions: StoredQuestion[] }>(db, `friend_quizzes?select=questions&creator_id=eq.${uid}&order=created_at.desc&limit=5`);
   const keys: string[] = [];
-  try {
-    const rows = await sbGet<{ questions: StoredQuestion[] }>(db, `friend_quizzes?select=questions&creator_id=eq.${uid}&order=created_at.desc&limit=5`, 'recent');
-    for (const row of rows) for (const q of row.questions ?? []) if (q?.bankKey) keys.push(q.bankKey);
-  } catch {
-    /* freshness is a nicety — never block quiz creation on it */
-  }
+  for (const row of rows ?? []) for (const q of row.questions ?? []) if (q?.bankKey) keys.push(q.bankKey);
   return keys;
 }
 
-type SpendJournal = 'new' | 'duplicate' | 'refunded';
-
 /**
- * Journals the device-side coin spend (idempotent):
- *   'new'       first time we see this spend id
- *   'duplicate' a retry of an already-journaled spend (same quiz must be returned / created once)
- *   'refunded'  a retry of a spend that was ALREADY refunded through the ledger — the quiz must
- *               NOT be created now, or the learner would get the refund AND the quiz.
- * Throws on a Supabase failure (the caller refunds + reports).
+ * Journals the device-side coin spend (idempotent) and marks it refunded when
+ * creation fails afterwards. The refund itself is a coin_grants row the Mini
+ * App already applies exactly once (same flow as referral rewards).
  */
-async function journalSpend(db: { url: string; key: string }, uid: number, spendId: string, coins: number, purpose: string, refId: string | null): Promise<SpendJournal> {
+async function journalSpend(db: { url: string; key: string }, uid: number, spendId: string, coins: number, purpose: string, refId: string | null): Promise<boolean> {
   const ins = await fetch(`${db.url}/rest/v1/coin_spends?on_conflict=id`, {
     method: 'POST',
     headers: { ...sbHeaders(db.key), prefer: 'return=representation,resolution=ignore-duplicates' },
     body: JSON.stringify({ id: spendId, telegram_user_id: uid, coins, purpose, ref_id: refId, status: 'spent' }),
     signal: AbortSignal.timeout(15_000),
-  });
-  if (!ins.ok) throw await sbFail(ins, 'quiz:journal');
+  }).catch(() => null);
+  if (!ins || !ins.ok) return false;
   const rows = (await ins.json().catch(() => [])) as { id: string }[];
-  if (Array.isArray(rows) && rows.length > 0) return 'new';
-  const cur = await sbGet<{ status: string }>(db, `coin_spends?select=status&id=eq.${encodeURIComponent(spendId)}&limit=1`, 'journal-status');
-  return cur[0]?.status === 'refunded' ? 'refunded' : 'duplicate';
+  return Array.isArray(rows) && rows.length > 0; // false = retry of an already-journaled spend
 }
 
-/**
- * Marks the spend refunded and records the refund in the coin_grants ledger (the Mini App applies
- * unacked grants exactly once). Returns true only when the grant is durably stored — the caller
- * tells the client "refunded" ONLY then, so the app never refunds locally on top of it.
- */
-async function refundSpend(db: { url: string; key: string }, spendId: string, uid: number, coins: number): Promise<boolean> {
+async function refundSpend(db: { url: string; key: string }, spendId: string, uid: number, coins: number): Promise<void> {
   await fetch(`${db.url}/rest/v1/coin_spends?id=eq.${encodeURIComponent(spendId)}`, {
     method: 'PATCH',
     headers: sbHeaders(db.key),
     body: JSON.stringify({ status: 'refunded', refunded_at: new Date().toISOString() }),
     signal: AbortSignal.timeout(15_000),
   }).catch(() => undefined);
-  const g = await fetch(`${db.url}/rest/v1/coin_grants?on_conflict=id`, {
+  await fetch(`${db.url}/rest/v1/coin_grants?on_conflict=id`, {
     method: 'POST',
     headers: { ...sbHeaders(db.key), prefer: 'return=minimal,resolution=ignore-duplicates' },
     body: JSON.stringify({ id: `gr_qzref_${spendId}`, telegram_user_id: uid, coins, source: 'quiz_refund' }),
     signal: AbortSignal.timeout(15_000),
-  }).catch(() => null);
-  return Boolean(g && g.ok);
+  }).catch(() => undefined);
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
@@ -465,43 +430,34 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           spend_id: cost > 0 ? spendId : null,
         };
 
-        // Everything from the journal write on is "money in flight": ANY failure refunds through
-        // the ledger and tells the client (create_failed_refunded) so the app does not refund
-        // locally a second time (it used to: +50 from the server ledger AND +50 from the app).
-        try {
-          if (cost > 0 && spendId) {
-            const journaled = await journalSpend(db, nuid, spendId, cost, 'quiz_create_10', id);
-            if (journaled === 'refunded') {
-              res.status(409).json({ error: 'spend_refunded' }); // this spend was already given back — never also create the quiz
-              return;
-            }
-          }
-          const ins = await fetch(`${db.url}/rest/v1/friend_quizzes`, {
-            method: 'POST',
-            headers: { ...sbHeaders(db.key), prefer: 'return=representation' },
-            body: JSON.stringify(insert),
-            signal: AbortSignal.timeout(15_000),
-          });
-          if (ins.status === 409 && cost > 0 && spendId) {
-            // UNIQUE(spend_id): a parallel retry created this quiz first — hand back that one
-            const dup = await sbGet<QuizRow>(db, `friend_quizzes?select=*&spend_id=eq.${encodeURIComponent(spendId)}&limit=1`, 'create-dup');
-            if (dup[0]) {
-              res.status(200).json({ quiz: quizMeta(dup[0]), existing: true });
-              return;
-            }
-          }
-          if (!ins.ok) throw await sbFail(ins, 'quiz:create');
-          const rows = (await ins.json().catch(() => [])) as QuizRow[];
-          const row = rows[0];
-          if (!row) throw new Error('quiz:create returned no row');
-          res.status(200).json({ quiz: quizMeta(row) });
-          return;
-        } catch (e) {
-          console.error('quiz create failure', e instanceof Error ? e.message : String(e));
-          const refunded = cost > 0 && spendId ? await refundSpend(db, spendId, nuid, cost) : false;
-          res.status(502).json({ error: refunded ? 'create_failed_refunded' : 'storage_error' });
+        if (cost > 0 && spendId) {
+          // Journal the spend (idempotent). When the row already exists this is a RETRY:
+          // the client paid once and the quiz never landed — proceed with the SAME spend_id
+          // so the payment is honoured exactly once (never refunded AND re-created).
+          await journalSpend(db, nuid, spendId, cost, 'quiz_create_10', id);
+        }
+
+        const ins = await fetch(`${db.url}/rest/v1/friend_quizzes`, {
+          method: 'POST',
+          headers: { ...sbHeaders(db.key), prefer: 'return=representation' },
+          body: JSON.stringify(insert),
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!ins.ok) {
+          // creation failed AFTER the spend was journaled -> refund through the ledger
+          if (cost > 0 && spendId) await refundSpend(db, spendId, nuid, cost);
+          res.status(502).json({ error: 'storage_error' });
           return;
         }
+        const rows = (await ins.json().catch(() => [])) as QuizRow[];
+        const row = rows[0];
+        if (!row) {
+          if (cost > 0 && spendId) await refundSpend(db, spendId, nuid, cost);
+          res.status(502).json({ error: 'storage_error' });
+          return;
+        }
+        res.status(200).json({ quiz: quizMeta(row) });
+        return;
       }
 
       if (action === 'submit') {
@@ -566,9 +522,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         }
 
         // Tell the creator (respecting their notification preferences; exactly once).
-        // awaited: a fire-and-forget send is frozen with the function once the response goes out and
-        // leaves the notification_history row stuck in 'sending' (the unique id then blocks any retry)
-        await dispatch(
+        void dispatch(
           { url: db.url, key: db.key },
           botToken,
           appUrl,
@@ -628,7 +582,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           res.status(402).json({ error: 'spend_required' });
           return;
         }
-        const ok = (await journalSpend(db, nuid, spendId, CARD_THEME_COINS, 'quiz_card', id)) === 'new';
+        const ok = await journalSpend(db, nuid, spendId, CARD_THEME_COINS, 'quiz_card', id);
         res.status(200).json({ ok: true, journaled: ok, theme: 'gold', cost: CARD_THEME_COINS }); // journal is audit; unlock is client-side
         return;
       }

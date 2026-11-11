@@ -23,7 +23,7 @@
 //                    SUPABASE_SERVICE_ROLE_KEY, ADMIN_TELEGRAM_IDS.
 import crypto from 'node:crypto';
 import { adminIdsFromEnv } from './bot';
-import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify';
+import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from '../server/notify';
 import { uztDay } from './progress';
 
 export const AUDIENCES = ['all', 'active', 'inactive'] as const;
