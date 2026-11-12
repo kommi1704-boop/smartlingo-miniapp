@@ -98,7 +98,7 @@ export function Tutor() {
       <header className="mb-3 flex items-center gap-3">
         <Mascot size={52} mood={busy ? 'think' : 'happy'} title="Lingo" />
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-extrabold leading-tight">Lingo</h1>
+          <h1 className="text-lg font-black leading-tight text-[#3b95e6] dark:text-sky-300">Lingo · AI Tutor</h1>
           <div className="flex items-center gap-1.5">
             {live === null ? <Pill>Tekshirilmoqda…</Pill> : live ? <Pill tone="green">Jonli AI</Pill> : <Pill tone="amber">Demo rejim</Pill>}
             <span className="hidden truncate text-xs text-muted sm:inline">Darajangiz: {p.estimatedLevel}</span>
@@ -124,7 +124,7 @@ export function Tutor() {
         </p>
       )}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-3xl border border-line bg-surface p-3.5" role="log" aria-live="polite" aria-label="Suhbat">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-[28px] border-2 border-[#d6ebfb] bg-[linear-gradient(180deg,#f0f8ff,#f7fbff)] p-3.5 dark:border-line dark:bg-surface" role="log" aria-live="polite" aria-label="Suhbat">
         <Bubble role="assistant" demo={live === false}>
           Salom, {p.name}! 👋 Men Lingoman. Grammatika, so‘z ma’nolari yoki inglizcha suhbat mashqi bo‘yicha yordam beraman. Pastdagi savollardan birini tanlang yoki o‘zingiz yozing.
         </Bubble>
@@ -214,7 +214,7 @@ function Bubble({ role, children, demo, link }: { role: 'user' | 'assistant'; ch
   return (
     <div className={cx('flex items-end gap-1.5', mine ? 'justify-end' : 'justify-start')}>
       {!mine && <Mascot size={30} animate={false} className="mb-1" />}
-      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-[linear-gradient(160deg,#5fd695,#3fae68)] text-white shadow-[0_6px_16px_-8px_rgba(88,204,131,0.7)]' : 'rounded-bl-lg border-2 border-line/70 bg-surface')}>
+      <div className={cx('max-w-[84%] px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'bubble-me' : 'bubble-ai')}>
         <p className="whitespace-pre-line">{children}</p>
         {link && (
           <A to={link.route} className="mt-2 inline-flex items-center gap-1 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold text-white">

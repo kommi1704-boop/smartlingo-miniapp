@@ -1040,7 +1040,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       playSfx('wrong');
     }
     const t = Math.max(0, Math.round(nowS() - (v.roundStart ?? nowS())));
-    void answerPvp(battleId, v.round, correct, t)
+    void answerPvp(battleId, v.round, correct, t, i)
       .then((r) => {
         if (!finishedRef.current) apply(r);
       })

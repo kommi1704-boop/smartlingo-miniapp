@@ -912,3 +912,132 @@ html:not(.dark) .dot-top { background: #2c9a5c; box-shadow: 0 0 8px rgba(40, 150
 @media (prefers-reduced-motion: reduce) {
   .float-y, .wiggle { animation: none; }
 }
+
+/* ============================================================
+   LEARNING PLAYGROUND — reusable visual components
+   (sky hero · colour tiles · reward cards · bubbles). Every colour comes from
+   the palette tokens above; learning areas keep ONE colour everywhere:
+   Vocabulary=green · Grammar=blue · Reading=purple · Listening=yellow ·
+   Speaking=coral · Writing=sky.
+   ============================================================ */
+
+/* Sky hero: soft pastel sky, clouds and rolling hills behind the mascot */
+.sky-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #b6e2ff 0%, #d8f1ff 48%, #e6f8ee 100%);
+  box-shadow: 0 18px 38px -22px rgba(72, 184, 245, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+.sky-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(38px 22px at 18% 20%, rgba(255, 255, 255, 0.95) 98%, transparent),
+    radial-gradient(52px 26px at 30% 24%, rgba(255, 255, 255, 0.9) 98%, transparent),
+    radial-gradient(44px 24px at 78% 14%, rgba(255, 255, 255, 0.92) 98%, transparent),
+    radial-gradient(60px 28px at 90% 22%, rgba(255, 255, 255, 0.85) 98%, transparent);
+  pointer-events: none;
+}
+.sky-hero::after {
+  content: '';
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -26px;
+  height: 78px;
+  background:
+    radial-gradient(60% 100% at 25% 100%, #8fe0ab 60%, transparent 61%),
+    radial-gradient(70% 100% at 80% 100%, #6fd596 60%, transparent 61%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.dark .sky-hero {
+  background: linear-gradient(180deg, #1c3a66 0%, #1b2f55 55%, #1c3b46 100%);
+  box-shadow: 0 18px 38px -22px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.dark .sky-hero::before { opacity: 0.18; }
+.dark .sky-hero::after { opacity: 0.35; }
+
+/* Colour tiles: glossy, pressable, one colour per learning area */
+.tile {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  background: var(--tile-bg);
+  box-shadow: 0 14px 22px -14px var(--tile-shadow), inset 0 2px 0 rgba(255, 255, 255, 0.4), inset 0 -4px 0 rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tile::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -22%;
+  top: -34%;
+  width: 78%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 70%);
+}
+.tile:active { transform: scale(0.96); }
+.tile-green  { --tile-bg: linear-gradient(150deg, #72de98, #3fb871); --tile-shadow: rgba(63, 184, 113, 0.75); }
+.tile-blue   { --tile-bg: linear-gradient(150deg, #6bc6fb, #3b95e6); --tile-shadow: rgba(59, 149, 230, 0.7); }
+.tile-purple { --tile-bg: linear-gradient(150deg, #c9b5fb, #8f74e6); --tile-shadow: rgba(143, 116, 230, 0.7); }
+.tile-yellow { --tile-bg: linear-gradient(150deg, #ffe777, #ffbf2e); --tile-shadow: rgba(255, 191, 46, 0.75); color: #5a3d00; }
+.tile-coral  { --tile-bg: linear-gradient(150deg, #ffa595, #f26f60); --tile-shadow: rgba(242, 111, 96, 0.7); }
+.tile-sky    { --tile-bg: linear-gradient(150deg, #86dbff, #3fb0ee); --tile-shadow: rgba(63, 176, 238, 0.7); }
+
+/* Reward / info cards: white, soft border, gentle depth */
+.play-card {
+  background: var(--c-surface);
+  border: 1.5px solid color-mix(in srgb, var(--c-line) 70%, white);
+  border-radius: 24px;
+  box-shadow: 0 10px 24px -16px rgba(36, 51, 74, 0.35);
+}
+.dark .play-card { border-color: var(--c-line); box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.6); }
+
+/* Soft tinted surfaces (the page background tint of a section) */
+.wash-sun    { background: linear-gradient(135deg, #fff6cf, #ffe9a8); }
+.wash-green  { background: linear-gradient(135deg, #e5f8ec, #cdf0db); }
+.wash-blue   { background: linear-gradient(135deg, #e3f3ff, #cfe8fd); }
+.wash-purple { background: linear-gradient(135deg, #f0eaff, #e0d5fd); }
+.wash-coral  { background: linear-gradient(135deg, #ffeae6, #ffd6cf); }
+.dark .wash-sun, .dark .wash-green, .dark .wash-blue, .dark .wash-purple, .dark .wash-coral { background: var(--c-surface2); }
+
+/* Chat bubbles for the AI tutor */
+.bubble-ai {
+  background: #fff;
+  color: var(--c-ink);
+  border: 1.5px solid #e3ecf7;
+  border-radius: 22px 22px 22px 8px;
+  box-shadow: 0 8px 18px -14px rgba(72, 184, 245, 0.8);
+}
+.bubble-me {
+  background: linear-gradient(145deg, #5bc0f8, #3f8fe6);
+  color: #fff;
+  border-radius: 22px 22px 8px 22px;
+  box-shadow: 0 10px 20px -12px rgba(63, 143, 230, 0.9);
+}
+.dark .bubble-ai { background: var(--c-surface2); border-color: var(--c-line); }
+
+/* Rounded stat badge used for XP / coins / streak */
+.stat-orb {
+  display: flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  font-size: 22px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 6px 12px -8px rgba(36, 51, 74, 0.5);
+}
+
+/* Gentle floating accents (cheap: transform only) */
+@keyframes pg-drift { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(6deg); } }
+.pg-drift { animation: pg-drift 5s ease-in-out infinite; }
+@keyframes pg-pop { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+.pg-pop { animation: pg-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+@media (prefers-reduced-motion: reduce) { .pg-drift, .pg-pop { animation: none; } }

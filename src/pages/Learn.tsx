@@ -25,7 +25,7 @@ interface SkillTile {
   emoji: string;
   done: number;
   total: number;
-  tint: string;
+  tile: string;
 }
 
 export function Learn() {
@@ -39,12 +39,12 @@ export function Learn() {
   const writingDone = new Set(s.writing.map((w) => w.promptId)).size;
 
   const skills: SkillTile[] = [
-    { path: '/vocab', label: 'So‘z boyligi', desc: 'Kartochkalar va takrorlash', icon: 'cards', emoji: '🃏', done: learned, total: VOCAB.length, tint: 'text-emerald-600 bg-emerald-500/15' },
-    { path: '/grammar', label: 'Grammatika', desc: 'Qoida + test savollari', icon: 'bulb', emoji: '🧩', done: completed('grammar'), total: GRAMMAR.length, tint: 'text-blue-600 bg-blue-500/15' },
-    { path: '/reading', label: 'O‘qish', desc: 'Matn va savollar', icon: 'book', emoji: '📖', done: completed('reading'), total: READING.length, tint: 'text-violet-600 bg-lav/30' },
-    { path: '/listening', label: 'Tinglash', desc: 'Audio + transkript', icon: 'headphones', emoji: '🎧', done: completed('listening'), total: LISTENING.length, tint: 'text-amber-600 bg-sun/30' },
-    { path: '/speaking', label: 'Gaplashish', desc: 'AI tekshiradigan topshiriqlar', icon: 'mic', emoji: '🗣️', done: Object.keys(s.speakingDone).length, total: SPEAKING.length, tint: 'text-rose-500 bg-coral/30' },
-    { path: '/writing', label: 'Yozish', desc: 'Insholar va tekshiruv', icon: 'pen', emoji: '✍️', done: writingDone, total: WRITING.length, tint: 'text-sky-600 bg-sky-500/15' },
+    { path: '/vocab', label: 'So‘z boyligi', desc: 'Kartochkalar va takrorlash', icon: 'cards', emoji: '🃏', done: learned, total: VOCAB.length, tile: 'tile-green' },
+    { path: '/grammar', label: 'Grammatika', desc: 'Qoida + test savollari', icon: 'bulb', emoji: '🧩', done: completed('grammar'), total: GRAMMAR.length, tile: 'tile-blue' },
+    { path: '/reading', label: 'O‘qish', desc: 'Matn va savollar', icon: 'book', emoji: '📖', done: completed('reading'), total: READING.length, tile: 'tile-purple' },
+    { path: '/listening', label: 'Tinglash', desc: 'Audio + transkript', icon: 'headphones', emoji: '🎧', done: completed('listening'), total: LISTENING.length, tile: 'tile-yellow' },
+    { path: '/speaking', label: 'Gaplashish', desc: 'AI tekshiradigan topshiriqlar', icon: 'mic', emoji: '🗣️', done: Object.keys(s.speakingDone).length, total: SPEAKING.length, tile: 'tile-coral' },
+    { path: '/writing', label: 'Yozish', desc: 'Insholar va tekshiruv', icon: 'pen', emoji: '✍️', done: writingDone, total: WRITING.length, tile: 'tile-sky' },
   ];
 
   const tools: { path: string; label: string; desc: string; icon: IconName; emoji: string }[] = [
@@ -63,7 +63,7 @@ export function Learn() {
       {/* Today's plan — compact strip */}
       <A
         to="/plan"
-        className="feature-ring flex items-center gap-3 rounded-2xl bg-surface p-4 transition active:scale-[0.99]"
+        className="play-card wash-sun flex items-center gap-3 p-4 transition active:scale-[0.98]"
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-xl">📅</span>
         <span className="min-w-0 flex-1">
@@ -79,17 +79,19 @@ export function Learn() {
       {/* Skills with live counts */}
       <Section title="Ko‘nikmalar">
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {skills.map((sk) => {
+          {skills.map((sk, i) => {
             const pct = sk.total ? Math.min(100, Math.round((sk.done / sk.total) * 100)) : 0;
             return (
-              <A key={sk.path} to={sk.path} className="flex flex-col rounded-3xl border-2 border-line/70 bg-surface p-3.5 transition hover:-translate-y-0.5 hover:border-leaf/60 hover:shadow-[0_10px_22px_-12px_rgba(88,204,131,0.45)] active:scale-[0.98]">
-                <div className="flex items-center justify-between">
-                  <span className={cx('flex h-10 w-10 items-center justify-center rounded-2xl text-lg', sk.tint)}>{sk.emoji}</span>
-                  <span className="text-[11px] font-bold text-muted">{sk.done}/{sk.total}</span>
+              <A key={sk.path} to={sk.path} className={cx('tile pg-pop flex min-h-[132px] flex-col rounded-[26px] p-3.5', sk.tile)} style={{ animationDelay: `${i * 50}ms` }}>
+                <div className="flex items-start justify-between">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/35 text-2xl shadow-inner">{sk.emoji}</span>
+                  <span className="rounded-full bg-white/30 px-2 py-0.5 text-[11px] font-extrabold">{sk.done}/{sk.total}</span>
                 </div>
-                <span className="mt-2 text-sm font-extrabold">{sk.label}</span>
-                <span className="mb-2 truncate text-[11px] text-muted">{sk.desc}</span>
-                <ProgressBar value={pct} className="h-1.5" label={`${sk.label} progressi`} />
+                <span className="mt-auto text-[15px] font-black leading-tight">{sk.label}</span>
+                <span className="mb-2 truncate text-[11px] font-semibold opacity-85">{sk.desc}</span>
+                <span className="block h-2 overflow-hidden rounded-full bg-black/10" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${sk.label} progressi`}>
+                  <span className="block h-full rounded-full bg-white/90 transition-all duration-700" style={{ width: `${pct}%` }} />
+                </span>
               </A>
             );
           })}

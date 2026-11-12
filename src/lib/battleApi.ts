@@ -182,12 +182,12 @@ export async function syncPvp(id: string): Promise<SyncResult> {
 }
 
 /** Sends my answer for the current round; the server decides the point and advances the round. */
-export async function answerPvp(id: string, round: number, correct: boolean, t: number): Promise<SyncResult> {
+export async function answerPvp(id: string, round: number, correct: boolean, t: number, choice?: number): Promise<SyncResult> {
   const j = await json<{ live: SyncResult }>(
     await fetchT(`${BASE}/api/battle`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ action: 'answer', id, round, correct: correct ? 1 : 0, t }),
+      body: JSON.stringify({ action: 'answer', id, round, correct: correct ? 1 : 0, choice, t }),
     }),
   );
   return j.live;

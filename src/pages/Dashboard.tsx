@@ -82,12 +82,12 @@ export function Dashboard() {
   const dailyDone = s.games.daily.date === t && s.games.daily.done;
 
   const quick = [
-    { path: '/vocab', label: 'So‘zlar', emoji: '🃏', count: `${learned}/${VOCAB.length}`, tint: 'bg-emerald-500/15' },
-    { path: '/grammar', label: 'Grammatika', emoji: '🧩', count: `${GRAMMAR.length} dars`, tint: 'bg-blue-500/15' },
-    { path: '/reading', label: 'O‘qish', emoji: '📖', count: `${READING.length} matn`, tint: 'bg-lav/30' },
-    { path: '/listening', label: 'Tinglash', emoji: '🎧', count: `${LISTENING.length} mashq`, tint: 'bg-sun/30' },
-    { path: '/speaking', label: 'Gaplashish', emoji: '🗣️', count: `${SPEAKING.length} mavzu`, tint: 'bg-coral/30' },
-    { path: '/writing', label: 'Yozish', emoji: '✍️', count: `${WRITING.length} mavzu`, tint: 'bg-sky-500/15' },
+    { path: '/vocab', label: 'So‘zlar', emoji: '🃏', count: `${learned}/${VOCAB.length}`, tile: 'tile-green' },
+    { path: '/grammar', label: 'Grammatika', emoji: '🧩', count: `${GRAMMAR.length} dars`, tile: 'tile-blue' },
+    { path: '/reading', label: 'O‘qish', emoji: '📖', count: `${READING.length} matn`, tile: 'tile-purple' },
+    { path: '/listening', label: 'Tinglash', emoji: '🎧', count: `${LISTENING.length} mashq`, tile: 'tile-yellow' },
+    { path: '/speaking', label: 'Gaplashish', emoji: '🗣️', count: `${SPEAKING.length} mavzu`, tile: 'tile-coral' },
+    { path: '/writing', label: 'Yozish', emoji: '✍️', count: `${WRITING.length} mavzu`, tile: 'tile-sky' },
   ];
 
   const apps = [
@@ -101,80 +101,94 @@ export function Dashboard() {
 
   return (
     <div>
-      {/* ---------- B. Alive hero: Lingo + speech bubble + XP ---------- */}
-      <section className="aurora rise-in rounded-3xl p-4 shadow-xl shadow-accent/25 sm:p-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            {s.shop.equipped.avatar && <Avatar emoji={s.shop.equipped.avatar} size={30} />}
-            <h1 className={cx('truncate text-lg font-extrabold leading-tight sm:text-xl', nameCls)}>{greet}, {p.name}!</h1>
-          </div>
-          <span className="glass-card shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold !text-white">{p.estimatedLevel}</span>
+      {/* ---------- B. Sky hero: greeting + Lingo + XP ---------- */}
+      <section className="sky-hero rise-in p-4 pb-7 sm:p-5 sm:pb-8">
+        <span className="pg-drift pointer-events-none absolute right-5 top-14 text-xl opacity-80" aria-hidden>⭐</span>
+        <span className="pg-drift pointer-events-none absolute left-[46%] top-3 text-base opacity-70" style={{ animationDelay: '1.2s' }} aria-hidden>✨</span>
+        <div className="relative z-[1] flex items-center justify-between gap-2">
+          <A to="/profile" className="flex min-w-0 items-center gap-2" aria-label="Profil">
+            {s.shop.equipped.avatar && <Avatar emoji={s.shop.equipped.avatar} size={34} />}
+            <h1 className={cx('truncate text-lg font-black leading-tight text-ink sm:text-xl', nameCls)}>{greet}, {p.name}!</h1>
+          </A>
+          <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-black text-[#3b95e6] shadow-sm dark:bg-white/10 dark:text-white">{p.estimatedLevel}</span>
         </div>
 
-        <div className="mt-3 flex items-end gap-2">
+        <div className="relative z-[1] mt-3 flex items-end gap-2">
           <Mascot mood={lingoMood} size={96} title="Lingo — bosing, javob beradi" />
           <div className="min-w-0 flex-1 pb-3">
             <LingoBubble text={lingoLine} />
           </div>
         </div>
 
-        <div className="mt-3">
-          <div className="flex items-center justify-between text-xs font-bold text-white/80">
-            <span>Daraja {xp.level}</span>
-            <span><CountUp value={xp.into} /> / {fmt(xp.need)} XP</span>
-          </div>
-          <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-white/15" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi darajagacha">
-            <div className="xp-fill h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, xp.pct)}%` }} />
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <A to="/progress" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
-            <span className="block text-[11px] font-semibold text-white/70">Seriya</span>
-            <span className="text-base font-black"><span className="flame-dance">🔥</span> <CountUp value={streak} /></span>
+        <div className="relative z-[1] mt-3 grid grid-cols-3 gap-2">
+          <A to="/progress" className="tap rounded-2xl bg-white/90 px-2.5 py-2 shadow-sm dark:bg-white/10">
+            <span className="block text-[11px] font-bold text-muted">Seriya</span>
+            <span className="text-base font-black text-[#d6523f]"><span className="flame-dance">🔥</span> <CountUp value={streak} /></span>
           </A>
-          <A to="/progress" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
-            <span className="block text-[11px] font-semibold text-white/70">Jami XP</span>
-            <span className="text-base font-black">⭐ <CountUp value={s.xp} /></span>
+          <A to="/progress" className="tap rounded-2xl bg-[#fff3c2] px-2.5 py-2 shadow-sm dark:bg-white/10">
+            <span className="block text-[11px] font-bold text-[#8a6a00] dark:text-white/70">XP</span>
+            <span className="text-base font-black text-[#5a3d00] dark:text-white">⭐ <CountUp value={s.xp} /></span>
           </A>
-          <A to="/shop" className="glass-card tap rounded-2xl px-2.5 py-2 !text-white">
-            <span className="block text-[11px] font-semibold text-white/70">Coin</span>
-            <span className="text-base font-black"><span className="coin-spin">🪙</span> <CountUp value={s.coins.balance} /></span>
+          <A to="/shop" className="tap rounded-2xl bg-[#fff3c2] px-2.5 py-2 shadow-sm dark:bg-white/10">
+            <span className="block text-[11px] font-bold text-[#8a6a00] dark:text-white/70">Coin</span>
+            <span className="text-base font-black text-[#5a3d00] dark:text-white"><span className="coin-spin">🪙</span> <CountUp value={s.coins.balance} /></span>
           </A>
         </div>
       </section>
 
-      {/* ---------- Weekly streak (hex badges) ---------- */}
-      <Card className="glass-card rise-in mt-3 !p-4" >
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-extrabold">Haftalik seriya</p>
-          <span className="text-xs font-bold text-gold">{streak > 0 ? `🔥 ${streak} kun ketma-ket` : 'Bugun boshlang!'}</span>
+      {/* XP level bar sits on a card so it never fights the sky */}
+      <div className="play-card rise-in -mt-4 relative z-[2] mx-3 px-3.5 py-2.5">
+        <div className="flex items-center justify-between text-xs font-extrabold text-muted">
+          <span>Daraja {xp.level}</span>
+          <span><CountUp value={xp.into} /> / {fmt(xp.need)} XP</span>
         </div>
-        <StreakWeek activity={s.activity} />
-      </Card>
+        <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-line/60" role="progressbar" aria-valuenow={xp.pct} aria-valuemin={0} aria-valuemax={100} aria-label="Keyingi darajagacha">
+          <div className="xp-fill h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, xp.pct)}%` }} />
+        </div>
+      </div>
 
-      {/* ---------- C. Continue learning ---------- */}
-      <Section title="Davom ettirish" action={<A to="/plan" className="text-sm font-semibold text-accent dark:text-[#7ee2a8]">Reja →</A>}>
-        <Card className="!p-4">
+      {/* ---------- Daily plan (prominent) ---------- */}
+      <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-bold text-[#2fa763]">Hammasi →</A>}>
+        <div className="play-card wash-green rise-in !border-[#bfe9cf] p-4">
           <div className="flex items-center gap-4">
-            <ProgressRing value={sum.pct} size={72} stroke={8}>
-              <span className="text-base font-extrabold">{sum.pct}%</span>
+            <ProgressRing value={sum.pct} size={76} stroke={9}>
+              <span className="text-base font-black">{sum.pct}%</span>
             </ProgressRing>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-extrabold">{next ? next.title : 'Bugungi reja bajarildi 🎉'}</p>
-              <p className="mt-0.5 truncate text-xs text-muted">
+              <p className="truncate text-[15px] font-black">{next ? next.title : 'Bugungi reja bajarildi 🎉'}</p>
+              <p className="mt-0.5 truncate text-xs font-semibold text-muted">
                 {lastMeta
-                  ? `Oxirgi mashq: ${lastMeta.emoji} ${lastMeta.label} · ${sum.doneCount}/${sum.count} bugun`
-                  : `${sum.doneCount}/${sum.count} bugungi mashq · ${p.dailyMinutes} daqiqa maqsad`}
+                  ? `Oxirgi: ${lastMeta.emoji} ${lastMeta.label} · ${sum.doneCount}/${sum.count} bugun`
+                  : `${sum.doneCount}/${sum.count} mashq · ${p.dailyMinutes} daqiqa maqsad`}
               </p>
               <p className="mt-0.5 truncate text-[11px] text-muted">So‘zlar: {Math.min(day?.words ?? 0, goal)}/{goal} · {next?.reason ?? 'Yangi mashqlar kutmoqda'}</p>
             </div>
           </div>
-          <Button className="mt-4" size="lg" full icon="play" onClick={() => navigate(next ? next.route : '/universe')}>
+          <Button className="mt-3.5" size="lg" full icon="play" onClick={() => navigate(next ? next.route : '/universe')}>
             {next ? 'Davom ettirish' : 'Universeni ochish'}
           </Button>
-        </Card>
+        </div>
       </Section>
+
+      {/* ---------- Weekly streak (hex badges) ---------- */}
+      <div className="play-card rise-in mt-4 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-black">Haftalik seriya</p>
+          <span className="rounded-full bg-[#ffeae6] px-2.5 py-0.5 text-xs font-extrabold text-[#d6523f] dark:bg-surface2">{streak > 0 ? `🔥 ${streak} kun ketma-ket` : 'Bugun boshlang!'}</span>
+        </div>
+        <StreakWeek activity={s.activity} />
+      </div>
+
+      {/* ---------- AI Tutor featured card ---------- */}
+      <A to="/tutor" className="tile tile-purple rise-in mt-4 flex items-center gap-3 rounded-[26px] p-4" data-testid="home-tutor">
+        <Mascot mood="happy" size={64} title="Lingo" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-extrabold uppercase tracking-wider text-white/80">AI Tutor</span>
+          <span className="block text-base font-black leading-snug">Lingo bilan gaplash</span>
+          <span className="block text-xs font-semibold text-white/85">Savol ber, xatolaringni tuzat, mashq qil</span>
+        </span>
+        <Icon name="right" className="h-5 w-5 shrink-0" />
+      </A>
 
       {/* ---------- D. Learning Universe teaser ---------- */}
       <Section title="Learning Universe">
@@ -253,10 +267,10 @@ export function Dashboard() {
       <Section title="Tezkor kirish">
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
           {quick.map((q, i) => (
-            <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className="rise-in tap flex flex-col items-center gap-1 rounded-3xl border-2 border-line/70 bg-surface px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-leaf/60 hover:shadow-[0_10px_22px_-12px_rgba(88,204,131,0.45)]">
-              <span className={cx('flex h-11 w-11 items-center justify-center rounded-2xl text-2xl', q.tint)}>{q.emoji}</span>
-              <span className="text-xs font-bold">{q.label}</span>
-              <span className="text-[10px] font-semibold text-muted">{q.count}</span>
+            <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className={cx('tile rise-in flex flex-col items-center gap-0.5 rounded-[22px] px-2 py-3 text-center', q.tile)}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/35 text-2xl">{q.emoji}</span>
+              <span className="text-xs font-black">{q.label}</span>
+              <span className="text-[10px] font-bold opacity-85">{q.count}</span>
             </A>
           ))}
         </div>
