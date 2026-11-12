@@ -201,7 +201,7 @@ export function Shop() {
                       onClick={() => { haptic('light'); equipAvatar(e); }}
                       className={cx(
                         'flex flex-col items-center gap-1 rounded-2xl border p-2.5 text-center transition',
-                        active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+                        active ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
                       )}
                     >
                       <FramedEmoji emoji={e} frameCls="frame-none" size={44} />
@@ -271,7 +271,7 @@ export function Shop() {
                   const fx = nameFxById(s.shop.equipped.nameFx);
                   const preview = cx('nm-grad', c.cls, fx?.cls);
                   return (
-                    <Card key={c.id} className={cx('!p-3.5 text-center', equipped && '!border-indigo-400')}>
+                    <Card key={c.id} className={cx('!p-3.5 text-center', equipped && '!border-sky-400')}>
                       <p className={cx('truncate text-xl font-extrabold', preview)}>{myName}</p>
                       <p className="mt-1 truncate text-xs font-bold">{c.name}</p>
                       <div className="mt-1.5 flex items-center justify-center gap-1.5">
@@ -308,7 +308,7 @@ export function Shop() {
                   const color = nameColorById(s.shop.equipped.nameColor);
                   const preview = cx(color && 'nm-grad', color?.cls, f.cls);
                   return (
-                    <Card key={f.id} className={cx('!p-3.5 text-center', equipped && '!border-indigo-400')}>
+                    <Card key={f.id} className={cx('!p-3.5 text-center', equipped && '!border-sky-400')}>
                       <p className={cx('truncate text-xl font-extrabold', preview)}>{myName}</p>
                       <p className="mt-1 truncate text-xs font-bold">{f.name}</p>
                       <div className="mt-1.5 flex items-center justify-center gap-1.5">

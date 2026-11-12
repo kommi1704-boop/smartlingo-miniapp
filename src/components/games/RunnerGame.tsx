@@ -193,7 +193,7 @@ export function RunnerGame({ daily, onFinish }: GameProps) {
               key={`${r.id}-${i}`}
               className={cx(
                 'pointer-events-none absolute flex w-[29%] -translate-x-1/2 items-center justify-center rounded-2xl border-2 px-1 text-center text-sm font-extrabold leading-tight shadow-md',
-                r.result && i === r.correct ? 'border-emerald-500 bg-emerald-400 text-white' : r.result === 'bad' && i === r.picked ? 'border-rose-500 bg-rose-400 text-white' : 'border-indigo-300 bg-white text-indigo-800 dark:border-indigo-400/50 dark:bg-slate-700 dark:text-indigo-100',
+                r.result && i === r.correct ? 'border-emerald-500 bg-emerald-400 text-white' : r.result === 'bad' && i === r.picked ? 'border-rose-500 bg-rose-400 text-white' : 'border-sky-300 bg-white text-sky-800 dark:border-sky-400/50 dark:bg-slate-700 dark:text-sky-100',
                 r.result && i !== r.correct && i !== r.picked && 'opacity-40',
               )}
               style={{ left: laneX[i], top: `${r.y}%`, height: `${GATE_H}%` }}

@@ -67,7 +67,7 @@ function OptionButton({ active, onClick, children }: { active: boolean; onClick:
       aria-pressed={active}
       className={cx(
         'flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left text-[15px] font-semibold transition',
-        active ? 'border-indigo-600 bg-indigo-50 text-indigo-900 dark:bg-indigo-500/15 dark:text-indigo-100' : 'border-line bg-surface hover:border-indigo-300',
+        active ? 'border-sky-600 bg-sky-50 text-sky-900 dark:bg-sky-500/15 dark:text-sky-100' : 'border-line bg-surface hover:border-sky-300',
       )}
     >
       {children}
@@ -133,7 +133,7 @@ export function Onboarding({ defaultName }: { defaultName: string }) {
               autoComplete="nickname"
               aria-invalid={!!nameErr}
               aria-describedby={nameErr ? 'name-err' : undefined}
-              className="w-full rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-indigo-500"
+              className="w-full rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-sky-500"
               placeholder="Masalan: Aziza"
             />
             {nameErr && <p id="name-err" className="mt-1 text-sm text-rose-500">{nameErr}</p>}
@@ -147,7 +147,7 @@ export function Onboarding({ defaultName }: { defaultName: string }) {
               inputMode="numeric"
               aria-invalid={!!ageErr}
               aria-describedby={ageErr ? 'age-err' : undefined}
-              className="w-full rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-indigo-500"
+              className="w-full rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-sky-500"
               placeholder="Masalan: 12"
             />
             {ageErr && <p id="age-err" className="mt-1 text-sm text-rose-500">{ageErr}</p>}
@@ -171,7 +171,7 @@ export function Onboarding({ defaultName }: { defaultName: string }) {
         <div className="grid grid-cols-2 gap-2.5">
           {MINUTES.map((m) => (
             <OptionButton key={m} active={minutes === m} onClick={() => setMinutes(m)}>
-              <Icon name="clock" className="h-5 w-5 text-indigo-500" />
+              <Icon name="clock" className="h-5 w-5 text-sky-500" />
               <span>{m} daqiqa{m === 15 ? ' ⭐' : ''}</span>
             </OptionButton>
           ))}
@@ -325,7 +325,7 @@ export function Assessment() {
               onClick={() => setSel(i)}
               className={cx(
                 'rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-medium transition',
-                sel === i ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+                sel === i ? 'border-sky-600 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
               )}
             >
               {o}
@@ -482,7 +482,7 @@ function ListenProbe({ onDone }: { onDone: () => void }) {
             onClick={() => setSel(i)}
             className={cx(
               'rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-medium transition',
-              sel === i ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+              sel === i ? 'border-sky-600 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
             )}
           >
             {o}
@@ -561,7 +561,7 @@ function WriteProbe({ onDone }: { onDone: () => void }) {
         rows={6}
         maxLength={1200}
         placeholder="Write in English…"
-        className="w-full resize-none rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-indigo-500"
+        className="w-full resize-none rounded-2xl border-2 border-line bg-surface px-4 py-3 text-base outline-none focus:border-sky-500"
         aria-label="Inglizcha matn"
       />
       <div className="flex items-center justify-between text-xs text-muted">
@@ -617,10 +617,10 @@ function SpeakProbe({ onDone }: { onDone: () => void }) {
               }}
               className={cx(
                 'w-full rounded-2xl border-2 px-4 py-3 text-left transition',
-                active ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-500/15' : 'border-line bg-surface hover:border-indigo-300',
+                active ? 'border-sky-600 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
               )}
             >
-              <span className="block text-sm font-semibold text-indigo-700 dark:text-indigo-300">{st.en}</span>
+              <span className="block text-sm font-semibold text-sky-700 dark:text-sky-300">{st.en}</span>
               <span className="mt-0.5 block text-xs text-muted">{st.uz}</span>
             </button>
           );

@@ -155,7 +155,7 @@ export function Profile() {
             <h1 className={cx('truncate text-2xl font-extrabold leading-tight', nameCls)}>{p.name}</h1>
             {equippedTitle && <p className="mt-0.5 text-sm font-bold text-gold">{equippedTitle.name}</p>}
             <p className="mt-1 text-sm font-extrabold">
-              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-accent dark:text-[#b3a4ff]">{rank.tier.name}</span>{' '}
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-accent dark:text-[#7ee2a8]">{rank.tier.name}</span>{' '}
               <span className="font-bold">{fmt(rating)} reyting</span>
             </p>
           </div>
@@ -187,7 +187,7 @@ export function Profile() {
       </Section>
 
       {/* Rating frames ladder */}
-      <Section title="🏆 Reyting ramkalari" action={<A to="/shop" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Do‘kon →</A>}>
+      <Section title="🏆 Reyting ramkalari" action={<A to="/shop" className="text-sm font-semibold text-sky-600 dark:text-sky-300">Do‘kon →</A>}>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {RATING_FRAMES.map((tier) => {
             const unlocked = rating >= tier.min;
@@ -231,9 +231,9 @@ export function Profile() {
       <Section title="😄 Avatrlar">
         <Card>
           {/* custom photo avatar */}
-          <div className="mb-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-indigo-300/70 bg-indigo-50/50 p-3 dark:border-indigo-400/40 dark:bg-indigo-500/10">
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-sky-300/70 bg-sky-50/50 p-3 dark:border-sky-400/40 dark:bg-sky-500/10">
             {s.profile?.photoAvatar ? (
-              <img src={s.profile.photoAvatar} alt="" className="h-14 w-14 rounded-full object-cover ring-2 ring-indigo-400" />
+              <img src={s.profile.photoAvatar} alt="" className="h-14 w-14 rounded-full object-cover ring-2 ring-sky-400" />
             ) : (
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface2 text-2xl">📷</span>
             )}
@@ -264,7 +264,7 @@ export function Profile() {
                   aria-label={`Avatar: ${e}`}
                   className={cx(
                     'flex h-12 w-12 items-center justify-center rounded-full border-2 text-2xl transition',
-                    active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/20' : 'border-line hover:border-indigo-300',
+                    active ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/20' : 'border-line hover:border-sky-300',
                   )}
                 >
                   {e}
@@ -281,7 +281,7 @@ export function Profile() {
                   aria-label={`Premium avatar: ${a.name}`}
                   className={cx(
                     'flex h-12 w-12 items-center justify-center rounded-full border-2 text-2xl transition',
-                    active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/20' : 'border-amber-300/70 hover:border-indigo-300',
+                    active ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/20' : 'border-amber-300/70 hover:border-sky-300',
                   )}
                 >
                   {a.emoji}
@@ -377,7 +377,7 @@ export function Profile() {
         <StatTile icon="chart" tone="indigo" label="Janglar reytingi" value={`${s.battle.ratingDelta >= 0 ? '+' : ''}${fmt(s.battle.ratingDelta)}`} hint="do‘stona janglardan" />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <A to="/leaderboard" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
+        <A to="/leaderboard" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-sky-300">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
             <Icon name="trophy" />
           </span>
@@ -387,8 +387,8 @@ export function Profile() {
           </span>
           <Icon name="right" className="h-4 w-4 text-muted" />
         </A>
-        <A to="/progress" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-indigo-300">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+        <A to="/progress" className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 transition hover:border-sky-300">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
             <Icon name="chart" />
           </span>
           <span className="min-w-0 flex-1">
@@ -407,7 +407,7 @@ export function Profile() {
       {/* Settings + all sections — everything stays reachable with the 5-tab nav */}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <A to="/more" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]">
             <Icon name="grid" />
           </span>
           <span className="min-w-0 flex-1">

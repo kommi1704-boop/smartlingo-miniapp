@@ -43,7 +43,7 @@ function NaturalVoice({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/60 p-3 dark:border-indigo-400/30 dark:bg-indigo-500/10">
+    <div className="rounded-2xl border-2 border-sky-200 bg-sky-50/60 p-3 dark:border-sky-400/30 dark:bg-sky-500/10">
       <p className="flex items-center gap-1.5 text-sm font-bold">✨ Tabiiy ovoz <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">SINOV</span></p>
       {!compact && (
         <p className="mt-1 text-xs text-muted">
@@ -53,8 +53,8 @@ function NaturalVoice({ compact }: { compact?: boolean }) {
 
       {n.status === 'loading' ? (
         <div className="mt-2" role="status" aria-live="polite">
-          <div className="h-2.5 overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-500/20">
-            <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.max(4, n.percent)}%` }} />
+          <div className="h-2.5 overflow-hidden rounded-full bg-sky-100 dark:bg-sky-500/20">
+            <div className="h-full rounded-full bg-sky-600 transition-all" style={{ width: `${Math.max(4, n.percent)}%` }} />
           </div>
           <p className="mt-1 text-xs text-muted">Yuklanmoqda… {n.percent}% {n.mb ? `(${n.mb} MB)` : ''}. Sahifani yopmang.</p>
         </div>
@@ -126,7 +126,7 @@ export function VoicePicker({ compact }: { compact?: boolean }) {
               setPrefs({ voiceURI: e.target.value || undefined });
               speak('Hello! This is my voice. Can you understand me?');
             }}
-            className="mt-1.5 w-full rounded-2xl border-2 border-line bg-surface px-3 py-2.5 text-sm outline-none focus:border-indigo-500"
+            className="mt-1.5 w-full rounded-2xl border-2 border-line bg-surface px-3 py-2.5 text-sm outline-none focus:border-sky-500"
           >
             <option value="">Avto — eng yaxshisi{best ? ` (${best.name})` : ''}</option>
             {voices.slice(0, 20).map((v) => (

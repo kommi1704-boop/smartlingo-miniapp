@@ -127,7 +127,7 @@ function Board({ pairs, daily, onFinish }: { pairs: number; daily: boolean; onFi
                     ? 'shake-x border-rose-400 bg-rose-50 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200'
                     : faceUp
                       ? t.side === 'en'
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-100'
+                        ? 'border-sky-400 bg-sky-50 text-sky-800 dark:bg-sky-500/20 dark:text-sky-100'
                         : 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-100'
                       : 'border-transparent bg-gradient-to-br from-fuchsia-500 to-pink-500 text-2xl text-white shadow-sm active:scale-95',
               )}

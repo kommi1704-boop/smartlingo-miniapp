@@ -18,7 +18,7 @@ export function SpeakButton({ text, className, label = 'Talaffuzni tinglash', ra
       }}
       aria-label={label}
       title={label}
-      className={cx('flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300', className)}
+      className={cx('flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-600 hover:bg-sky-200 dark:bg-sky-500/20 dark:text-sky-300', className)}
     >
       <Icon name="volume" className="h-4 w-4" />
     </button>

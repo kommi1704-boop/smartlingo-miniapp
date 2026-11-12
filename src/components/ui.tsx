@@ -6,20 +6,25 @@ import { goBack } from '../lib/router';
 import { Mascot } from './Mascot';
 
 // ============================================================================
-// SmartLingo component system — premium dark EdTech.
-// Standards: 8px spacing rhythm · radii 12/16/24 · control heights 32/40/48 ·
-// icons 16/20/24 · one accent (#7357FF) with cyan (#50D5F5) and gold (#FFC247)
-// as supporting tones. Gradients only on featured surfaces.
+// SmartLingo component system — "LEARNING PLAYGROUND".
+// Fresh Green #58CC83 (learning) · Sky #48B8F5 (AI) · Sun #FFD84D (rewards) ·
+// Lavender #B9A0F7 (special) · Coral #FF8978 (challenges).
+// 8px spacing rhythm · radii 12/16/24 · control heights 32/40/48 ·
+// signature 3D press: buttons sit on a darker bottom edge that compresses.
 // ============================================================================
 
 // ---------- Button ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-accent text-white shadow-sm shadow-accent/30 hover:bg-accent/90 active:scale-[0.98]',
-  secondary: 'bg-surface2 text-ink hover:bg-surface2/70 border border-line',
-  ghost: 'bg-transparent text-accent hover:bg-surface2',
-  danger: 'bg-rose-600 text-white hover:bg-rose-500',
-  success: 'bg-emerald-600 text-white hover:bg-emerald-500',
+  primary:
+    'bg-[linear-gradient(180deg,#5fd695,#58cc83)] text-white shadow-[0_3px_0_0_#3fae68] hover:brightness-[1.04] active:translate-y-[2px] active:shadow-[0_1px_0_0_#3fae68]',
+  secondary:
+    'bg-surface text-ink border-2 border-line shadow-[0_2px_0_0_var(--c-line)] hover:border-accent2/60 active:translate-y-[2px] active:shadow-none',
+  ghost: 'bg-transparent text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400',
+  danger:
+    'bg-[linear-gradient(180deg,#ff9d8e,#ff8978)] text-white shadow-[0_3px_0_0_#e06a58] hover:brightness-[1.04] active:translate-y-[2px] active:shadow-[0_1px_0_0_#e06a58]',
+  success:
+    'bg-[linear-gradient(180deg,#4ec489,#3fae68)] text-white shadow-[0_3px_0_0_#2e8a50] hover:brightness-[1.04] active:translate-y-[2px] active:shadow-[0_1px_0_0_#2e8a50]',
 };
 
 interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -37,7 +42,7 @@ export function Button({ variant = 'primary', size = 'md', full, icon, className
       type="button"
       {...rest}
       className={cx(
-        'tap inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
+        'tap inline-flex items-center justify-center rounded-2xl font-bold transition disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:translate-y-0',
         variant === 'primary' && size === 'lg' && 'btn-shine',
         sz,
         VARIANT[variant],
@@ -58,8 +63,8 @@ export function Card({ children, className, onClick, as = 'div' }: { children: R
     <Tag
       onClick={onClick}
       className={cx(
-        'rounded-2xl border border-line bg-surface p-4 shadow-sm shadow-black/5 sm:p-5',
-        onClick && 'cursor-pointer transition hover:border-accent/40',
+        'rounded-3xl border-2 border-line/70 bg-surface p-4 shadow-[0_4px_18px_-10px_rgba(36,51,74,0.18)] sm:p-5',
+        onClick && 'cursor-pointer transition hover:border-accent/50 hover:shadow-[0_10px_26px_-12px_rgba(88,204,131,0.35)]',
         className,
       )}
     >
@@ -73,13 +78,14 @@ export function LevelBadge({ level, className }: { level: Level; className?: str
   return <span className={cx('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold', LEVEL_STYLE[level], className)}>{level}</span>;
 }
 
-export function Pill({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'indigo' | 'green' | 'amber' | 'rose'; className?: string }) {
+export function Pill({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'indigo' | 'green' | 'amber' | 'rose' | 'violet'; className?: string }) {
   const t = {
     neutral: 'bg-surface2 text-muted',
-    indigo: 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]',
+    indigo: 'bg-sky-500/15 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
     green: 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-    amber: 'bg-gold/15 text-amber-700 dark:bg-gold/15 dark:text-[#ffd27d]',
-    rose: 'bg-rose-500/15 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
+    amber: 'bg-sun/25 text-amber-700 dark:bg-sun/15 dark:text-[#ffd27d]',
+    rose: 'bg-coral/25 text-rose-600 dark:bg-coral/15 dark:text-[#ffb3a6]',
+    violet: 'bg-lav/25 text-violet-700 dark:bg-lav/15 dark:text-violet-300',
   }[tone];
   return <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold', t, className)}>{children}</span>;
 }
@@ -91,8 +97,10 @@ export function Chip({ active, children, onClick }: { active?: boolean; children
       onClick={onClick}
       aria-pressed={active}
       className={cx(
-        'shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
-        active ? 'border-accent bg-accent text-white' : 'border-line bg-surface text-ink hover:border-accent/40',
+        'shrink-0 rounded-full border-2 px-3.5 py-1.5 text-sm font-bold transition',
+        active
+          ? 'border-transparent bg-[linear-gradient(180deg,#5fd695,#58cc83)] text-white shadow-[0_2px_0_0_#3fae68]'
+          : 'border-line bg-surface text-ink hover:border-leaf/60',
       )}
     >
       {children}
@@ -112,7 +120,7 @@ export function ProgressBar({ value, className, color = 'xp-fill', label }: { va
       aria-label={label}
       className={cx('h-2 w-full overflow-hidden rounded-full bg-surface2', className)}
     >
-      <div className={cx('h-full rounded-full transition-all duration-500', color)} style={{ width: `${v}%` }} />
+      <div className={cx('h-full rounded-full transition-all duration-700', color)} style={{ width: `${v}%` }} />
     </div>
   );
 }
@@ -131,8 +139,8 @@ export function ProgressRing({ value, size = 84, stroke = 9, children }: { value
         />
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7357ff" />
-            <stop offset="100%" stopColor="#50d5f5" />
+            <stop offset="0%" stopColor="#58cc83" />
+            <stop offset="100%" stopColor="#48b8f5" />
           </linearGradient>
         </defs>
       </svg>
@@ -144,7 +152,7 @@ export function ProgressRing({ value, size = 84, stroke = 9, children }: { value
 // ---------- Tabs ----------
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; icon?: IconName }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div role="tablist" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto rounded-xl bg-surface2 p-1">
+    <div role="tablist" className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto rounded-2xl bg-surface2 p-1">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -153,8 +161,8 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: 
           aria-selected={value === t.id}
           onClick={() => onChange(t.id)}
           className={cx(
-            'flex shrink-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition',
-            value === t.id ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink',
+            'flex shrink-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold transition',
+            value === t.id ? 'bg-surface text-ink shadow-[0_2px_8px_rgba(36,51,74,0.14)]' : 'text-muted hover:text-ink',
           )}
         >
           {t.icon && <Icon name={t.icon} className="h-4 w-4" />}
@@ -166,23 +174,32 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: 
 }
 
 // ---------- Page header ----------
-export function PageHeader({ title, subtitle, back, right, emoji }: { title: string; subtitle?: string; back?: string | boolean; right?: ReactNode; emoji?: string }) {
+const HEADER_TONES: Record<string, string> = {
+  green: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
+  blue: 'bg-sky-500/15 text-sky-600 dark:text-sky-300',
+  purple: 'bg-lav/25 text-violet-600 dark:text-violet-300',
+  yellow: 'bg-sun/25 text-amber-600 dark:text-[#ffd27d]',
+  coral: 'bg-coral/25 text-rose-500 dark:text-[#ffb3a6]',
+};
+
+export function PageHeader({ title, subtitle, back, right, emoji, tone }: { title: string; subtitle?: string; back?: string | boolean; right?: ReactNode; emoji?: string; tone?: keyof typeof HEADER_TONES }) {
   return (
     <header className="mb-4 flex items-start gap-3">
       {back && (
         <button
           type="button"
           onClick={() => goBack(typeof back === 'string' ? back : '/')}
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink hover:bg-surface2"
+          className="tap mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border-2 border-line bg-surface text-ink hover:border-accent2/60"
           aria-label="Orqaga"
         >
           <Icon name="left" />
         </button>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
-          {emoji && <span className="mr-1.5">{emoji}</span>}
-          {title}
+        <h1 className="flex items-center gap-2 text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
+          {emoji && tone && <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl', HEADER_TONES[tone])}>{emoji}</span>}
+          {emoji && !tone && <span className="text-2xl">{emoji}</span>}
+          <span className="min-w-0">{title}</span>
         </h1>
         {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
       </div>
@@ -193,9 +210,9 @@ export function PageHeader({ title, subtitle, back, right, emoji }: { title: str
 
 export function Empty({ emoji = '🌤️', title, text, action }: { emoji?: string; title: string; text?: string; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line p-8 text-center">
+    <div className="rounded-3xl border-2 border-dashed border-line p-8 text-center">
       <div className="flex justify-center"><Mascot mood="think" size={84} /></div>
-      <div className="mt-1 text-3xl">{emoji}</div>
+      <div className="float-y mt-1 text-3xl">{emoji}</div>
       <p className="mt-2 font-bold">{title}</p>
       {text && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{text}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}
@@ -207,10 +224,10 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
   return (
     <div
       className={cx(
-        'flex gap-2.5 rounded-xl border p-3 text-sm',
+        'flex gap-2.5 rounded-2xl border-2 p-3 text-sm',
         tone === 'warn'
-          ? 'border-gold/40 bg-gold/10 text-amber-900 dark:text-amber-100'
-          : 'border-accent/30 bg-accent/10 text-indigo-900 dark:text-indigo-100',
+          ? 'border-sun/60 bg-sun/15 text-amber-900 dark:border-sun/30 dark:bg-sun/10 dark:text-amber-100'
+          : 'border-sky-300/70 bg-sky-500/10 text-sky-900 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-100',
       )}
     >
       <Icon name="info" className="mt-0.5 h-4 w-4 shrink-0" />
@@ -221,15 +238,15 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
 
 export function StatTile({ icon, label, value, hint, tone = 'indigo' }: { icon: IconName; label: string; value: ReactNode; hint?: string; tone?: 'indigo' | 'amber' | 'emerald' | 'violet' }) {
   const t = {
-    indigo: 'bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]',
-    amber: 'bg-gold/15 text-amber-600 dark:bg-gold/15 dark:text-[#ffd27d]',
-    emerald: 'bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
-    violet: 'bg-violet-500/12 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
+    indigo: 'bg-sky-500/15 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300',
+    amber: 'bg-sun/25 text-amber-600 dark:bg-sun/15 dark:text-[#ffd27d]',
+    emerald: 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
+    violet: 'bg-lav/25 text-violet-600 dark:bg-lav/15 dark:text-violet-300',
   }[tone];
   return (
     <Card className="!p-3.5">
       <div className="flex items-center gap-3">
-        <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', t)}>
+        <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', t)}>
           <Icon name={icon} />
         </div>
         <div className="min-w-0">
@@ -254,7 +271,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-3 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
         ref={ref}
         tabIndex={-1}
@@ -262,7 +279,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="pop-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-2xl outline-none"
+        className="pop-in max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl border-2 border-line bg-surface p-5 shadow-2xl outline-none"
       >
         {title && <h2 className="mb-3 text-lg font-extrabold">{title}</h2>}
         {children}
@@ -275,7 +292,10 @@ export function Section({ title, action, children }: { title: string; action?: R
   return (
     <section className="mt-6">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <h2 className="text-[15px] font-bold tracking-tight">{title}</h2>
+        <h2 className="flex items-center gap-2 text-[15px] font-extrabold tracking-tight">
+          <span className="h-2.5 w-2.5 rounded-full bg-[linear-gradient(135deg,#58cc83,#48b8f5)]" aria-hidden />
+          {title}
+        </h2>
         {action}
       </div>
       {children}

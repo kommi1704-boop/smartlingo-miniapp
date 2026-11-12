@@ -153,7 +153,7 @@ function MistakeCard({ m, level }: { m: Mistake; level: string }) {
               onClick={() => choose(i)}
               className={cx(
                 'rounded-xl border-2 px-3 py-2 text-left text-sm font-medium',
-                picked === null && 'border-line hover:border-indigo-400',
+                picked === null && 'border-line hover:border-sky-400',
                 picked !== null && i === m.correctAnswer && 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15',
                 picked === i && i !== m.correctAnswer && 'border-rose-500 bg-rose-50 dark:bg-rose-500/15',
                 picked !== null && i !== m.correctAnswer && picked !== i && 'opacity-50 border-line',
@@ -167,10 +167,10 @@ function MistakeCard({ m, level }: { m: Mistake; level: string }) {
       )}
 
       {exp && (
-        <div className="slide-up mt-3 rounded-2xl bg-indigo-50/70 p-3.5 dark:bg-indigo-500/10">
+        <div className="slide-up mt-3 rounded-2xl bg-sky-50/70 p-3.5 dark:bg-sky-500/10">
           <p className="text-sm font-bold">🤖 Nega xato?</p>
           <p className="mt-1 text-sm leading-snug">{exp.why_uz}</p>
-          {exp.tip_uz && <p className="mt-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">💡 Yodda tutash: {exp.tip_uz}</p>}
+          {exp.tip_uz && <p className="mt-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">💡 Yodda tutash: {exp.tip_uz}</p>}
           <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted">Mashqlar ({exp.practice.length}) — ikkalasi ham to‘g‘ri bo‘lsa, xato yopiladi</p>
           <div className="mt-2 space-y-3">
             {exp.practice.map((p, pi) => {
@@ -191,7 +191,7 @@ function MistakeCard({ m, level }: { m: Mistake; level: string }) {
                           onClick={() => choosePractice(pi, oi)}
                           className={cx(
                             'rounded-lg border-2 px-2.5 py-1.5 text-left text-sm transition',
-                            !show && 'border-line hover:border-indigo-400',
+                            !show && 'border-line hover:border-sky-400',
                             show && isRight && 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15',
                             show && isMine && !isRight && 'border-rose-500 bg-rose-50 dark:bg-rose-500/15',
                             show && !isRight && !isMine && 'border-line opacity-50',

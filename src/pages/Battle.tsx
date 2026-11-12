@@ -11,7 +11,7 @@ import {
   type BattleQuiz,
 } from '../lib/battle';
 import {
-  answerPvp, battleAvailable, cancelChallenge, forfeitPvp, getBattle, isLegacySync, joinChallenge, listChallenges,
+  answerPvp, battleProbe, battleOfflineHint, cancelChallenge, forfeitPvp, getBattle, isLegacySync, joinChallenge, listChallenges,
   notConfigured, openChallenge, submitScore, syncPvp, type BattleView, type LiveSync, type SyncResult,
 } from '../lib/battleApi';
 import { Button, Card, Modal, Notice, Pill, ProgressBar, Section } from '../components/ui';
@@ -79,6 +79,7 @@ export function Battle() {
 
   const [phase, setPhase] = useState<Phase>('lobby');
   const [online, setOnline] = useState<boolean | null>(null); // null = probing
+  const [offlineHint, setOfflineHint] = useState<string | null>(null);
   const [questions, setQuestions] = useState<BattleQuiz[]>([]);
   const [mode, setMode] = useState<'ai' | 'pvp'>('ai');
   const [searchBattle, setSearchBattle] = useState<BattleView | null>(null);
@@ -113,7 +114,11 @@ export function Battle() {
 
   useEffect(() => {
     let alive = true;
-    battleAvailable().then((v) => alive && setOnline(v));
+    battleProbe().then((p) => {
+      if (!alive) return;
+      setOnline(p.enabled);
+      setOfflineHint(battleOfflineHint(p.missing));
+    });
     return () => {
       alive = false;
       if (pollRef.current) clearInterval(pollRef.current);
@@ -406,9 +411,9 @@ export function Battle() {
           <p className="mt-2 text-lg font-extrabold">Raqib qidirilmoqda…</p>
           <p className="mt-1 text-sm text-muted">Jang e’lon qilindi. Kimdir qo‘shilishi bilanoq jang boshlanadi.</p>
           <div className="mt-4 flex justify-center gap-2">
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:0ms]" />
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:150ms]" />
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:300ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:0ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:150ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:300ms]" />
           </div>
           <div className="mt-5 flex flex-col gap-2">
             <Button onClick={startAi}>🤖 Lingo AI bilan o‘ynash</Button>
@@ -427,9 +432,9 @@ export function Battle() {
           <div className="flex justify-center"><Mascot mood="think" size={96} /></div>
           <p className="mt-2 text-lg font-extrabold">{waitNote || 'Raqib o‘z savollariga javob beryapti…'}</p>
           <div className="mt-4 flex justify-center gap-2">
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:0ms]" />
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:150ms]" />
-            <span className="flex h-3 w-3 animate-bounce rounded-full bg-indigo-500 [animation-delay:300ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:0ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:150ms]" />
+            <span className="flex h-3 w-3 animate-bounce rounded-full bg-sky-500 [animation-delay:300ms]" />
           </div>
           <div className="mt-5">
             <Button variant="secondary" onClick={leaveWaiting}>Chiqish (reyting o‘zgarmaydi)</Button>
@@ -454,7 +459,7 @@ export function Battle() {
             <div className="text-center">
               <div className="text-3xl">{myAvatar}</div>
               <div className="mt-0.5 text-xs font-bold">Siz</div>
-              <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">{outcome.you}</div>
+              <div className="text-2xl font-extrabold text-sky-600 dark:text-sky-300">{outcome.you}</div>
             </div>
             <div className="text-2xl font-extrabold text-muted">:</div>
             <div className="text-center">
@@ -496,7 +501,7 @@ export function Battle() {
       <p className="-mt-3 mb-4 text-sm text-muted">Raqibni yutib reytingni oshir!</p>
 
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent to-[#4f46e5] p-5 text-white shadow-lg shadow-accent/30">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#ff8a7a] to-[#8b5cf6] p-5 text-white shadow-lg shadow-accent/30">
         <div className="pointer-events-none absolute -right-3 -top-5 text-[6.5rem] opacity-20 select-none">⚔️</div>
         <div className="flex items-center gap-3">
           {myPhoto ? (
@@ -506,7 +511,7 @@ export function Battle() {
           )}
           <div className="min-w-0 flex-1">
             <p className={cx('truncate font-extrabold', nameCls)}>{myName}</p>
-            <p className="mt-0.5 text-sm text-indigo-100">
+            <p className="mt-0.5 text-sm text-sky-100">
               <span className="rounded-full bg-white/20 px-2.5 py-0.5 font-bold">{rank.tier.name}</span>{' '}
               <b className="text-white">{fmt(rating)} reyting</b>
             </p>
@@ -522,7 +527,7 @@ export function Battle() {
       {online === false && (
         <div className="mt-3">
           <Notice tone="warn">
-            Haqiqiy raqib topish uchun onlayn server kerak (Vercelda <b>/api/battle</b> + Supabase). Hozircha Lingo AI bilan jang qiling — bu ham reytingga ta’sir qiladi!
+            Haqiqiy raqib topish uchun onlayn server kerak (Vercelda <b>/api/battle</b> + Supabase). {offlineHint && <><b>{offlineHint}</b> </>}Hozircha Lingo AI bilan jang qiling — bu ham reytingga ta’sir qiladi!
           </Notice>
         </div>
       )}
@@ -552,7 +557,7 @@ export function Battle() {
           disabled={!online}
           className={cx(
             'rounded-3xl border-2 p-4 text-left transition',
-            online ? 'border-indigo-200 bg-indigo-50 hover:border-indigo-400 dark:border-indigo-400/30 dark:bg-indigo-500/10' : 'cursor-not-allowed border-line opacity-50',
+            online ? 'border-sky-200 bg-sky-50 hover:border-sky-400 dark:border-sky-400/30 dark:bg-sky-500/10' : 'cursor-not-allowed border-line opacity-50',
           )}
         >
           <div className="text-3xl">🧑‍🤝‍🧑</div>
@@ -578,7 +583,7 @@ export function Battle() {
 
       <Section
         title="🏆 Reyting jadvali"
-        action={<A to="/leaderboard" className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Ko‘rish →</A>}
+        action={<A to="/leaderboard" className="text-sm font-semibold text-sky-600 dark:text-sky-300">Ko‘rish →</A>}
       >
         <Card className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
@@ -793,7 +798,7 @@ function Duel({ questions, mode, oppName, oppId, oppAvatar, seed, accuracy, user
           <span className="text-2xl">🙂</span>
           <div className="min-w-0">
             <p className="truncate text-xs font-bold">Siz</p>
-            <p className="text-xl font-extrabold leading-none text-indigo-600 dark:text-indigo-300">{myScore}</p>
+            <p className="text-xl font-extrabold leading-none text-sky-600 dark:text-sky-300">{myScore}</p>
           </div>
         </div>
         <div className="text-center text-xs font-extrabold text-muted">VS</div>
@@ -803,7 +808,7 @@ function Duel({ questions, mode, oppName, oppId, oppAvatar, seed, accuracy, user
               <button
                 type="button"
                 onClick={() => navigate(`/u/${oppId}`)}
-                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-300"
+                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-sky-600 dark:hover:text-sky-300"
                 aria-label={`${oppName} profilini ochish`}
               >
                 {oppName} 🔍
@@ -861,7 +866,7 @@ function Duel({ questions, mode, oppName, oppId, oppAvatar, seed, accuracy, user
                 aria-pressed={isPicked}
                 className={cx(
                   'flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-[15px] font-medium transition',
-                  !show && 'border-line bg-surface hover:border-indigo-400 hover:bg-surface2',
+                  !show && 'border-line bg-surface hover:border-sky-400 hover:bg-surface2',
                   show && isCorrect && 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
                   show && isPicked && !isCorrect && 'shake-x border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
                   show && !isCorrect && !isPicked && 'border-line opacity-60',
@@ -1085,7 +1090,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
           <span className="text-2xl">🙂</span>
           <div className="min-w-0">
             <p className="truncate text-xs font-bold">Siz</p>
-            <p className="text-xl font-extrabold leading-none text-indigo-600 dark:text-indigo-300">{myScore}</p>
+            <p className="text-xl font-extrabold leading-none text-sky-600 dark:text-sky-300">{myScore}</p>
           </div>
         </div>
         <div className="text-center text-xs font-extrabold text-muted">VS</div>
@@ -1095,7 +1100,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
               <button
                 type="button"
                 onClick={() => navigate(`/u/${oppId}`)}
-                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-indigo-600 dark:hover:text-indigo-300"
+                className="truncate text-xs font-bold underline decoration-dotted underline-offset-2 hover:text-sky-600 dark:hover:text-sky-300"
                 aria-label={`${oppName} profilini ochish`}
               >
                 {oppName} 🔍
@@ -1163,7 +1168,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
                 aria-pressed={isPicked}
                 className={cx(
                   'flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-[15px] font-medium transition',
-                  !locked && 'border-line bg-surface hover:border-indigo-400 hover:bg-surface2',
+                  !locked && 'border-line bg-surface hover:border-sky-400 hover:bg-surface2',
                   locked && !isCorrect && !isPicked && 'border-line opacity-60',
                   isCorrect && 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
                   isPicked && !isCorrect && 'shake-x border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
@@ -1178,7 +1183,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
           })}
         </div>
         {preStart && banner && (
-          <div className="slide-up mt-4 rounded-2xl bg-indigo-50 p-3.5 text-sm text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-100" aria-live="polite">
+          <div className="slide-up mt-4 rounded-2xl bg-sky-50 p-3.5 text-sm text-sky-900 dark:bg-sky-500/10 dark:text-sky-100" aria-live="polite">
             <p className="font-bold">{banner}</p>
           </div>
         )}

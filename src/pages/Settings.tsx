@@ -97,7 +97,7 @@ export function Settings() {
         <Card>
           <label htmlFor="s-name" className="text-sm font-semibold">Ism yoki laqab</label>
           <div className="mt-1.5 flex gap-2">
-            <input id="s-name" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} className="min-w-0 flex-1 rounded-2xl border-2 border-line bg-surface px-3.5 py-2.5 outline-none focus:border-indigo-500" />
+            <input id="s-name" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} className="min-w-0 flex-1 rounded-2xl border-2 border-line bg-surface px-3.5 py-2.5 outline-none focus:border-sky-500" />
             <Button variant="secondary" onClick={saveName}>Saqlash</Button>
           </div>
           <div className="mt-4 text-sm">
@@ -153,7 +153,7 @@ export function Settings() {
                   aria-label={b.name}
                   className={cx(
                     'flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2 transition',
-                    s.settings.bg === b.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-line hover:border-indigo-300',
+                    s.settings.bg === b.id ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/10' : 'border-line hover:border-sky-300',
                   )}
                 >
                   <span className="h-10 w-full rounded-xl border border-line" style={{ background: b.preview }} />
@@ -199,7 +199,7 @@ export function Settings() {
           onClick={() => navigate('/notify')}
           className="flex cursor-pointer items-center gap-3 transition hover:border-accent/40"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]">
             <Icon name="bell" />
           </span>
           <span className="min-w-0 flex-1">

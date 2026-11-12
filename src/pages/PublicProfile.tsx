@@ -31,12 +31,12 @@ function publicNameStyle(p: PublicProfile): string {
 }
 
 const HERO_BG: Record<string, string> = {
-  doodle: 'from-indigo-600 to-violet-600',
+  doodle: 'from-sky-600 to-violet-600',
   plain: 'from-slate-600 to-slate-500',
-  mesh: 'from-indigo-600 via-cyan-500 to-fuchsia-600',
+  mesh: 'from-sky-600 via-cyan-500 to-fuchsia-600',
   sunset: 'from-orange-500 to-pink-600',
   mint: 'from-teal-500 to-sky-600',
-  grid: 'from-blue-600 to-indigo-700',
+  grid: 'from-blue-600 to-sky-700',
 };
 
 type State = 'loading' | 'ok' | 'notfound' | 'off' | 'auth' | 'error';
@@ -120,7 +120,7 @@ export function PublicProfile({ uid }: { uid: string }) {
       <PageHeader emoji="🧑‍🚀" title="O‘quvchi profili" subtitle="Ochiq (jamoa) sahifa" back />
 
       {/* Hero */}
-      <div className={cx('relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 text-white shadow-lg shadow-indigo-500/25', HERO_BG[p.bg] ?? HERO_BG.doodle)}>
+      <div className={cx('relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 text-white shadow-lg shadow-sky-500/25', HERO_BG[p.bg] ?? HERO_BG.doodle)}>
         <div className="pointer-events-none absolute -right-3 -top-5 text-[6.5rem] opacity-15 select-none">{p.avatar ?? '🙂'}</div>
         <div className="flex items-center gap-4">
           <div className="rounded-3xl bg-white/15 p-1.5">
@@ -139,7 +139,7 @@ export function PublicProfile({ uid }: { uid: string }) {
           </div>
         </div>
         <div className="mt-4">
-          <div className="flex items-center justify-between text-xs font-semibold text-indigo-100">
+          <div className="flex items-center justify-between text-xs font-semibold text-sky-100">
             <span>Tajriba darajasi {xp.level}</span>
             <span>{fmt(p.xp)} XP</span>
           </div>
@@ -166,7 +166,7 @@ export function PublicProfile({ uid }: { uid: string }) {
       {isMe && (
         <div className="mt-3">
           <Card className="flex items-center gap-3 !p-3.5">
-            <Icon name="user" className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+            <Icon name="user" className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-300" />
             <p className="min-w-0 flex-1 text-sm text-muted">Bu sizning ochiq profilingiz — boshqa o‘quvchilar shunday ko‘radi.</p>
             <Button size="sm" variant="secondary" onClick={() => navigate('/profile')}>
               Tahrirlash

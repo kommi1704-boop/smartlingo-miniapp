@@ -110,7 +110,7 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
                 aria-pressed={isPicked}
                 className={cx(
                   'flex w-full items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-[15px] font-medium transition',
-                  !show && 'border-line bg-surface hover:border-indigo-400 hover:bg-surface2',
+                  !show && 'border-line bg-surface hover:border-sky-400 hover:bg-surface2',
                   show && isCorrect && 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100',
                   show && isPicked && !isCorrect && 'shake-x border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-500/15 dark:text-rose-100',
                   show && !isCorrect && !isPicked && 'border-line opacity-60',

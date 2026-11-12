@@ -59,25 +59,25 @@ export function Landing() {
         )}
       </header>
 
-      <section className="relative mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 p-6 text-white shadow-xl shadow-indigo-500/25 sm:p-9">
+      <section className="relative mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-600 via-sky-600 to-violet-600 p-6 text-white shadow-xl shadow-sky-500/25 sm:p-9">
         <Sparkles />
         <div className="relative z-10 mb-2 flex justify-center sm:absolute sm:right-8 sm:top-8 sm:mb-0">
           <div className="rounded-[2rem] bg-white/15 p-3"><Mascot mood="cheer" size={118} /></div>
         </div>
         <p className="relative inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">8–17 yoshli o‘zbek o‘quvchilari uchun</p>
         <h1 className="relative mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:max-w-[62%] sm:text-4xl">Ingliz tilini o‘rganishning shaxsiy yo‘ldoshi</h1>
-        <p className="mt-3 max-w-xl text-[15px] text-indigo-100">
+        <p className="mt-3 max-w-xl text-[15px] text-sky-100">
           Your personal English-learning companion. Darajangizni aniqlang, shaxsiy reja oling va har kuni kichik qadamlar bilan oldinga yuring.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={start}
-            className="rounded-2xl bg-white px-6 py-3.5 text-base font-extrabold text-indigo-700 shadow-lg transition hover:bg-indigo-50 active:scale-[0.98]"
+            className="rounded-2xl bg-white px-6 py-3.5 text-base font-extrabold text-sky-700 shadow-lg transition hover:bg-sky-50 active:scale-[0.98]"
           >
             {s.profile ? 'Davom etish' : 'O‘rganishni boshlash'} →
           </button>
-          <span className="text-xs text-indigo-100">Ro‘yxatdan o‘tish shart emas · bepul demo</span>
+          <span className="text-xs text-sky-100">Ro‘yxatdan o‘tish shart emas · bepul demo</span>
         </div>
         <div className="mt-6 grid grid-cols-3 gap-3 text-center">
           {[
@@ -87,7 +87,7 @@ export function Landing() {
           ].map(([n, l]) => (
             <div key={l} className="rounded-2xl bg-white/10 px-2 py-3">
               <div className="text-2xl font-extrabold">{n}</div>
-              <div className="text-[11px] text-indigo-100">{l}</div>
+              <div className="text-[11px] text-sky-100">{l}</div>
             </div>
           ))}
         </div>
@@ -99,7 +99,7 @@ export function Landing() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {FEATURES.map((f) => (
             <Card key={f.title} className="flex gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
                 <Icon name={f.icon} />
               </div>
               <div>
@@ -117,7 +117,7 @@ export function Landing() {
         <ol className="mt-3 space-y-3">
           {STEPS.map((st) => (
             <li key={st.n} className="flex gap-3 rounded-3xl border border-line bg-surface p-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-sm font-extrabold text-white">{st.n}</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-600 to-violet-600 text-sm font-extrabold text-white">{st.n}</span>
               <div>
                 <h3 className="font-bold">{st.title}</h3>
                 <p className="text-sm text-muted">{st.text}</p>

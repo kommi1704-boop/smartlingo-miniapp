@@ -98,14 +98,14 @@ export function PathMap() {
         {sections.map(({ st, nodes }) => (
           <div key={st.level} className="relative">
             {/* level banner (like "Unit 2 - …") */}
-            <div className="relative z-10 mx-auto max-w-md rounded-2xl border border-line bg-gradient-to-r from-indigo-600 to-violet-600 p-3.5 text-white shadow-lg shadow-indigo-500/20">
+            <div className="relative z-10 mx-auto max-w-md rounded-2xl border border-line bg-gradient-to-r from-sky-600 to-violet-600 p-3.5 text-white shadow-lg shadow-sky-500/20">
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl">{KIND_META[st.level].emoji}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-extrabold">
                     {st.level} · {KIND_META[st.level].label}
                   </p>
-                  <p className="truncate text-[11px] text-indigo-100">{st.focus}</p>
+                  <p className="truncate text-[11px] text-sky-100">{st.focus}</p>
                 </div>
                 <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-extrabold">{st.progress ?? 0}%</span>
               </div>
@@ -124,7 +124,7 @@ export function PathMap() {
                   <li key={key} className="relative flex justify-center" style={{ transform: `translateX(${offset}px)` }}>
                     {isCurrent && (
                       <>
-                        <div className="bub-bob absolute -top-2 left-1/2 z-20 -translate-x-[calc(50%+52px)] whitespace-nowrap rounded-xl bg-indigo-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-md">
+                        <div className="bub-bob absolute -top-2 left-1/2 z-20 -translate-x-[calc(50%+52px)] whitespace-nowrap rounded-xl bg-sky-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white shadow-md">
                           Boshlash
                         </div>
                         <div className="absolute top-1/2 left-1/2 z-0 -translate-x-[calc(50%+64px)] -translate-y-1/2 max-md:hidden">
@@ -141,7 +141,7 @@ export function PathMap() {
                       className={cx(
                         'node-pop relative flex h-16 w-16 items-center justify-center rounded-full border-b-4 text-2xl shadow-md transition active:scale-95',
                         n.done && 'border-emerald-700 bg-emerald-500 text-white hover:brightness-105',
-                        isCurrent && 'bounce-soft border-indigo-700 bg-gradient-to-br from-indigo-500 to-violet-500 text-white ring-4 ring-indigo-300/50 dark:ring-indigo-500/30',
+                        isCurrent && 'bounce-soft border-sky-700 bg-gradient-to-br from-sky-500 to-violet-500 text-white ring-4 ring-sky-300/50 dark:ring-sky-500/30',
                         locked && 'cursor-not-allowed border-line bg-surface2 text-muted opacity-70 grayscale',
                       )}
                     >

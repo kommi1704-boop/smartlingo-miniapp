@@ -127,7 +127,7 @@ export function SpeakingPage({ id }: { id: string }) {
                     type="checkbox"
                     checked={checks[i]}
                     onChange={() => setChecks((a) => a.map((v, j) => (j === i ? !v : v)))}
-                    className="mt-0.5 h-5 w-5 shrink-0 accent-indigo-600"
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600"
                   />
                   {c}
                 </label>

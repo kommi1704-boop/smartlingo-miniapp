@@ -156,7 +156,7 @@ export function ScrambleGame({ daily, onFinish }: GameProps) {
                   state === 'ok' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200'
                     : state === 'bad' ? 'border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200'
                     : state === 'skip' ? 'border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-100'
-                    : ch ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-100'
+                    : ch ? 'border-sky-400 bg-sky-50 text-sky-700 dark:bg-sky-500/20 dark:text-sky-100'
                     : 'border-dashed border-line bg-surface2',
                 )}
               >

@@ -168,7 +168,7 @@ export function WritingPage({ id }: { id: string }) {
           rows={9}
           spellCheck={false}
           placeholder="Shu yerga yozing…"
-          className="w-full resize-y rounded-2xl border-2 border-line bg-surface p-3.5 text-base leading-relaxed outline-none focus:border-indigo-500"
+          className="w-full resize-y rounded-2xl border-2 border-line bg-surface p-3.5 text-base leading-relaxed outline-none focus:border-sky-500"
         />
         <div className="mt-1.5 flex items-center gap-3">
           <ProgressBar value={(words / prompt.minWords) * 100} className="flex-1" label="So‘zlar soni" color={words >= prompt.minWords ? 'bg-emerald-500' : undefined} />
@@ -241,7 +241,7 @@ export function WritingPage({ id }: { id: string }) {
             <p className="mt-4 text-sm font-bold">Tuzatilgan matn (AI)</p>
             <p className="mt-1 whitespace-pre-line rounded-2xl bg-surface2 p-3 text-sm leading-relaxed">{ai.corrected_text}</p>
             {ai.next_tip_uz && (
-              <p className="mt-3 rounded-2xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-200">💡 Keyingi safar: {ai.next_tip_uz}</p>
+              <p className="mt-3 rounded-2xl bg-sky-50 px-3 py-2.5 text-sm font-semibold text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">💡 Keyingi safar: {ai.next_tip_uz}</p>
             )}
             <p className="mt-2 text-[11px] text-muted">AI ham xato qilishi mumkin — savollaringiz bo‘lsa Lingo’dan so‘rang.</p>
           </Card>

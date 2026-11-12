@@ -82,18 +82,18 @@ export function Dashboard() {
   const dailyDone = s.games.daily.date === t && s.games.daily.done;
 
   const quick = [
-    { path: '/vocab', label: 'So‘zlar', emoji: '🃏', count: `${learned}/${VOCAB.length}` },
-    { path: '/grammar', label: 'Grammatika', emoji: '🧩', count: `${GRAMMAR.length} dars` },
-    { path: '/reading', label: 'O‘qish', emoji: '📖', count: `${READING.length} matn` },
-    { path: '/listening', label: 'Tinglash', emoji: '🎧', count: `${LISTENING.length} mashq` },
-    { path: '/speaking', label: 'Gaplashish', emoji: '🗣️', count: `${SPEAKING.length} mavzu` },
-    { path: '/writing', label: 'Yozish', emoji: '✍️', count: `${WRITING.length} mavzu` },
+    { path: '/vocab', label: 'So‘zlar', emoji: '🃏', count: `${learned}/${VOCAB.length}`, tint: 'bg-emerald-500/15' },
+    { path: '/grammar', label: 'Grammatika', emoji: '🧩', count: `${GRAMMAR.length} dars`, tint: 'bg-blue-500/15' },
+    { path: '/reading', label: 'O‘qish', emoji: '📖', count: `${READING.length} matn`, tint: 'bg-lav/30' },
+    { path: '/listening', label: 'Tinglash', emoji: '🎧', count: `${LISTENING.length} mashq`, tint: 'bg-sun/30' },
+    { path: '/speaking', label: 'Gaplashish', emoji: '🗣️', count: `${SPEAKING.length} mavzu`, tint: 'bg-coral/30' },
+    { path: '/writing', label: 'Yozish', emoji: '✍️', count: `${WRITING.length} mavzu`, tint: 'bg-sky-500/15' },
   ];
 
   const apps = [
     { path: '/games', label: 'O‘yinlar', icon: 'game' as const },
     { path: '/battle', label: 'Janglar', icon: 'swords' as const },
-    { path: '/friendquiz', label: 'Quiz', icon: 'target' as const },
+    { path: '/stars', label: 'Tangalar', icon: 'coins' as const },
     { path: '/shop', label: 'Do‘kon', icon: 'cart' as const },
     { path: '/leaderboard', label: 'Reyting', icon: 'trophy' as const },
     { path: '/progress', label: 'Progress', icon: 'chart' as const },
@@ -154,7 +154,7 @@ export function Dashboard() {
       </Card>
 
       {/* ---------- C. Continue learning ---------- */}
-      <Section title="Davom ettirish" action={<A to="/plan" className="text-sm font-semibold text-accent dark:text-[#b3a4ff]">Reja →</A>}>
+      <Section title="Davom ettirish" action={<A to="/plan" className="text-sm font-semibold text-accent dark:text-[#7ee2a8]">Reja →</A>}>
         <Card className="!p-4">
           <div className="flex items-center gap-4">
             <ProgressRing value={sum.pct} size={72} stroke={8}>
@@ -211,7 +211,7 @@ export function Dashboard() {
       </Section>
 
       {/* ---------- E. Daily challenge ---------- */}
-      <Section title="Kunlik challenge" action={<A to="/shop" className="text-sm font-semibold text-accent dark:text-[#b3a4ff]">Vazifalar →</A>}>
+      <Section title="Kunlik challenge" action={<A to="/shop" className="text-sm font-semibold text-accent dark:text-[#7ee2a8]">Vazifalar →</A>}>
         <Card className="!p-2">
           {missions.map((m) => (
             <div key={m.quest.id} className="flex items-center gap-3 px-2 py-2">
@@ -253,8 +253,8 @@ export function Dashboard() {
       <Section title="Tezkor kirish">
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
           {quick.map((q, i) => (
-            <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className="rise-in tap flex flex-col items-center gap-1 rounded-2xl border border-line bg-surface px-2 py-3 text-center transition hover:border-accent/40">
-              <span className="text-3xl drop-shadow-[0_4px_8px_rgba(115,87,255,0.35)]">{q.emoji}</span>
+            <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className="rise-in tap flex flex-col items-center gap-1 rounded-3xl border-2 border-line/70 bg-surface px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-leaf/60 hover:shadow-[0_10px_22px_-12px_rgba(88,204,131,0.45)]">
+              <span className={cx('flex h-11 w-11 items-center justify-center rounded-2xl text-2xl', q.tint)}>{q.emoji}</span>
               <span className="text-xs font-bold">{q.label}</span>
               <span className="text-[10px] font-semibold text-muted">{q.count}</span>
             </A>
@@ -300,7 +300,7 @@ export function Dashboard() {
                 );
               })
             )}
-            <A to="/progress" className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-accent dark:text-[#b3a4ff]">
+            <A to="/progress" className="mt-2 flex items-center justify-center gap-1 text-xs font-bold text-accent dark:text-[#7ee2a8]">
               To‘liq progress va nishonlar ({Object.keys(s.badges).length}/{BADGES.length}) <Icon name="right" className="h-3.5 w-3.5" />
             </A>
           </div>

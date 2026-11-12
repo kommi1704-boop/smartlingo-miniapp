@@ -235,8 +235,8 @@ export function Mascot({
       <svg key={tapKey} viewBox="0 0 120 120" width={size} height={size} aria-hidden="true" className={cx('overflow-visible', tapKey > 0 && 'mascot-squish')}>
         <defs>
           <linearGradient id={`b${gid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#7c7bff" />
-            <stop offset="1" stopColor="#8b5cf6" />
+            <stop offset="0" stopColor="#58cc83" />
+            <stop offset="1" stopColor="#2fae6e" />
           </linearGradient>
           <radialGradient id={`h${gid}`} cx="0.3" cy="0.2" r="0.7">
             <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
@@ -245,18 +245,18 @@ export function Mascot({
         </defs>
         <ellipse cx="62" cy="114" rx="30" ry="4" fill="#1b1a45" opacity="0.14" className={animate ? 'mascot-shadow' : undefined} />
         {armsUp ? (
-          <g stroke="#a5b4fc" strokeWidth="7" strokeLinecap="round">
+          <g stroke="#7fd6a4" strokeWidth="7" strokeLinecap="round">
             <g className={animate ? 'mascot-wave' : undefined}>
               <path d="M17 62 L8 44" />
-              <circle cx="7" cy="42" r="5" fill="#c7d2fe" stroke="none" />
+              <circle cx="7" cy="42" r="5" fill="#a9e8c4" stroke="none" />
             </g>
             <g className={animate ? 'mascot-wave mascot-wave-b' : undefined}>
               <path d="M103 62 L112 44" />
-              <circle cx="113" cy="42" r="5" fill="#c7d2fe" stroke="none" />
+              <circle cx="113" cy="42" r="5" fill="#a9e8c4" stroke="none" />
             </g>
           </g>
         ) : (
-          <g fill="#a5b4fc">
+          <g fill="#7fd6a4">
             <ellipse cx="13" cy="76" rx="6" ry="8" transform={m === 'sad' ? 'rotate(8 13 76)' : 'rotate(18 13 76)'} />
             <ellipse cx="107" cy="76" rx="6" ry="8" transform={m === 'sad' ? 'rotate(-8 107 76)' : 'rotate(-18 107 76)'} />
           </g>
@@ -264,7 +264,7 @@ export function Mascot({
         <path
           d="M42 20 H78 C94 20 106 32 106 48 V64 C106 80 94 92 78 92 H54 L32 108 L36 90 C22 86 14 76 14 64 V48 C14 32 26 20 42 20 Z"
           fill={`url(#b${gid})`}
-          stroke="#4f46e5"
+          stroke="#2fae6e"
           strokeWidth="2.5"
           strokeLinejoin="round"
         />
@@ -293,9 +293,9 @@ export function Mascot({
         )}
         {m === 'think' && (
           <g>
-            <circle cx="98" cy="18" r="3" fill="#c7d2fe" />
-            <circle cx="106" cy="8" r="4.5" fill="#c7d2fe" />
-            <text x="106" y="12" textAnchor="middle" fontSize="8" fontWeight="800" fill="#4f46e5" fontFamily="system-ui, sans-serif">?</text>
+            <circle cx="98" cy="18" r="3" fill="#a9e8c4" />
+            <circle cx="106" cy="8" r="4.5" fill="#a9e8c4" />
+            <text x="106" y="12" textAnchor="middle" fontSize="8" fontWeight="800" fill="#2fae6e" fontFamily="system-ui, sans-serif">?</text>
           </g>
         )}
         {m === 'proud' && <path d="M92 28 l2 4 l4 .6 l-3 3 l.8 4 l-3.8 -2 l-3.8 2 l.8 -4 l-3 -3 l4 -.6 z" fill="#fde68a" className={animate ? 'mascot-twinkle' : undefined} />}

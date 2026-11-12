@@ -36,7 +36,7 @@ export function Resources() {
           onChange={(e) => setQ(e.target.value)}
           aria-label="Resurslarni qidirish"
           placeholder="Qidirish…"
-          className="w-full rounded-2xl border border-line bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-2xl border border-line bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-sky-500"
         />
       </div>
       <div className="no-scrollbar my-3 flex gap-2 overflow-x-auto pb-1">
@@ -53,7 +53,7 @@ export function Resources() {
               <li key={r.id}>
                 <Card>
                   <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-xl dark:bg-indigo-500/20">{c.emoji}</span>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-xl dark:bg-sky-500/20">{c.emoji}</span>
                     <div className="min-w-0 flex-1">
                       <p className="font-bold leading-snug">{r.title}</p>
                       <div className="mt-1 flex flex-wrap gap-1.5">

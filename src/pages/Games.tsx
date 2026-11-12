@@ -68,7 +68,7 @@ export function GamesHub() {
             const noAudio = g.needsAudio && !ttsAvailable();
             return (
               <A key={g.id} to={`/games/${g.id}`} className={cx('block', noAudio && 'pointer-events-none opacity-50')}>
-                <Card className="h-full transition hover:border-indigo-300">
+                <Card className="h-full transition hover:border-sky-300">
                   <div className="flex items-start gap-3">
                     <div className={cx('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-3xl shadow-sm', g.color)}>{g.emoji}</div>
                     <div className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ function Intro({ info, best, score, daily, noAudio, onStart }: { info: GameInfo;
       <ol className="mx-auto mt-3 max-w-md space-y-2 text-left text-sm">
         {info.how.map((h, i) => (
           <li key={i} className="flex gap-2.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-extrabold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">{i + 1}</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-extrabold text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">{i + 1}</span>
             <span>{h}</span>
           </li>
         ))}

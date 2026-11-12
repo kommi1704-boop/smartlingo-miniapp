@@ -125,7 +125,7 @@ export function Highlightable({ storeKey, paragraphs, terms, onTerm, activeIndex
           className="hl-bar pointer-events-none fixed inset-x-0 z-[55] flex justify-center px-3"
           onMouseDown={(e) => e.preventDefault()}
         >
-          <div className="pop-in pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-2 shadow-xl shadow-indigo-900/20" role="toolbar" aria-label="Belgilash asboblari">
+          <div className="pop-in pointer-events-auto flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-2 shadow-xl shadow-sky-900/20" role="toolbar" aria-label="Belgilash asboblari">
             {pending ? (
               <>
                 <Icon name="marker" className="h-4 w-4 text-muted" />
@@ -167,9 +167,9 @@ export function Highlightable({ storeKey, paragraphs, terms, onTerm, activeIndex
           const atoms = buildAtoms(text, hls.filter((h) => h.p === i), termRe);
           const active = activeIndex === i;
           return (
-            <div key={i} data-line={i} className={cx('flex items-start gap-2 rounded-xl transition-colors', active && 'bg-indigo-50 ring-2 ring-indigo-300 dark:bg-indigo-500/15 dark:ring-indigo-400/50', onPlayLine || active ? 'px-1.5 py-1' : '')}>
+            <div key={i} data-line={i} className={cx('flex items-start gap-2 rounded-xl transition-colors', active && 'bg-sky-50 ring-2 ring-sky-300 dark:bg-sky-500/15 dark:ring-sky-400/50', onPlayLine || active ? 'px-1.5 py-1' : '')}>
               {onPlayLine && (
-                <button type="button" onClick={() => onPlayLine(i)} aria-label={`${i + 1}-qatorni tinglash`} className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300">
+                <button type="button" onClick={() => onPlayLine(i)} aria-label={`${i + 1}-qatorni tinglash`} className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600 hover:bg-sky-200 dark:bg-sky-500/20 dark:text-sky-300">
                   <Icon name="play" className="h-3 w-3" />
                 </button>
               )}
@@ -190,7 +190,7 @@ export function Highlightable({ storeKey, paragraphs, terms, onTerm, activeIndex
                         key={a.s}
                         type="button"
                         onClick={() => onTerm(a.term!)}
-                        className={cx('border-b-2 border-dotted border-indigo-400 font-medium', hlCls ? common : 'rounded-md bg-indigo-50 px-0.5 text-indigo-800 dark:bg-indigo-500/15 dark:text-indigo-200')}
+                        className={cx('border-b-2 border-dotted border-sky-400 font-medium', hlCls ? common : 'rounded-md bg-sky-50 px-0.5 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200')}
                       >
                         {a.text}
                       </button>

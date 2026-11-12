@@ -93,15 +93,15 @@ export function Stars() {
       <PageHeader emoji="⭐" title="Tanga do‘koni" subtitle="Telegram Stars bilan Coin oling — darhol hisobga tushadi" />
 
       {/* Balance hero */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-600 p-5 text-white shadow-lg shadow-violet-500/25">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-sky-600 via-violet-600 to-purple-600 p-5 text-white shadow-lg shadow-violet-500/25">
         <div className="pointer-events-none absolute -right-4 -top-6 text-[7rem] opacity-20 select-none">⭐</div>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-indigo-100">Sizning hisobingiz</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-sky-100">Sizning hisobingiz</div>
             <div className="mt-1 text-4xl font-black leading-none">{fmt(s.coins.balance)} 🪙</div>
-            <div className="mt-1 text-sm text-indigo-100">Coin · do‘konda ramkalar, avatarlar va sovg‘alarga sarflanadi</div>
+            <div className="mt-1 text-sm text-sky-100">Coin · do‘konda ramkalar, avatarlar va sovg‘alarga sarflanadi</div>
           </div>
-          <div className="shrink-0 text-right text-xs font-semibold text-indigo-100">
+          <div className="shrink-0 text-right text-xs font-semibold text-sky-100">
             <div className="inline-block rounded-full bg-white/20 px-3 py-1.5">🔒 Xavfsiz</div>
             <div className="mt-1.5">⭐ Telegram Stars</div>
           </div>
@@ -245,7 +245,7 @@ export function Stars() {
       <Modal open={phase === 'opening' || phase === 'waiting'} onClose={() => undefined} title="To‘lov">
         <div className="py-2 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center">
-            <span className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <span className="h-10 w-10 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600" />
           </div>
           <p className="mt-3 font-extrabold">Telegram to‘lov oynasi ochildi</p>
           <p className="mt-1 text-sm text-muted">Oynada to‘lovni yakunlang — Coinlar darhol hisobga tushadi.</p>

@@ -104,7 +104,7 @@ export function ListeningPage({ id }: { id: string }) {
                 <Button icon={playing ? 'stop' : 'play'} onClick={toggle}>{playing ? 'To‘xtatish' : 'Tinglash'}</Button>
                 <SpeedChips rate={prefs.rate} onChange={changeSpeed} />
               </div>
-              <button type="button" className="mt-2.5 text-xs font-semibold text-indigo-600 underline dark:text-indigo-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
+              <button type="button" className="mt-2.5 text-xs font-semibold text-sky-600 underline dark:text-sky-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
                 {showVoice ? 'Ovoz sozlamalarini yopish' : 'Ovozni almashtirish / ovoz tushunarsiz bo‘lsa'}
               </button>
               {showVoice && <div className="slide-up mt-2 border-t border-line pt-3"><VoicePicker /></div>}
@@ -115,7 +115,7 @@ export function ListeningPage({ id }: { id: string }) {
         </div>
 
         <div className="mt-3">
-          <button type="button" className="text-sm font-semibold text-indigo-600 underline dark:text-indigo-300" onClick={() => setShowText(!showText)} aria-expanded={showText}>
+          <button type="button" className="text-sm font-semibold text-sky-600 underline dark:text-sky-300" onClick={() => setShowText(!showText)} aria-expanded={showText}>
             {showText ? 'Transkriptni yashirish' : 'Transkriptni ko‘rsatish'}
           </button>
           {showText && (

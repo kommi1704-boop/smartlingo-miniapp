@@ -5,7 +5,7 @@ import { toast } from '../store/ui';
 import { tgUser } from '../lib/telegram';
 import { A, navigate } from '../lib/router';
 import {
-  createQuiz, fetchMyQuizzes, fetchQuizMeta, quizAvailable, quizNotConfigured,
+  createQuiz, fetchMyQuizzes, fetchQuizMeta, quizNotConfigured, quizOfflineHint, quizProbe,
   type QuizMeta, type QuizSummary,
 } from '../lib/quizApi';
 import { Button, Card, Empty, Notice, PageHeader, Pill, Section, Tabs } from '../components/ui';
@@ -35,11 +35,16 @@ export function QuizFriends() {
   const s = useApp();
   const [tab, setTab] = useState<Tab>('create');
   const [online, setOnline] = useState<boolean | null>(null);
+  const [offlineHint, setOfflineHint] = useState<string | null>(null);
   const [meta, setMeta] = useState<QuizMeta | null>(null);
 
   useEffect(() => {
     let alive = true;
-    quizAvailable().then((v) => alive && setOnline(v));
+    quizProbe().then((p) => {
+      if (!alive) return;
+      setOnline(p.enabled);
+      setOfflineHint(quizOfflineHint(p.missing));
+    });
     fetchQuizMeta().then((m) => alive && setMeta(m)).catch(() => undefined);
     return () => {
       alive = false;
@@ -52,7 +57,7 @@ export function QuizFriends() {
       {!online && online !== null && (
         <div className="mb-4">
           <Notice tone="warn">
-            Onlayn quiz serverga ulanmagan (Supabase + bot kerak). Sozlash: <b>supabase/schema.sql</b> qayta ishga tushirilsin va <b>/api/quiz</b> deploy qilinsin.
+            Onlayn quiz serverga ulanmagan. {offlineHint && <><b>{offlineHint}</b> </>}Asosiy sozlash: <b>supabase/schema.sql</b> qayta ishga tushirilsin, Vercel env o‘rnatilsin va <b>/api/quiz</b> deploy qilinsin. Tashxis: <b>/api/admin-notify?k=diag</b> ni brauzerda oching.
           </Notice>
         </div>
       )}
@@ -298,7 +303,7 @@ function MineTab({ online, goCreate }: { online: boolean | null; goCreate: () =>
         <A key={q.id} to={`/friendquiz/view/${q.id}`} className="block">
           <Card className="transition hover:border-accent/40">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]">
                 <Icon name="cards" />
               </span>
               <span className="min-w-0 flex-1">

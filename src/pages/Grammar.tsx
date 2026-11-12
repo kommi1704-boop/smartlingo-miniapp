@@ -47,7 +47,7 @@ export function GrammarLessonPage({ id }: { id: string }) {
 
       {!quiz && (
         <>
-          <Card className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10">
+          <Card className="bg-gradient-to-br from-sky-50 to-violet-50 dark:from-sky-500/10 dark:to-violet-500/10">
             <p className="font-semibold">{lesson.summaryUz}</p>
             {r && <Pill tone={r.completed ? 'green' : 'amber'} className="mt-2">Eng yaxshi natija: {r.bestScore}/{r.total} · {r.attempts} urinish</Pill>}
           </Card>

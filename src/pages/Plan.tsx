@@ -46,9 +46,9 @@ export function Plan() {
       <ul className="mt-4 space-y-3">
         {plan.map((i, n) => (
           <li key={i.id}>
-            <A to={i.route} className={cx('block rounded-3xl border p-4 transition hover:border-indigo-300', i.done ? 'border-emerald-300/60 bg-emerald-50 dark:border-emerald-400/30 dark:bg-emerald-500/10' : 'border-line bg-surface')}>
+            <A to={i.route} className={cx('block rounded-3xl border p-4 transition hover:border-sky-300', i.done ? 'border-emerald-300/60 bg-emerald-50 dark:border-emerald-400/30 dark:bg-emerald-500/10' : 'border-line bg-surface')}>
               <div className="flex items-center gap-3">
-                <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl', i.done ? 'bg-emerald-500 text-white' : 'bg-indigo-100 dark:bg-indigo-500/20')}>
+                <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl', i.done ? 'bg-emerald-500 text-white' : 'bg-sky-100 dark:bg-sky-500/20')}>
                   {i.done ? <Icon name="check" /> : i.emoji}
                 </span>
                 <div className="min-w-0 flex-1">

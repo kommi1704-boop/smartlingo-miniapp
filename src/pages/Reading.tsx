@@ -296,7 +296,7 @@ export function ReadingPage({ id }: { id: string }) {
 
       <Card>
         {active && (
-          <div className="slide-up mb-3 flex items-center justify-between rounded-2xl bg-indigo-50 px-3.5 py-2.5 text-sm dark:bg-indigo-500/15" aria-live="polite">
+          <div className="slide-up mb-3 flex items-center justify-between rounded-2xl bg-sky-50 px-3.5 py-2.5 text-sm dark:bg-sky-500/15" aria-live="polite">
             <span><b>{active.en}</b> — {active.uz}</span>
             <button type="button" onClick={() => setActive(null)} className="text-xs font-semibold text-muted underline">Yopish</button>
           </div>
@@ -318,7 +318,7 @@ export function ReadingPage({ id }: { id: string }) {
               <Button size="sm" icon={playing ? 'stop' : 'volume'} onClick={togglePlay}>{playing ? 'To‘xtatish' : 'Matnni tinglash'}</Button>
               <SpeedChips rate={prefs.rate} onChange={(r) => { setPrefs({ rate: r }); if (playing) play(Math.max(0, line)); }} />
             </div>
-            <button type="button" className="mt-2 text-xs font-semibold text-indigo-600 underline dark:text-indigo-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
+            <button type="button" className="mt-2 text-xs font-semibold text-sky-600 underline dark:text-sky-300" onClick={() => setShowVoice(!showVoice)} aria-expanded={showVoice}>
               {showVoice ? 'Ovoz sozlamalarini yopish' : 'Ovozni almashtirish'}
             </button>
             {showVoice && <div className="slide-up mt-2 border-t border-line pt-3"><VoicePicker compact /></div>}

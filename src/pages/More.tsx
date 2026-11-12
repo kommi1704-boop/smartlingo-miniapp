@@ -44,7 +44,7 @@ export function More() {
       <div className="grid gap-2.5 sm:grid-cols-2">
         {items.map((n) => (
           <A key={n.path} to={n.path} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]">
               <Icon name={n.icon} />
             </span>
             <span className="min-w-0 flex-1">
@@ -55,7 +55,7 @@ export function More() {
           </A>
         ))}
         <A to="/welcome" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]"><Icon name="info" /></span>
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]"><Icon name="info" /></span>
           <span className="min-w-0 flex-1">
             <span className="block font-bold">SmartLingo haqida</span>
             <span className="block truncate text-xs text-muted">Imkoniyatlar va savol-javoblar</span>

@@ -28,8 +28,8 @@ function RowView({ r, i, meId, board }: { r: LeaderRow; i: number; meId: string;
       to={to}
       aria-label={`${r.name} profili`}
       className={cx(
-        'flex items-center gap-3 rounded-3xl border bg-surface !p-3.5 shadow-sm shadow-indigo-900/5 transition hover:border-indigo-300 active:scale-[0.99]',
-        mine ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' : 'border-line',
+        'flex items-center gap-3 rounded-3xl border bg-surface !p-3.5 shadow-sm shadow-sky-900/5 transition hover:border-sky-300 active:scale-[0.99]',
+        mine ? 'border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'border-line',
       )}
     >
       <span className={cx('w-8 shrink-0 text-center text-lg font-extrabold', i >= 3 && 'text-sm text-muted')}>{i < 3 ? MEDALS[i] : i + 1}</span>
@@ -38,7 +38,7 @@ function RowView({ r, i, meId, board }: { r: LeaderRow; i: number; meId: string;
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">
-          {r.name} {mine && <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">(siz)</span>}
+          {r.name} {mine && <span className="text-xs font-semibold text-sky-600 dark:text-sky-300">(siz)</span>}
         </p>
         <p className={cx('text-xs font-semibold', board === 'global' ? rank.tier.text : 'text-muted')}>
           {board === 'global' ? (
@@ -116,7 +116,7 @@ export function Leaderboard() {
       />
 
       {/* My card (always visible, even offline) */}
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-violet-600 to-indigo-600 p-4 text-white shadow-lg shadow-violet-500/25">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-violet-600 to-sky-600 p-4 text-white shadow-lg shadow-violet-500/25">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-white/15 p-1">
             <span className="text-3xl">{myAvatar}</span>
@@ -200,7 +200,7 @@ export function Leaderboard() {
 
           <div className="mt-3">
             <Card className="flex items-center gap-3 !p-3.5" onClick={() => navigate('/leaderboard')}>
-              <Icon name="user" className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" />
+              <Icon name="user" className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-300" />
               <p className="min-w-0 flex-1 text-sm text-muted">O‘quvchining ismi yoki avatari bosilsa — uning ochiq profili ochiladi.</p>
             </Card>
           </div>

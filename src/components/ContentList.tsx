@@ -31,8 +31,8 @@ export function ContentList({ items, base, filter = true }: { items: ListItem[];
       <ul className="space-y-2.5">
         {shown.map((i) => (
           <li key={i.id}>
-            <A to={`${base}/${i.id}`} className={cx('flex items-center gap-3 rounded-3xl border bg-surface p-4 transition hover:border-indigo-300', i.done ? 'border-emerald-300/60' : 'border-line')}>
-              <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl', i.done ? 'bg-emerald-500 text-white' : 'bg-indigo-100 dark:bg-indigo-500/20')}>
+            <A to={`${base}/${i.id}`} className={cx('flex items-center gap-3 rounded-3xl border bg-surface p-4 transition hover:border-sky-300', i.done ? 'border-emerald-300/60' : 'border-line')}>
+              <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl', i.done ? 'bg-emerald-500 text-white' : 'bg-sky-100 dark:bg-sky-500/20')}>
                 {i.done ? <Icon name="check" /> : i.emoji ?? '📘'}
               </span>
               <div className="min-w-0 flex-1">

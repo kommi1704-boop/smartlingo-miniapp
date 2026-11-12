@@ -82,6 +82,43 @@ export async function battleAvailable(force = false): Promise<boolean> {
   return probeCache;
 }
 
+/** Probe + the exact reason when offline (missing env names come from the server's `why` field). */
+export interface BattleProbe {
+  enabled: boolean;
+  /** null = online; otherwise short machine codes / env var names for the banner. */
+  missing: string[] | null;
+}
+
+export async function battleProbe(force = false): Promise<BattleProbe> {
+  try {
+    const r = await fetchT(`${BASE}/api/battle`, { headers: { Accept: 'application/json' } }, 4000);
+    if (!r.ok) {
+      const missing = r.status === 404 ? ['deploy_404'] : [`http_${r.status}`];
+      probeCache = false;
+      return { enabled: false, missing };
+    }
+    const j = (await r.json()) as { enabled?: boolean; why?: { missing?: string[] } | null };
+    probeCache = j.enabled === true;
+    if (probeCache) return { enabled: true, missing: null };
+    return { enabled: false, missing: j.why?.missing?.length ? j.why.missing : ['enabled_false'] };
+  } catch {
+    probeCache = false;
+    return { enabled: false, missing: ['unreachable'] };
+  }
+}
+
+/** Uzbek one-liner for the offline banner, from the probe's `missing` list. */
+export function battleOfflineHint(missing: string[] | null): string | null {
+  if (!missing || missing.length === 0) return null;
+  if (missing.includes('deploy_404')) return 'API topilmadi (404): ilova aynan Vercel domeni orqali ochilishi kerak (npm run dev yoki boshqa sayt emas).';
+  if (missing.includes('unreachable')) return 'Serverga ulanib bo‘lmadi — internetni yoki domenni tekshiring.';
+  if (missing.includes('enabled_false')) return 'Server ishlayapti, lekin o‘yin sozlanmagan (eski deploy?). Redeploy qiling.';
+  if (missing.includes('http_503')) return 'Server sozlanmagan (not_configured).';
+  const envs = missing.filter((m) => /^[A-Z_]+$/.test(m));
+  if (envs.length) return `Serverda yetishmayapti: ${envs.join(', ')} — Vercel → Settings → Environment Variables’ga qo‘shib, keyin Redeploy qiling.`;
+  return null;
+}
+
 export async function listChallenges(): Promise<OpenChallenge[]> {
   const j = await json<{ list: OpenChallenge[] }>(await fetchT(`${BASE}/api/battle?action=list`, { headers: headers() }));
   return j.list ?? [];

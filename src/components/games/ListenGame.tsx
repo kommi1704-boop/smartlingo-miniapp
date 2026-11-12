@@ -85,7 +85,7 @@ export function ListenGame({ daily, onFinish }: GameProps) {
             type="button"
             onClick={() => speak(word.en, { rate: RATE_SLOW })}
             aria-label="Sekin eshitish"
-            className="self-center rounded-2xl bg-surface2 px-3 py-2 text-sm font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+            className="self-center rounded-2xl bg-surface2 px-3 py-2 text-sm font-semibold hover:bg-sky-100 dark:hover:bg-sky-500/20"
           >
             🐢 Sekin
           </button>
@@ -106,7 +106,7 @@ export function ListenGame({ daily, onFinish }: GameProps) {
                     ? 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
                     : isPicked
                       ? 'shake-x border-rose-500 bg-rose-50 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200'
-                      : 'border-line bg-surface hover:border-indigo-300',
+                      : 'border-line bg-surface hover:border-sky-300',
                 )}
               >
                 {o.en}

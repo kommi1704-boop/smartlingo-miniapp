@@ -41,7 +41,7 @@ function Block({ icon, title, children }: { icon: string; title: string; childre
 function Stage({ st, defaultOpen }: { st: RoadmapStage; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <Card className={cx(st.status === 'current' && 'ring-2 ring-indigo-500/60')}>
+    <Card className={cx(st.status === 'current' && 'ring-2 ring-sky-500/60')}>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 text-left">
         <LevelBadge level={st.level} className="min-w-[3.25rem] justify-center py-1.5 text-sm" />
         <div className="min-w-0 flex-1">
@@ -170,7 +170,7 @@ function AiRoadmapCard() {
                 setConsent(e.target.checked);
                 setRoadmapConsent(e.target.checked);
               }}
-              className="mt-0.5 h-4 w-4 accent-indigo-600"
+              className="mt-0.5 h-4 w-4 accent-sky-600"
             />
             <span>
               Qiziqishlarimni AI rejaga qo‘shish (ixtiyoriy). Yoqilsa, tanlangan mavzularingiz serverga yuboriladi; yoqilmagan holda hech qanday shaxsiy matn yuborilmaydi.
@@ -178,7 +178,7 @@ function AiRoadmapCard() {
           </label>
           <button
             type="button"
-            className="mt-3 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+            className="mt-3 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-violet-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
             disabled={busy || !s.profile}
             onClick={generate}
           >
@@ -211,10 +211,10 @@ function AiRoadmapCard() {
               </div>
             ))}
           </div>
-          {ai.note && <p className="mt-2.5 rounded-2xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-100">{ai.note}</p>}
+          {ai.note && <p className="mt-2.5 rounded-2xl bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-100">{ai.note}</p>}
           <button
             type="button"
-            className="mt-3 w-full rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm font-bold text-indigo-600 disabled:opacity-60 dark:text-indigo-300"
+            className="mt-3 w-full rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm font-bold text-sky-600 disabled:opacity-60 dark:text-sky-300"
             disabled={busy || !s.profile}
             onClick={generate}
           >

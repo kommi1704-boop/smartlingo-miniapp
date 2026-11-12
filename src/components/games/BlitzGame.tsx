@@ -91,7 +91,7 @@ export function BlitzGame({ daily, onFinish }: GameProps) {
           { label: 'Combo', value: combo >= 2 ? `🔥 ×${combo}` : '—', tone: combo >= 3 ? 'good' : 'normal' },
         ]}
       />
-      <ProgressBar value={(left / SECONDS) * 100} className="mb-3" color={left <= 10 ? 'bg-rose-500' : 'bg-gradient-to-r from-sky-500 to-indigo-500'} label="Qolgan vaqt" />
+      <ProgressBar value={(left / SECONDS) * 100} className="mb-3" color={left <= 10 ? 'bg-rose-500' : 'bg-gradient-to-r from-sky-500 to-sky-500'} label="Qolgan vaqt" />
       <Card className="text-center">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted">Tarjimasini toping</div>
         <div className="mt-2 flex items-center justify-center gap-2">
@@ -115,7 +115,7 @@ export function BlitzGame({ daily, onFinish }: GameProps) {
                     ? 'correct-pop border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200'
                     : isPicked
                       ? 'shake-x border-rose-500 bg-rose-50 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200'
-                      : 'border-line bg-surface hover:border-indigo-300',
+                      : 'border-line bg-surface hover:border-sky-300',
                 )}
               >
                 {shortUz(o)}

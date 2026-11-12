@@ -119,7 +119,7 @@ export function Tutor() {
       )}
 
       {live === true && (
-        <p className="mb-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-400/30 dark:bg-indigo-500/10 dark:text-indigo-100">
+        <p className="mb-2 rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-100">
           <b>Jonli AI:</b> yozganlaringiz sun’iy intellekt xizmatiga yuboriladi. Ism-familiya, telefon raqam, manzil yoki parol yozmang.
         </p>
       )}
@@ -133,7 +133,7 @@ export function Tutor() {
         ))}
         {busy && (
           <div className="flex gap-1.5 px-10 py-1" aria-label="Lingo yozmoqda">
-            {[0, 1, 2].map((i) => <span key={i} className="bounce-soft h-2 w-2 rounded-full bg-indigo-400" style={{ animationDelay: `${i * 0.15}s` }} />)}
+            {[0, 1, 2].map((i) => <span key={i} className="bounce-soft h-2 w-2 rounded-full bg-emerald-400" style={{ animationDelay: `${i * 0.15}s` }} />)}
           </div>
         )}
         <div ref={bottom} />
@@ -142,7 +142,7 @@ export function Tutor() {
       {messages.length < 3 && (
         <div className="no-scrollbar mt-2.5 flex gap-2 overflow-x-auto pb-1" aria-label="Tavsiya etilgan savollar">
           {SUGGESTIONS.map((q) => (
-            <button key={q} type="button" onClick={() => send(q)} className="shrink-0 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/30 dark:bg-indigo-500/15 dark:text-indigo-200">
+            <button key={q} type="button" onClick={() => send(q)} className="shrink-0 rounded-full border-2 border-sky-200 bg-sky-50 px-3.5 py-2 text-sm font-semibold text-sky-700 transition hover:-translate-y-0.5 hover:bg-sky-100 active:scale-95 dark:border-sky-400/30 dark:bg-sky-500/15 dark:text-sky-200">
               {q}
             </button>
           ))}
@@ -170,7 +170,7 @@ export function Tutor() {
           rows={1}
           maxLength={800}
           placeholder="Savol yoki inglizcha gap yozing…"
-          className="max-h-32 min-h-[2.75rem] flex-1 resize-none rounded-2xl border-2 border-line bg-surface px-3.5 py-2.5 text-base outline-none focus:border-indigo-500"
+          className="max-h-32 min-h-[2.75rem] flex-1 resize-none rounded-2xl border-2 border-line bg-surface px-3.5 py-2.5 text-base outline-none focus:border-leaf"
         />
         <Button type="submit" size="lg" disabled={!input.trim() || busy} aria-label="Yuborish" className="!px-4">
           <Icon name="send" />
@@ -183,7 +183,7 @@ export function Tutor() {
         ) : (
           <ul className="space-y-2">
             {s.conversations.map((c) => (
-              <li key={c.id} className={cx('flex items-center gap-2 rounded-2xl border p-3', c.id === activeId ? 'border-indigo-500' : 'border-line')}>
+              <li key={c.id} className={cx('flex items-center gap-2 rounded-2xl border-2 p-3', c.id === activeId ? 'border-leaf' : 'border-line')}>
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setActiveId(c.id); setHistoryOpen(false); }}>
                   <span className="block truncate font-semibold">{c.title}</span>
                   <span className="block text-xs text-muted">{prettyDateTime(new Date(c.updatedAt).toISOString())} · {c.messages.length} ta xabar</span>
@@ -214,7 +214,7 @@ function Bubble({ role, children, demo, link }: { role: 'user' | 'assistant'; ch
   return (
     <div className={cx('flex items-end gap-1.5', mine ? 'justify-end' : 'justify-start')}>
       {!mine && <Mascot size={30} animate={false} className="mb-1" />}
-      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-gradient-to-br from-accent to-violet-500 text-white' : 'rounded-bl-lg bg-surface2')}>
+      <div className={cx('max-w-[84%] rounded-3xl px-4 py-2.5 text-[15px] leading-relaxed', mine ? 'rounded-br-lg bg-[linear-gradient(160deg,#5fd695,#3fae68)] text-white shadow-[0_6px_16px_-8px_rgba(88,204,131,0.7)]' : 'rounded-bl-lg border-2 border-line/70 bg-surface')}>
         <p className="whitespace-pre-line">{children}</p>
         {link && (
           <A to={link.route} className="mt-2 inline-flex items-center gap-1 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-bold text-white">

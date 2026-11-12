@@ -14,7 +14,9 @@ export interface NavItem {
   icon: IconName;
 }
 
-/** Every destination in the app — used by the desktop sidebar and the Learn hub. */
+/** Every destination in the app — used by the desktop sidebar and the Learn hub.
+ *  (Friend Quiz & Bildirishnomalar are intentionally absent: the feature ships
+ *  but stays out of the menus — restore the two lines below to re-enable.) */
 export const NAV_ALL: NavItem[] = [
   { path: '/', label: 'Bosh sahifa', icon: 'home' },
   { path: '/universe', label: 'Learning Universe', icon: 'planet' },
@@ -37,28 +39,16 @@ export const NAV_ALL: NavItem[] = [
   { path: '/resources', label: 'Resurslar', icon: 'globe' },
   { path: '/profile', label: 'Profil', icon: 'user' },
   { path: '/settings', label: 'Sozlamalar', icon: 'settings' },
-  { path: '/friendquiz', label: 'Do‘st quizi', icon: 'target' },
-  { path: '/notify', label: 'Bildirishnomalar', icon: 'bell' },
 ];
 
-/** Groups for the desktop sidebar / hub pages: label + members. */
+const nav = (path: string): NavItem => NAV_ALL.find((n) => n.path === path)!;
+
+/** Groups for the desktop sidebar / hub pages: label + members (path-based, index-safe). */
 export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
-  {
-    title: 'Asosiy',
-    items: [NAV_ALL[0], NAV_ALL[1], NAV_ALL[2], NAV_ALL[5]],
-  },
-  {
-    title: 'Ko‘nikmalar',
-    items: [NAV_ALL[3], NAV_ALL[4], NAV_ALL[6], NAV_ALL[7], NAV_ALL[8], NAV_ALL[9], NAV_ALL[10], NAV_ALL[18]],
-  },
-  {
-    title: 'O‘yin va raqobat',
-    items: [NAV_ALL[12], NAV_ALL[13], NAV_ALL[14], NAV_ALL[21]],
-  },
-  {
-    title: 'Shaxsiy',
-    items: [NAV_ALL[15], NAV_ALL[16], NAV_ALL[17], NAV_ALL[19], NAV_ALL[20], NAV_ALL[22]],
-  },
+  { title: 'Asosiy', items: [nav('/'), nav('/universe'), nav('/learning'), nav('/tutor')] },
+  { title: 'Ko‘nikmalar', items: [nav('/plan'), nav('/roadmap'), nav('/vocab'), nav('/grammar'), nav('/reading'), nav('/listening'), nav('/speaking'), nav('/resources')] },
+  { title: 'O‘yin va raqobat', items: [nav('/games'), nav('/battle'), nav('/leaderboard')] },
+  { title: 'Shaxsiy', items: [nav('/progress'), nav('/shop'), nav('/stars'), nav('/profile'), nav('/settings')] },
 ];
 
 /** Tab roots never show the Telegram back button. */
@@ -116,8 +106,8 @@ export function Shell({ children }: { children: ReactNode }) {
                     to={n.path}
                     aria-current={isActive(path, n.path) ? 'page' : undefined}
                     className={cx(
-                      'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition',
-                      isActive(path, n.path) ? 'bg-accent text-white shadow-sm shadow-accent/30' : 'text-muted hover:bg-surface2 hover:text-ink',
+                      'flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-bold transition',
+                      isActive(path, n.path) ? 'bg-[linear-gradient(135deg,#58cc83,#48b8f5)] text-white shadow-[0_6px_16px_-6px_rgba(88,204,131,0.6)]' : 'text-muted hover:bg-surface2 hover:text-ink',
                     )}
                   >
                     <Icon name={n.icon} className="h-[18px] w-[18px]" />
@@ -151,13 +141,13 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="text-[15px] font-extrabold tracking-tight">SmartLingo</span>
             </A>
             <div className="flex items-center gap-1.5">
-              <StatPill to="/progress" label="Kunlik seriya va progress" className="bg-gold/15 text-gold">
+              <StatPill to="/progress" label="Kunlik seriya va progress" className="bg-coral/25 text-rose-600">
                 <span className="flame-dance">🔥</span> {streak}
               </StatPill>
-              <StatPill to="/progress" label="XP va daraja" className="bg-accent/15 text-accent dark:text-[#b3a4ff]">
+              <StatPill to="/progress" label="XP va daraja" className="bg-sky-500/15 text-sky-600">
                 ⭐ {fmt(s.xp)}
               </StatPill>
-              <StatPill to="/shop" label="Coin balansi va do‘kon" className="bg-gold/20 text-gold">
+              <StatPill to="/shop" label="Coin balansi va do‘kon" className="bg-sun/30 text-amber-600">
                 🪙 {fmt(s.coins.balance)}
               </StatPill>
             </div>

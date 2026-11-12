@@ -203,7 +203,7 @@ function PrefsView({ data, onChanged, onAskReset }: { data: NotifySettings; onCh
                   enabled ? 'border-line bg-surface hover:border-accent/40' : 'border-line bg-surface2/40 opacity-75',
                 )}
               >
-                <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', enabled ? 'bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#b3a4ff]' : 'bg-surface2 text-muted')}>
+                <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', enabled ? 'bg-accent/12 text-accent dark:bg-accent/20 dark:text-[#7ee2a8]' : 'bg-surface2 text-muted')}>
                   <Icon name={ui.icon} />
                 </span>
                 <span className="min-w-0 flex-1">

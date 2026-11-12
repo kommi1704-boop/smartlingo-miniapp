@@ -254,7 +254,7 @@ function Cards({
 
         {revealed ? (
           <div className="slide-up mt-5">
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">{w.uz}</p>
+            <p className="text-2xl font-bold text-sky-600 dark:text-sky-300">{w.uz}</p>
             <div className="mt-3 rounded-2xl bg-surface2 p-3 text-left text-sm">
               <div className="flex items-start gap-2">
                 <p className="flex-1 font-medium">{w.exEn}</p>
@@ -349,7 +349,7 @@ function WordList({ words, level, setLevel, topic, setTopic }: { words: VocabWor
           onChange={(e) => setQ(e.target.value)}
           placeholder="So‘z qidirish (English yoki o‘zbekcha)"
           aria-label="So‘z qidirish"
-          className="w-full rounded-2xl border border-line bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-indigo-500"
+          className="w-full rounded-2xl border border-line bg-surface py-2.5 pl-10 pr-3 text-sm outline-none focus:border-sky-500"
         />
       </div>
       <div className="mt-3"><Filters level={level} setLevel={setLevel} topic={topic} setTopic={setTopic} /></div>
@@ -452,8 +452,8 @@ function Matching({ pool }: { pool: VocabWord[] }) {
         className={cx(
           'min-h-[3.25rem] w-full rounded-2xl border-2 px-2 py-2 text-sm font-semibold transition',
           isDone && 'border-emerald-400 bg-emerald-50 text-emerald-800 opacity-70 dark:bg-emerald-500/15 dark:text-emerald-100',
-          !isDone && isSel && 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/15',
-          !isDone && !isSel && !isWrong && 'border-line bg-surface hover:border-indigo-300',
+          !isDone && isSel && 'border-sky-500 bg-sky-50 dark:bg-sky-500/15',
+          !isDone && !isSel && !isWrong && 'border-line bg-surface hover:border-sky-300',
           isWrong && 'border-rose-500 bg-rose-50 dark:bg-rose-500/15',
         )}
       >

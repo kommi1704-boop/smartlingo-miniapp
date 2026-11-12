@@ -49,6 +49,38 @@ export async function quizAvailable(): Promise<boolean> {
   }
 }
 
+/** Probe + the exact reason when offline (missing env names come from the server's `why` field). */
+export interface QuizProbe {
+  enabled: boolean;
+  botUsername?: string | null;
+  /** null = online; otherwise short machine codes / env var names for the banner. */
+  missing: string[] | null;
+}
+
+export async function quizProbe(): Promise<QuizProbe> {
+  try {
+    const r = await fetchT(`${BASE}/api/quiz`, { headers: { Accept: 'application/json' } }, 4000);
+    if (!r.ok) return { enabled: false, missing: r.status === 404 ? ['deploy_404'] : [`http_${r.status}`] };
+    const j = (await r.json()) as QuizMeta & { why?: { missing?: string[] } | null };
+    if (j.enabled === true) return { enabled: true, botUsername: j.botUsername ?? null, missing: null };
+    return { enabled: false, botUsername: null, missing: j.why?.missing?.length ? j.why.missing : ['enabled_false'] };
+  } catch {
+    return { enabled: false, missing: ['unreachable'] };
+  }
+}
+
+/** Uzbek one-liner for the offline banner, from the probe's `missing` list. */
+export function quizOfflineHint(missing: string[] | null): string | null {
+  if (!missing || missing.length === 0) return null;
+  if (missing.includes('deploy_404')) return 'API topilmadi (404): ilova aynan Vercel domeni orqali ochilishi kerak (npm run dev yoki boshqa sayt emas).';
+  if (missing.includes('unreachable')) return 'Serverga ulanib bo‘lmadi — internetni yoki domenni tekshiring.';
+  if (missing.includes('enabled_false')) return 'Server ishlayapti, lekin o‘yin sozlanmagan (eski deploy?). Redeploy qiling.';
+  if (missing.includes('http_503')) return 'Server sozlanmagan (not_configured).';
+  const envs = missing.filter((m) => /^[A-Z_]+$/.test(m));
+  if (envs.length) return `Serverda yetishmayapti: ${envs.join(', ')} — Vercel → Settings → Environment Variables’ga qo‘shib, keyin Redeploy qiling.`;
+  return null;
+}
+
 export async function fetchQuizMeta(): Promise<QuizMeta> {
   return json(await fetchT(`${BASE}/api/quiz?action=meta`, { headers: headers() }));
 }

@@ -95,16 +95,16 @@ export default function Universe() {
           <Icon name="left" className="h-5 w-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate bg-gradient-to-r from-indigo-700 via-violet-700 to-cyan-700 bg-clip-text text-lg font-extrabold text-transparent dark:from-indigo-400 dark:via-violet-300 dark:to-cyan-300 md:text-2xl">
+          <h1 className="truncate bg-gradient-to-r from-sky-700 via-violet-700 to-cyan-700 bg-clip-text text-lg font-extrabold text-transparent dark:from-sky-400 dark:via-violet-300 dark:to-cyan-300 md:text-2xl">
             🪐 Learning Universe
           </h1>
           <p className="hidden truncate text-[11px] text-muted sm:block">Har bir dars — yangi sarguzasgt</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff]" title="Tajriba darajasi">
+          <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#7ee2a8]" title="Tajriba darajasi">
             Lv {xp.level}
           </span>
-          <span className="hidden rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#b3a4ff] sm:inline" title="Umumiy XP">
+          <span className="hidden rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent dark:text-[#7ee2a8] sm:inline" title="Umumiy XP">
             ⭐ {fmt(s.xp)}
           </span>
           <button
@@ -118,7 +118,7 @@ export default function Universe() {
       </div>
 
       {/* ---------- Interactive map ---------- */}
-      <div className="uni-sky relative mt-3 min-h-[320px] overflow-hidden rounded-[2rem] border border-indigo-400/20 sm:h-[54vh] sm:min-h-[420px] md:h-[62vh]" data-testid="universe-map">
+      <div className="uni-sky relative mt-3 min-h-[320px] overflow-hidden rounded-[2rem] border border-sky-400/20 sm:h-[54vh] sm:min-h-[420px] md:h-[62vh]" data-testid="universe-map">
         {mode3d ? (
           <SceneGuard onFail={() => setMode3d(false)}>
             <Suspense
@@ -126,7 +126,7 @@ export default function Universe() {
                 <div className="flex h-full items-center justify-center">
                   <div className="animate-pulse text-center">
                     <div className="text-4xl">🪐</div>
-                    <p className="mt-2 text-sm font-semibold text-indigo-200">Koinot yuklanmoqda…</p>
+                    <p className="mt-2 text-sm font-semibold text-sky-200">Koinot yuklanmoqda…</p>
                   </div>
                 </div>
               }
@@ -297,7 +297,7 @@ export default function Universe() {
                     onClick={() => setSelected(st.world.id)}
                     className={cx(
                       'rounded-full border px-2.5 py-1 text-[11px] font-bold transition',
-                      selected === st.world.id ? 'border-cyan-300/60 bg-cyan-400/10' : 'border-line bg-surface2 hover:border-indigo-300/40',
+                      selected === st.world.id ? 'border-cyan-300/60 bg-cyan-400/10' : 'border-line bg-surface2 hover:border-sky-300/40',
                     )}
                   >
                     {st.world.emoji} {st.unlocked ? `${st.progress}%` : '🔒'}

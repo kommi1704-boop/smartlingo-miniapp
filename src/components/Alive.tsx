@@ -86,7 +86,7 @@ export function DotChart({ activity, rows = 6, height = 132 }: { activity: Recor
                   );
                 })}
               </div>
-              <span className={cx('mt-2 text-[11px] font-bold', d.k === t ? 'text-accent dark:text-[#b3a4ff]' : 'text-muted')}>{shortDay(d.k).slice(0, 2)}</span>
+              <span className={cx('mt-2 text-[11px] font-bold', d.k === t ? 'text-accent dark:text-[#7ee2a8]' : 'text-muted')}>{shortDay(d.k).slice(0, 2)}</span>
               <span className="text-[10px] font-semibold text-muted">{d.v > 0 ? d.v : ''}</span>
             </div>
           );
