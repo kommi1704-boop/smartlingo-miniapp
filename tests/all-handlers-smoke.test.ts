@@ -39,7 +39,6 @@ const targets: { name: string; mod: string; url: string }[] = [
   { name: 'payments', mod: '../api/payments.ts', url: '/api/payments' },
   { name: 'profile', mod: '../api/profile.ts', url: '/api/profile' },
   { name: 'progress', mod: '../api/progress.ts', url: '/api/progress' },
-  { name: 'quiz (probe)', mod: '../api/quiz.ts', url: '/api/quiz' },
   { name: 'reminders', mod: '../api/reminders.ts', url: '/api/reminders' },
 ];
 

@@ -127,7 +127,7 @@ ok(universeOverall(fakeState()) === 0, 'fresh learner = 0%');
 ok(recommendedWorld(fakeState()) === 'forest', 'fresh learner is pointed at the forest');
 const s3 = fakeState({ xp: xpForLevel(2), lessons: Object.fromEntries(['grammar:g01', 'grammar:g02'].map((k) => [k, { bestScore: 5, total: 5, attempts: 1, completed: true, lastDate: '' }])) as PersistedState['lessons'] });
 ok(recommendedWorld(s3) === 'kingdom', 'with forest untouched, the newest unlocked world with progress is recommended');
-const s4 = fakeState({ xp: xpForLevel(5), vocab: Object.fromEntries(VOCAB.slice(0, 380).map((w) => [w.id, { status: 'learned' }])) as PersistedState['vocab'] });
+const s4 = fakeState({ xp: xpForLevel(5), vocab: Object.fromEntries(VOCAB.map((w) => [w.id, { status: 'learned' }])) as PersistedState['vocab'] });
 ok(recommendedWorld(s4) === 'kingdom', 'forest complete -> the learner is pointed at the next unfinished world');
 const sAll = fakeState({
   xp: xpForLevel(5),

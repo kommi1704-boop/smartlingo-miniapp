@@ -12,9 +12,12 @@ create table if not exists public.progress (
 
 alter table public.progress enable row level security;
 
-create or replace function public.touch_updated_at() returns trigger as $$
+create or replace function public.touch_updated_at() returns trigger
+language plpgsql
+set search_path = ''   -- Supabase advisor: "function_search_path_mutable"
+as $$
 begin new.updated_at = now(); return new; end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists progress_touch on public.progress;
 create trigger progress_touch before update on public.progress
@@ -47,6 +50,10 @@ create table if not exists public.battles (
 );
 
 alter table public.battles enable row level security;
+
+-- Matchmaking list + garbage-collection scans (status/created_at) and "my open challenges".
+create index if not exists battles_status_created_idx on public.battles (status, created_at);
+create index if not exists battles_p1_status_idx on public.battles (p1, status);
 
 -- Live-duel state (real-time rounds): current round, round start (server clock),
 -- both players' answers, running scores and heartbeats. Added after the first
@@ -232,7 +239,7 @@ create table if not exists public.coin_grants (
   id               text        primary key,  -- deterministic idempotency key
   telegram_user_id bigint      not null,
   coins            int         not null,
-  source           text        not null,     -- 'referral_invite' | 'referral_bonus'
+  source           text        not null,     -- referral_invite | referral_bonus | quiz refund (written by api/quiz.ts)
   acked            boolean     not null default false,
   acked_at         timestamptz,
   created_at       timestamptz not null default now()
@@ -350,6 +357,14 @@ create index if not exists friend_quizzes_creator_idx
 create index if not exists friend_quizzes_created_idx
   on public.friend_quizzes (created_at desc);
 
+-- One quiz per paid spend: two parallel retries of the same "create" (slow network + retry) can
+-- never create two quizzes for one 50-Coin payment. api/quiz.ts handles the 409 by returning the
+-- quiz that won. If this statement fails with "could not create unique index", run
+--   select spend_id, count(*) from public.friend_quizzes where spend_id is not null group by 1 having count(*) > 1;
+-- and delete the duplicate rows first.
+create unique index if not exists friend_quizzes_spend_uq
+  on public.friend_quizzes (spend_id) where spend_id is not null;
+
 drop trigger if exists friend_quizzes_touch on public.friend_quizzes;
 create trigger friend_quizzes_touch before update on public.friend_quizzes
   for each row execute function public.touch_updated_at();
@@ -435,7 +450,7 @@ create table if not exists public.notification_history (
   id               text        primary key,
   telegram_user_id bigint      not null,
   kind             text        not null,   -- streak|news|motivation|achievements|quiz|battle|weekly
-  status           text        not null default 'sent', -- sent|failed|skipped_pref|skipped_quiet|skipped_paused|skipped_block
+  status           text        not null default 'sent', -- sending (reserved, in flight)|sent|failed|skipped_pref|skipped_quiet|skipped_paused|skipped_block
   error            text,
   sent_at          timestamptz not null default now()
 );

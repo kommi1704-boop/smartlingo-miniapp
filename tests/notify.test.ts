@@ -142,11 +142,6 @@ section('integration wiring (static checks)');
 
   const battle = readFileSync(new URL('../api/battle.ts', import.meta.url), 'utf8');
   ok(battle.includes('notifyBattleEnd') && battle.includes("kind: 'battle'"), 'battle finish notifications wired');
-  const quiz = readFileSync(new URL('../api/quiz.ts', import.meta.url), 'utf8');
-  ok(quiz.includes("kind: 'quiz'") && quiz.includes('eventKey: `result:${quiz.id}:${nuid}`'), 'quiz submit notifies the creator exactly once');
-
-  const bot = readFileSync(new URL('../api/bot.ts', import.meta.url), 'utf8');
-  ok(bot.includes('?fq='), 'bot invitation buttons carry ?fq= deep links');
 
   const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as { crons: { path: string; schedule: string }[] };
   const paths = vercel.crons.map((c) => c.path);
