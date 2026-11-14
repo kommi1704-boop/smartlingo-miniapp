@@ -48,6 +48,9 @@ interface LiveState {
   left: 'p1' | 'p2' | null; // who abandoned the battle (set on forfeit)
   n?: number; // total answers RECORDED in this battle (user report: battles with zero answers
               // must not move the rating — anything the clock/stale-forfeit finishes at n=0 aborts)
+  startedAt?: number; // server epoch ms when the join activated the battle — the absent-opponent
+                      // timer below runs from here (rows joined before this field existed fall
+                      // back to roundStart - START_DELAY_MS, which join also derived from)
   aborted?: true; // set when the battle finished without a single answer (connection issue)
 }
 
@@ -133,6 +136,13 @@ const START_DELAY_MS = 3500; // countdown between join and round 0
 const ADVANCE_DELAY_MS = 1500; // reveal pause between rounds
 const STALE_MS = 40_000; // no heartbeat for this long mid-battle = forfeit (25s punished slow
                          // mobile networks — user report: the duel ended 0:0 before question 1)
+const GONE_MS = 75_000; // opponent NEVER polled since the battle went active = they are not
+                        // coming (ghost challenge: the challenger closed the app right after
+                        // opening it). 75s = >20 missed 1.2s polls, still under a minute of
+                        // waiting; generous enough that a slow first sync never trips it.
+const NOTIFY_BUDGET_MS = 8000; // hard cap on the awaited Telegram notify at battle end — the
+                               // full path can take ~22s (2 x prefs/send timeouts) and would
+                               // blow past the Vercel Hobby 10s function cap mid-notify.
 const hits = new Map<string, { n: number; reset: number }>();
 
 function header(req: Req, name: string): string {
@@ -297,10 +307,13 @@ function deltasFor(row: BattleRow, side: 'p1' | 'p2' | 'draw'): { d1: number; d2
  * winner 0, both Elo deltas 0 — so nobody loses rating for a duel that never really started
  * (user report: "savollar boshlanmadan jang tugadi 0:0 durrang -44 reyting"). Manual forfeits
  * (the player pressed "tark etish") always count as a real loss, exactly as before.
+ * `opts.ghost` marks the opponent-never-appeared finish: the battle is ALWAYS aborted, even
+ * when the syncing player answered alone — a "win" against someone who never showed up must
+ * not move the rating (it would make joining abandoned challenges a farming strategy).
  */
-function finishRow(row: BattleRow, side: 'p1' | 'p2' | 'draw', left?: 'p1' | 'p2' | null, opts?: { auto?: boolean }): void {
+function finishRow(row: BattleRow, side: 'p1' | 'p2' | 'draw', left?: 'p1' | 'p2' | null, opts?: { auto?: boolean; ghost?: boolean }): void {
   const live = row.live as LiveState;
-  const nothingHappened = opts?.auto === true && (live.n ?? 0) === 0;
+  const nothingHappened = opts?.auto === true && ((live.n ?? 0) === 0 || opts.ghost === true);
   const { d1, d2 } = deltasFor(row, side);
   row.status = 'finished';
   row.winner = nothingHappened ? 0 : side === 'draw' ? 0 : side === 'p1' ? row.p1 : row.p2;
@@ -326,35 +339,40 @@ function naturalSide(live: LiveState): 'p1' | 'p2' | 'draw' {
  * Best-effort and idempotent (deterministic eventKey per battle per user, so poll
  * retries can never double-send). Aborted battles (zero answers / connection
  * issues) stay silent — there is nothing to celebrate.
+ * Hard-capped with a race: the caller awaits this INSIDE the finish response, and the
+ * full pipeline (2 x fetchPrefs + 2 x reserve + 2 x Telegram send, each 10-12s timeout)
+ * can legally take ~22s — past the Vercel Hobby 10s function cap, which used to freeze
+ * the instance mid-notify and leave the history row stuck in 'sending' forever.
  */
 async function notifyBattleEnd(db: { url: string; key: string }, token: string, appUrl: string, row: BattleRow): Promise<void> {
-  // MUST be awaited by the caller: on Vercel the function is frozen as soon as the response is
-  // sent, so a fire-and-forget dispatch died half-way and left the notification_history row
-  // stuck in 'sending' forever — and the deterministic id then blocked every retry.
-  try {
-    if (row.status !== 'finished' || !row.p2) return;
-    if ((row.live as LiveState | null)?.aborted) return;
-    const s1 = row.p1_score ?? 0;
-    const s2 = row.p2_score ?? 0;
-    const line = (name: string, you: number, them: number, delta: number | null): string => {
-      const verdict = you > them ? 'G‘alaba sizniki! 🏆' : you < them ? 'Bu safar raqib kuchli bo‘ldi — keyingi jangda ochasiz! 💪' : 'Durrang! Ikkala jangchi ham kuchli ekan 🤝';
-      return `⚔️ «${name}» bilan jang yakunlandi!\n\nNatija: ${you}:${them}${delta ? ` (reyting ${delta > 0 ? '+' : ''}${delta})` : ''}\n\n${verdict}`;
-    };
-    await Promise.allSettled([
-      dispatch(db, token, appUrl, {
-        uid: row.p1, kind: 'battle', eventKey: `finished:${row.id}`,
-        text: line(row.p2_name || 'Raqib', s1, s2, row.p1_delta),
-        button: { label: '⚔️ Janglar', webApp: true },
-      }),
-      dispatch(db, token, appUrl, {
-        uid: row.p2, kind: 'battle', eventKey: `finished:${row.id}`,
-        text: line(row.p1_name || 'Raqib', s2, s1, row.p2_delta),
-        button: { label: '⚔️ Janglar', webApp: true },
-      }),
-    ]);
-  } catch {
-    /* notifications are best-effort — never touch the battle flow */
-  }
+  const budget = new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), NOTIFY_BUDGET_MS));
+  const work = (async () => {
+    try {
+      if (row.status !== 'finished' || !row.p2) return;
+      if ((row.live as LiveState | null)?.aborted) return;
+      const s1 = row.p1_score ?? 0;
+      const s2 = row.p2_score ?? 0;
+      const line = (name: string, you: number, them: number, delta: number | null): string => {
+        const verdict = you > them ? 'G‘alaba sizniki! 🏆' : you < them ? 'Bu safar raqib kuchli bo‘ldi — keyingi jangda ochasiz! 💪' : 'Durrang! Ikkala jangchi ham kuchli ekan 🤝';
+        return `⚔️ «${name}» bilan jang yakunlandi!\n\nNatija: ${you}:${them}${delta ? ` (reyting ${delta > 0 ? '+' : ''}${delta})` : ''}\n\n${verdict}`;
+      };
+      await Promise.allSettled([
+        dispatch(db, token, appUrl, {
+          uid: row.p1, kind: 'battle', eventKey: `finished:${row.id}`,
+          text: line(row.p2_name || 'Raqib', s1, s2, row.p1_delta),
+          button: { label: '⚔️ Janglar', webApp: true },
+        }),
+        dispatch(db, token, appUrl, {
+          uid: row.p2, kind: 'battle', eventKey: `finished:${row.id}`,
+          text: line(row.p1_name || 'Raqib', s2, s1, row.p2_delta),
+          button: { label: '⚔️ Janglar', webApp: true },
+        }),
+      ]);
+    } catch {
+      /* notifications are best-effort — never touch the battle flow */
+    }
+  })();
+  await Promise.race([work, budget]); // past 8s the response goes out; the sends keep draining
 }
 
 /**
@@ -501,18 +519,30 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         else row.seen2 = Date.now();
         changed = resolveTimeouts(row);
         // Opponent vanished (closed the app / left the page) -> forfeit, I win.
-        // Three guards keep slow networks out of trouble (user report: "ulandi lekin sekin",
+        // Four guards keep slow networks out of trouble (user report: "ulandi lekin sekin",
         // the duel died before question 1):
         //  1. oppSeen == null -> the opponent has not polled ONCE since the battle went
-        //     active (join resets pre-activation heartbeats) — never forfeit on that;
+        //     active (join resets pre-activation heartbeats) — handled by the GONE_MS rule
+        //     below, never by the instant forfeit;
         //  2. the current question must actually be OPEN (roundStart in the past) — the
         //     3.5s countdown is a grace period, not a deadline;
-        //  3. 40s of silence (was 25s) — enough to survive a flaky mobile connection.
+        //  3. 40s of silence (was 25s) — enough to survive a flaky mobile connection;
+        //  4. the NEVER-seen opponent gets its own, longer window (GONE_MS = 75s from the
+        //     join). That case used to hang forever: a challenger who opened a challenge and
+        //     closed the app left the joiner stuck in a dead battle, and answering alone
+        //     against the ghost even paid out full Elo (farming vector). Now it ABORTS:
+        //     winner 0, deltas 0, rating untouched.
         const oppSeen = isP1 ? row.seen2 : row.seen1;
         const roundOpen = live.roundStart != null && Date.now() > live.roundStart;
-        if (row.status === 'active' && oppSeen != null && Date.now() - oppSeen > STALE_MS && roundOpen) {
+        if (row.status === 'active' && roundOpen && oppSeen != null && Date.now() - oppSeen > STALE_MS) {
           finishRow(row, isP1 ? 'p1' : 'p2', isP1 ? 'p2' : 'p1', { auto: true });
           changed = true;
+        } else if (row.status === 'active' && roundOpen && oppSeen == null) {
+          const startedAt = live.startedAt ?? (live.roundStart ?? Date.now()) - START_DELAY_MS;
+          if (Date.now() - startedAt > GONE_MS) {
+            finishRow(row, isP1 ? 'p1' : 'p2', isP1 ? 'p2' : 'p1', { auto: true, ghost: true });
+            changed = true;
+          }
         }
       }
       if (changed) {
@@ -604,6 +634,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       const live: LiveState = row.live ?? freshLive();
       live.round = 0;
       live.roundStart = Date.now() + START_DELAY_MS; // shared countdown — both clients start together
+      live.startedAt = Date.now(); // the absent-opponent timer runs from the activation moment
       live.s1 = 0; live.s2 = 0;
       live.a1 = null; live.a2 = null;
       live.left = null;
@@ -630,6 +661,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         res.status(409).json({ error: 'not_joinable' });
         return;
       }
+      // The joiner just entered a duel — their own open challenges (opened by a parallel
+      // search on another device / a race with the cross-join poll) would linger as joinable
+      // ghosts for the next searcher. Delete them now; best-effort, never fail the join.
+      await sbFetch(db, `battles?p1=eq.${uid}&status=eq.open`, { method: 'DELETE' }).catch(() => undefined);
       res.status(200).json({ battle: view(fresh, uid) });
       return;
     }
@@ -673,6 +708,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         const readN = live.n; // counter BEFORE this answer
         resolveTimeouts(row);
         if (!(row.status === 'active' && live.roundStart != null && round === live.round)) break; // late / wrong round
+        // The question must actually be OPEN: during the shared countdown (3.5s) or the
+        // reveal pause (1.5s) the clock has not started, so an answer cannot race in early
+        // (honest clients already refuse to tap there — now the server agrees).
+        if (Date.now() < live.roundStart) break;
         if ((isP1 ? live.a1 : live.a2) != null) break; // duplicate answer
         const ans: LiveAns = { c: correct ? 1 : 0, t };
         if (isP1) live.a1 = ans;
