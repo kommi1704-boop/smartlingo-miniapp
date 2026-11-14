@@ -48,6 +48,7 @@ function diagOf(e: unknown): string {
 const WIN_COINS = 8;
 const DRAW_COINS = 4;
 const LOSS_COINS = 2;
+const SEARCH_TIMEOUT_MS = 5 * 60_000; // the waiting poll gives up (and cancels) after this long
 
 /** Local page header with a custom back handler (cancel search, leave waiting, …). */
 function Bar({ emoji, title, onBack }: { emoji: string; title: string; onBack?: () => void }) {
@@ -176,93 +177,12 @@ export function Battle() {
     setPhase('lobby');
   }, []);
 
-  const goSearching = useCallback(async () => {
-    setPhase('searching');
-    setDiag(null);
-    const me = { rating, name: myName, avatar: myAvatar };
-    try {
-      // 1) join an existing open challenge if there is one
-      const list = await listChallenges();
-      for (const c of list) {
-        try {
-          const joined = await joinChallenge(c.id, me);
-          if (joined.questions?.length) {
-            setSearchBattle(joined);
-            setMode('pvp');
-            setQuestions(withLevels(joined.questions));
-            battleIdRef.current = joined.id;
-            setLegacyPvp(false);
-            modeRef.current = 'pvp';
-            oppNameRef.current = c.name;
-            oppRatingRef.current = c.rating ?? null;
-            oppIdRef.current = c.uid ?? null;
-            liveScoreRef.current = { you: 0, them: 0 };
-            resolvedRef.current = false;
-            setPhase('duel');
-            haptic('success');
-            return;
-          }
-        } catch {
-          /* someone else took it — try the next one */
-        }
-      }
-      // 2) otherwise open my own challenge and wait for a joiner
-      const seed = uid('b');
-      aiSeedRef.current = seed;
-      accRef.current = aiAccuracy(s.quizHistory);
-      const qs = buildBattleQuestions(level, seed);
-      const opened = await openChallenge(qs, me);
-      setSearchBattle(opened);
-      battleIdRef.current = opened.id;
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        try {
-          const b = await getBattle(opened.id);
-          if (b?.status === 'active' && b.questions?.length) {
-            if (pollRef.current) clearInterval(pollRef.current);
-            setSearchBattle(b);
-            setMode('pvp');
-            setQuestions(withLevels(b.questions));
-            setLegacyPvp(false);
-            modeRef.current = 'pvp';
-            oppNameRef.current = b.oppName;
-            oppRatingRef.current = b.oppRating ?? null;
-            oppIdRef.current = b.oppId ?? null;
-            liveScoreRef.current = { you: 0, them: 0 };
-            resolvedRef.current = false;
-            setPhase('duel');
-            haptic('success');
-          }
-        } catch {
-          /* keep polling */
-        }
-      }, 3000);
-    } catch (e) {
-      if (pollRef.current) clearInterval(pollRef.current);
-      battleIdRef.current = null;
-      const kind = diagOf(e);
-      if (kind === 'not_configured') setOnline(false);
-      setDiag(kind); // the lobby shows the exact reason + fix
-      // Never dead-end: matchmaking failed, so fall back to a Lingo AI battle.
-      toast(
-        kind === 'unauthorized'
-          ? 'Raqib topish uchun ilovani bot ichida oching — avval Lingo AI bilan jang!'
-          : 'Raqib topish hozir ishlamadi — Lingo AI bilan jang boshlanadi!',
-        'warn',
-      );
-      startAi();
-    }
-  }, [rating, myName, myAvatar, s.quizHistory, level, startAi, withLevels]);
-
-  const cancelSearch = useCallback(async () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    const id = battleIdRef.current;
-    if (id) await cancelChallenge(id);
-    setPhase('lobby');
-  }, []);
-
-  // ===== Finish paths =====
-
+  /**
+   * Records a finished battle on THIS device: W/L/D counters, the server's Elo delta for PvP
+   * (or the local Elo math for AI), the coin reward and the history entry. Lives above
+   * goSearching because the waiting poll can now also finish a battle that ended while we
+   * were still in the search screen (opponent forfeited / ghost abort before we entered).
+   */
   const finish = useCallback(
     (you: number, them: number, vs: 'ai' | 'player', opponent: string, serverDelta?: number) => {
       resolvedRef.current = true; // battle resolved normally — leaving now is free
@@ -288,6 +208,157 @@ export function Battle() {
     },
     [questions.length, ratedLeft, rating],
   );
+
+  const goSearching = useCallback(async () => {
+    setPhase('searching');
+    setDiag(null);
+    const me = { rating, name: myName, avatar: myAvatar };
+
+    /** Shared transition into a live duel (as p1 via the get-poll or as p2 via a join). */
+    const enterDuel = (b: BattleView) => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+      setSearchBattle(b);
+      setMode('pvp');
+      setQuestions(withLevels(b.questions ?? []));
+      battleIdRef.current = b.id;
+      setLegacyPvp(false);
+      modeRef.current = 'pvp';
+      oppNameRef.current = b.oppName;
+      oppRatingRef.current = b.oppRating ?? null;
+      oppIdRef.current = b.oppId ?? null;
+      liveScoreRef.current = { you: 0, them: 0 };
+      resolvedRef.current = false;
+      setPhase('duel');
+      haptic('success');
+    };
+
+    try {
+      // 1) join an existing open challenge if there is one
+      const list = await listChallenges();
+      for (const c of list) {
+        try {
+          const joined = await joinChallenge(c.id, me);
+          if (joined.questions?.length) {
+            enterDuel(joined);
+            return;
+          }
+        } catch {
+          /* someone else took it — try the next one */
+        }
+      }
+      // 2) otherwise open my own challenge and wait for a joiner
+      const seed = uid('b');
+      aiSeedRef.current = seed;
+      accRef.current = aiAccuracy(s.quizHistory);
+      const qs = buildBattleQuestions(level, seed);
+      const opened = await openChallenge(qs, me);
+      setSearchBattle(opened);
+      battleIdRef.current = opened.id;
+      // FIX (matchmaking deadlock): the old poll ONLY watched my own battle. Two players who
+      // tapped "Raqib topish" within the same few seconds both got an empty list, both opened
+      // a challenge and then waited for each other FOREVER — the #1 "cannot find opponent"
+      // report with a small user base. Every other tick now also re-scans the open list and
+      // joins someone else's challenge (never my own), so two simultaneous searchers match.
+      // The poll also handles a battle that ENDED while we were searching (opponent forfeited
+      // or a ghost abort) instead of hanging on "Raqib qidirilmoqda…" forever, and it gives up
+      // after SEARCH_TIMEOUT_MS instead of polling for the rest of the session.
+      const tried = new Set<string>(); // challenges that refused us — do not re-join them
+      const startedAt = Date.now();
+      let tick = 0;
+      let busy = false; // an interval tick must never overlap itself
+      let settled = false; // this search reached its outcome (duel entered / finished / timeout)
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(() => {
+        if (busy || settled) return;
+        busy = true;
+        tick += 1;
+        const run = async () => {
+          try {
+            // 2a) did someone join MY challenge?
+            const b = await getBattle(opened.id);
+            if (b?.status === 'active' && b.questions?.length) {
+              settled = true;
+              enterDuel(b);
+              return;
+            }
+            if (b?.status === 'finished') {
+              // the battle ended before we entered (joiner forfeited / ghost abort):
+              // show the real result instead of searching forever
+              settled = true;
+              if (pollRef.current) clearInterval(pollRef.current);
+              pollRef.current = null;
+              battleIdRef.current = null;
+              if (b.aborted) {
+                toast('Ulanish muammosi tufayli jang bekor qilindi — reyting o‘zgarmadi', 'warn');
+                setPhase('lobby');
+              } else {
+                finish(b.meScore ?? 0, b.oppScore ?? 0, 'player', b.oppName, b.myDelta ?? 0);
+              }
+              return;
+            }
+            // 2b) every other tick: scan the open list and cross-join another searcher
+            if (tick % 2 === 0) {
+              const others = await listChallenges();
+              for (const c of others) {
+                if (c.id === opened.id || tried.has(c.id)) continue;
+                tried.add(c.id);
+                try {
+                  const joined = await joinChallenge(c.id, me);
+                  if (joined.questions?.length) {
+                    void cancelChallenge(opened.id); // my now-redundant open challenge — remove it
+                    settled = true;
+                    enterDuel(joined);
+                    return;
+                  }
+                } catch {
+                  /* someone else took it — try the next one */
+                }
+              }
+            }
+            // 2c) give up after the timeout — never poll for the rest of the session
+            if (Date.now() - startedAt > SEARCH_TIMEOUT_MS) {
+              settled = true;
+              if (pollRef.current) clearInterval(pollRef.current);
+              pollRef.current = null;
+              battleIdRef.current = null;
+              await cancelChallenge(opened.id);
+              toast('Bu qatorda raqib topilmadi — keyinroq yana urinib ko‘ring', 'warn');
+              setPhase('lobby');
+            }
+          } catch {
+            /* keep polling */
+          } finally {
+            busy = false;
+          }
+        };
+        void run();
+      }, 3000);
+    } catch (e) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      battleIdRef.current = null;
+      const kind = diagOf(e);
+      if (kind === 'not_configured') setOnline(false);
+      setDiag(kind); // the lobby shows the exact reason + fix
+      // Never dead-end: matchmaking failed, so fall back to a Lingo AI battle.
+      toast(
+        kind === 'unauthorized'
+          ? 'Raqib topish uchun ilovani bot ichida oching — avval Lingo AI bilan jang!'
+          : 'Raqib topish hozir ishlamadi — Lingo AI bilan jang boshlanadi!',
+        'warn',
+      );
+      startAi();
+    }
+  }, [rating, myName, myAvatar, s.quizHistory, level, startAi, withLevels, finish]);
+
+  const cancelSearch = useCallback(async () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    const id = battleIdRef.current;
+    if (id) await cancelChallenge(id);
+    setPhase('lobby');
+  }, []);
+
+  // ===== Finish paths =====
 
   const onDuelFinish = useCallback(
     (you: number, them: number | null) => {
@@ -948,6 +1019,11 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
   const syncRef = useRef<LiveSync | null>(null);
   const pickRef = useRef<number | null>(null);
   const inflightRef = useRef(false);
+  // FIX (lost answers): a failed answer POST (8s timeout, flaky mobile network) used to
+  // swallow the pick forever — the answer never reached the server, the pick stayed locked
+  // and the round was lost despite a correct tap. The pending answer is now retried by the
+  // poll loop until the server records it or the round moves on.
+  const pendingRef = useRef<{ round: number; choice: number; correct: boolean; t: number } | null>(null);
   const offsetRef = useRef(0); // serverNow - clientNow, for a shared clock
   const prevRef = useRef<{ round: number; mine: number; theirs: number } | null>(null);
 
@@ -992,11 +1068,32 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
         }
         pickRef.current = null;
         setPick(null);
+        pendingRef.current = null; // a pending answer is moot once the round has moved on
       }
       prevRef.current = { round: v.round, mine, theirs };
     },
     [me, onFinish, onScore, onLegacy, oppName, questions],
   );
+
+  /** Sends (or re-sends) the pending answer until the server confirms it. */
+  const sendAnswer = useCallback(async () => {
+    const p = pendingRef.current;
+    if (!p || finishedRef.current) return;
+    try {
+      const r = await answerPvp(battleId, p.round, p.correct, p.t, p.choice);
+      if (finishedRef.current) return;
+      if (isLegacySync(r)) {
+        pendingRef.current = null; // pre-live battle row — the legacy flow takes over
+        return;
+      }
+      // Recorded when the round moved past it (my correct answer / both wrong) or my answer
+      // is on the row; otherwise (same round, still no answer of mine) keep it pending.
+      if (r.status === 'finished' || r.round !== p.round || r.mine != null) pendingRef.current = null;
+      apply(r);
+    } catch {
+      setErrs((e) => e + 1); // network hiccup — the poll loop retries
+    }
+  }, [battleId, apply]);
 
   // Round-state poll — also the heartbeat that keeps me "online" on the server.
   useEffect(() => {
@@ -1005,8 +1102,14 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       if (inflightRef.current || finishedRef.current) return;
       inflightRef.current = true;
       try {
-        const v = await syncPvp(battleId);
-        if (alive) apply(v);
+        if (pendingRef.current) {
+          // my answer is still unconfirmed — resend it instead of a plain poll
+          // (the answer response carries the same fresh live state a sync would)
+          await sendAnswer();
+        } else {
+          const v = await syncPvp(battleId);
+          if (alive) apply(v);
+        }
       } catch {
         if (alive) setErrs((e) => e + 1);
       } finally {
@@ -1021,7 +1124,7 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       clearInterval(poll);
       clearInterval(tick);
     };
-  }, [battleId, apply]);
+  }, [battleId, apply, sendAnswer]);
 
   const q = sync ? questions[Math.min(sync.round, questions.length - 1)] : undefined;
 
@@ -1040,11 +1143,8 @@ function LiveDuel({ battleId, me, questions, oppName, oppId, oppAvatar, onFinish
       playSfx('wrong');
     }
     const t = Math.max(0, Math.round(nowS() - (v.roundStart ?? nowS())));
-    void answerPvp(battleId, v.round, correct, t, i)
-      .then((r) => {
-        if (!finishedRef.current) apply(r);
-      })
-      .catch(() => setErrs((e) => e + 1));
+    pendingRef.current = { round: v.round, choice: i, correct, t };
+    void sendAnswer();
   }
 
   if (!sync || !q) {

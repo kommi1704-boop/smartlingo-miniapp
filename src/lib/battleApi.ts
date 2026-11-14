@@ -68,18 +68,29 @@ export interface BattleMe {
   avatar?: string;
 }
 
-let probeCache: boolean | null = null;
+let probeCache: { value: boolean; at: number } | null = null;
+// A FALSE probe used to be cached for the whole session: one network hiccup at app open
+// ("unreachable") disabled the "Raqib topish" button until a full reload. Negative results
+// now expire after 15s so the lobby recovers by itself; a positive result stays cached.
+const PROBE_NEG_TTL_MS = 15_000;
+
+function cachedProbe(): boolean | null {
+  if (!probeCache) return null;
+  if (probeCache.value) return true;
+  return Date.now() - probeCache.at < PROBE_NEG_TTL_MS ? false : null;
+}
 
 /** True when the battle API + database are configured on the server. */
 export async function battleAvailable(force = false): Promise<boolean> {
-  if (probeCache !== null && !force) return probeCache;
+  const cached = cachedProbe();
+  if (cached !== null && !force) return cached;
   try {
     const r = await fetchT(`${BASE}/api/battle`, { headers: { Accept: 'application/json' } }, 4000);
-    probeCache = r.ok ? (await r.json())?.enabled === true : false;
+    probeCache = { value: r.ok ? (await r.json())?.enabled === true : false, at: Date.now() };
   } catch {
-    probeCache = false;
+    probeCache = { value: false, at: Date.now() };
   }
-  return probeCache;
+  return probeCache.value;
 }
 
 /** Probe + the exact reason when offline (missing env names come from the server's `why` field). */
@@ -90,19 +101,21 @@ export interface BattleProbe {
 }
 
 export async function battleProbe(force = false): Promise<BattleProbe> {
+  const cached = cachedProbe();
+  if (cached !== null && !force) return { enabled: cached, missing: cached ? null : ['cached_offline'] };
   try {
     const r = await fetchT(`${BASE}/api/battle`, { headers: { Accept: 'application/json' } }, 4000);
     if (!r.ok) {
       const missing = r.status === 404 ? ['deploy_404'] : [`http_${r.status}`];
-      probeCache = false;
+      probeCache = { value: false, at: Date.now() };
       return { enabled: false, missing };
     }
     const j = (await r.json()) as { enabled?: boolean; why?: { missing?: string[] } | null };
-    probeCache = j.enabled === true;
-    if (probeCache) return { enabled: true, missing: null };
+    probeCache = { value: j.enabled === true, at: Date.now() };
+    if (probeCache.value) return { enabled: true, missing: null };
     return { enabled: false, missing: j.why?.missing?.length ? j.why.missing : ['enabled_false'] };
   } catch {
-    probeCache = false;
+    probeCache = { value: false, at: Date.now() };
     return { enabled: false, missing: ['unreachable'] };
   }
 }
@@ -226,5 +239,5 @@ export interface Leaderboards {
 }
 
 export async function fetchLeaderboard(): Promise<Leaderboards> {
-  return json(await fetch(`${BASE}/api/leaderboard`, { headers: headers() }));
+  return json(await fetchT(`${BASE}/api/leaderboard`, { headers: headers() }, 10_000));
 }
