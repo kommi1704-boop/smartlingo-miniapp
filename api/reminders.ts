@@ -26,8 +26,8 @@
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, WEBAPP_URL, SUPABASE_URL,
 //                    SUPABASE_SERVICE_ROLE_KEY, optional CRON_SECRET.
-import { dispatch, fetchPrefsMap, recordSkip, type DbCtx } from './_lib/notify';
-import { uztDay } from './progress';
+import { dispatch, fetchPrefsMap, recordSkip, type DbCtx } from './_lib/notify.js';
+import { uztDay } from './progress.js';
 
 interface Req {
   method?: string;

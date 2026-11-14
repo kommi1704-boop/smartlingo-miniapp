@@ -26,7 +26,7 @@
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Schema: supabase/schema.sql adds `alter table battles add column if not exists live jsonb`.
 import crypto from 'node:crypto';
-import { dispatch } from './_lib/notify';
+import { dispatch } from './_lib/notify.js';
 
 interface Quiz {
   id: string;

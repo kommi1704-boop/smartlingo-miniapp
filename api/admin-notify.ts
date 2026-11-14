@@ -22,9 +22,9 @@
 // Env (server only): TELEGRAM_BOT_TOKEN, WEBAPP_URL, SUPABASE_URL,
 //                    SUPABASE_SERVICE_ROLE_KEY, ADMIN_TELEGRAM_IDS.
 import crypto from 'node:crypto';
-import { adminIdsFromEnv } from './bot';
-import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify';
-import { uztDay } from './progress';
+import { adminIdsFromEnv } from './bot.js';
+import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify.js';
+import { uztDay } from './progress.js';
 
 export const AUDIENCES = ['all', 'active', 'inactive'] as const;
 export type Audience = (typeof AUDIENCES)[number];
