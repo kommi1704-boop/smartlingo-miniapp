@@ -1,5 +1,5 @@
 import { onTgEvent, setTgColors, tgColorScheme } from './telegram';
-import type { BgStyle, Settings } from '../types';
+import type { AccentStyle, BgStyle, Settings } from '../types';
 
 export function isDark(theme: Settings['theme']): boolean {
   if (theme === 'dark') return true;
@@ -21,10 +21,32 @@ export const BACKGROUNDS: { id: BgStyle; name: string; preview: string }[] = [
 
 const BG_IDS = new Set(BACKGROUNDS.map((b) => b.id));
 
-export function applyTheme(theme: Settings['theme'], bg: string = 'doodle'): void {
+/** The selectable accent themes (Settings → "Mavzu rangi"). CSS lives in index.css (data-accent). */
+export const ACCENTS: { id: AccentStyle; name: string; swatch: string }[] = [
+  { id: 'green', name: 'Yashil', swatch: '#58cc83' },
+  { id: 'pink', name: 'Pushti', swatch: 'oklch(71.8% 0.202 349.761)' },
+  { id: 'red', name: 'Qizil', swatch: 'oklch(70.4% 0.191 22.216)' },
+  { id: 'blue', name: 'Ko‘k', swatch: 'oklch(74.6% 0.16 232.661)' },
+  { id: 'purple', name: 'Binafsha', swatch: 'oklch(70.2% 0.183 293.541)' },
+  { id: 'orange', name: 'To‘q sariq', swatch: 'oklch(75% 0.183 55.934)' },
+];
+
+const ACCENT_IDS = new Set(ACCENTS.map((a) => a.id));
+
+/** Applies the accent theme. "green" (default) sets no attribute, so the original
+ *  palette in index.css stays pixel-identical. Shades override Tailwind's emerald
+ *  and teal vars, so every emerald/teal utility class recolours at once. */
+export function applyAccent(accent?: string): void {
+  const html = document.documentElement;
+  if (accent && ACCENT_IDS.has(accent as AccentStyle) && accent !== 'green') html.dataset.accent = accent;
+  else delete html.dataset.accent;
+}
+
+export function applyTheme(theme: Settings['theme'], bg: string = 'doodle', accent?: string): void {
   const dark = isDark(theme);
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.dataset.bg = BG_IDS.has(bg as BgStyle) ? bg : 'doodle';
+  applyAccent(accent);
   const color = dark ? '#0b1020' : '#f3f5fc';
   setTgColors(color);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -35,7 +57,7 @@ export function applyTheme(theme: Settings['theme'], bg: string = 'doodle'): voi
 export function watchTheme(getSettings: () => Settings): () => void {
   const handler = () => {
     const s = getSettings();
-    applyTheme(s.theme, s.bg);
+    applyTheme(s.theme, s.bg, s.accent);
   };
   const off = onTgEvent('themeChanged', handler);
   const mq = window.matchMedia?.('(prefers-color-scheme: dark)');

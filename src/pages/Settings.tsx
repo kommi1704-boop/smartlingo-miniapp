@@ -8,7 +8,7 @@ import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/
 import { isTelegram, shareToTelegram } from '../lib/telegram';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { BACKGROUNDS } from '../lib/theme';
+import { ACCENTS, BACKGROUNDS } from '../lib/theme';
 import { VoicePicker } from '../components/VoicePicker';
 import { MINUTES } from '../data/options';
 import { toast } from '../store/ui';
@@ -139,6 +139,31 @@ export function Settings() {
               ))}
             </div>
             <p className="mt-1 text-xs text-muted">“Avto” Telegram yoki qurilma mavzusiga mos keladi.</p>
+          </div>
+          <div className="py-2.5">
+            <p className="font-semibold">Mavzu rangi</p>
+            <p className="mt-0.5 text-xs text-muted">Butun interfeys — tugmalar, XP, maskot — tanlangan rangga o‘zgaradi.</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {ACCENTS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => updateSettings({ accent: a.id })}
+                  aria-pressed={s.settings.accent === a.id}
+                  aria-label={a.name}
+                  className={cx(
+                    'flex flex-col items-center gap-1.5 rounded-2xl border-2 p-2 transition',
+                    s.settings.accent === a.id ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/10' : 'border-line hover:border-sky-300',
+                  )}
+                >
+                  <span
+                    className="h-10 w-10 rounded-full border border-line shadow-inner"
+                    style={{ background: a.swatch }}
+                  />
+                  <span className="text-xs font-semibold">{a.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="py-2.5">
             <p className="font-semibold">Orqa fon</p>

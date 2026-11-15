@@ -321,9 +321,13 @@ export interface BattleState {
 
 export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid';
 
+/** Accent theme: recolours the whole interface (Settings → "Mavzu rangi"). */
+export type AccentStyle = 'green' | 'pink' | 'red' | 'blue' | 'purple' | 'orange';
+
 export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   bg: BgStyle; // app backdrop style (Settings → "Orqa fon")
+  accent: AccentStyle; // interface accent colour (Settings → "Mavzu rangi")
   dailyWordGoal: number;
   haptics: boolean;
   sound: boolean; // short feedback sounds (correct / wrong / level-up)
