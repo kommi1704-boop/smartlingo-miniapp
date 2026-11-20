@@ -283,7 +283,7 @@ function Cards({
         <Button variant="ghost" size="sm" onClick={() => act(() => markForReview(w.id))}>🔖 Takrorlashga</Button>
         <Button variant="ghost" size="sm" onClick={() => act(() => markLearned(w.id))}>✅ O‘rganildi</Button>
       </div>
-      <p className="mt-3 text-center text-xs text-muted">“Bilaman” — so‘z keyinroq (1, 2, 4, 8, 16 kundan so‘ng) qayta so‘raladi. “Bilmayman” — ertaga.</p>
+      <p className="mt-3 text-center text-xs text-muted">⭐ XP endi Test va Juftlash bo‘limlarida isbotlangan javoblar uchun beriladi. “O‘rganildi” uchun testda 2 marta to‘g‘ri javob kerak.</p>
     </div>
   );
 }
@@ -375,7 +375,7 @@ function VocabQuiz({ pool }: { pool: VocabWord[] }) {
       <Card className="text-center">
         <div className="text-5xl">📝</div>
         <p className="mt-2 text-lg font-bold">So‘zlar testi</p>
-        <p className="mt-1 text-sm text-muted">{questions.length} ta savol · tanlangan daraja va mavzu bo‘yicha. Javoblaringiz takrorlash jadvaliga ta’sir qiladi.</p>
+        <p className="mt-1 text-sm text-muted">{questions.length} ta savol · to‘g‘ri javoblar uchun ⭐ XP beriladi (kuniga +30 XP gacha). Javoblaringiz takrorlash jadvaliga ta’sir qiladi.</p>
         <Button className="mt-4" onClick={() => setStarted(true)}>Testni boshlash</Button>
       </Card>
     );
@@ -427,7 +427,9 @@ function Matching({ pool }: { pool: VocabWord[] }) {
         setDone(nd);
         setSelL(null); setSelR(null);
         if (!missed.includes(l)) reviewWord(l, true, { silent: true });
-        if (nd.length === pairs.length) setXp(recordMatching(errors, 'Juftlash o‘yini', pairs.length));
+        if (nd.length === pairs.length) {
+          void recordMatching(errors, 'Juftlash o‘yini', pairs.length, pairs.map((w) => ({ id: w.id, known: !missed.includes(w.id), ctx: 'match' as const }))).then(setXp);
+        }
       } else {
         haptic('error');
         setErrors((e) => e + 1);

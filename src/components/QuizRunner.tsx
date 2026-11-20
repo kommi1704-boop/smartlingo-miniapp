@@ -45,7 +45,8 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
       setIdx(idx + 1);
       setPicked(null);
     } else {
-      setOutcome(finishQuiz({ kind, title, items, lessonKey }));
+      // finishQuiz is async: XP is confirmed by the server ledger (a moment at most)
+      void finishQuiz({ kind, title, items, lessonKey }).then(setOutcome);
     }
   }
 

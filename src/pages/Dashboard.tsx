@@ -1,6 +1,6 @@
 // SmartLingo Home — premium dark restructure.
-// Hierarchy: greeting → continue learning → Learning Universe teaser →
-// daily challenge → quick access → stats → recent activity.
+// Hierarchy: greeting → Today's Discovery → continue learning → weekly championship →
+// Learning Universe teaser → daily challenge → quick access → stats → recent activity.
 // Every number is derived from real state / real catalogs — nothing fake.
 import { useMemo } from 'react';
 import { A, navigate } from '../lib/router';
@@ -15,6 +15,7 @@ import { Icon } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
 import { LingoBubble, Mascot, type Mood } from '../components/Mascot';
 import { CountUp, DotChart, StreakWeek } from '../components/Alive';
+import { ChampionshipCard, DiscoveryCard } from '../components/DailyExtras';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
@@ -147,6 +148,9 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* ---------- Today's Discovery (Phase 2, server-cached, +10 XP) ---------- */}
+      <DiscoveryCard />
+
       {/* ---------- Daily plan (prominent) ---------- */}
       <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-bold text-[#2fa763]">Hammasi →</A>}>
         <div className="play-card wash-green rise-in !border-[#bfe9cf] p-4">
@@ -178,6 +182,9 @@ export function Dashboard() {
         </div>
         <StreakWeek activity={s.activity} />
       </div>
+
+      {/* ---------- Weekly Championship preview (Phase 5) ---------- */}
+      <ChampionshipCard />
 
       {/* ---------- AI Tutor featured card ---------- */}
       <A to="/tutor" className="tile tile-purple rise-in mt-4 flex items-center gap-3 rounded-[26px] p-4" data-testid="home-tutor">

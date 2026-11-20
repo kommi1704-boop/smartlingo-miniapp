@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../store/store';
-import { buyAvatar, buyFrame, buyFreeze, buyNameStyle, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipNameColor, equipNameFx, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame } from '../store/actions';
+import { buyAvatar, buyBg, buyFrame, buyFreeze, buyNameStyle, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipNameColor, equipNameFx, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame } from '../store/actions';
 import {
-  CHEST_PRICE, FREEZE_PRICE, FRAME_DAYS, FRAMES, FREE_AVATARS, NAME_COLORS, NAME_FXS, NAME_STYLE_DAYS, PREMIUM_AVATARS, TITLES, XP_BOOST_HOURS, XP_BOOST_PRICE,
+  BG_ITEMS, CHEST_PRICE, FREEZE_PRICE, FRAME_DAYS, FRAMES, FREE_AVATARS, NAME_COLORS, NAME_FXS, NAME_STYLE_DAYS, PREMIUM_AVATARS, TITLES, XP_BOOST_HOURS, XP_BOOST_PRICE,
   chestRewardText, nameColorById, nameFxById, nameStyleClasses, questStateOf, todaysQuests,
   type ChestReward, type FrameItem, type NameColorItem, type NameFxItem,
 } from '../lib/shop';
@@ -407,6 +407,27 @@ export function Shop() {
                 </Button>
               </div>
             </Card>
+
+            {/* Store 2.0: premium profile backgrounds */}
+            {BG_ITEMS.map((b) => {
+              const owned = isOwnedActive(b.id);
+              const active = s.settings.bg === b.style;
+              return (
+                <Card key={b.id} className="flex items-center gap-3.5">
+                  <span className="h-12 w-12 shrink-0 rounded-2xl border border-line" style={{ background: b.style === 'aurora' ? 'linear-gradient(135deg,#a5f3fc,#818cf8 45%,#e879f9)' : 'linear-gradient(160deg,#c4b5fd,#818cf8 50%,#38bdf8)' }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold">{b.name} <Pill tone="violet" className="ml-1">premium</Pill></p>
+                    <p className="text-xs text-muted">{owned ? 'Sizniki — doimiy.' : 'Doimiy ochiladigan chiroyli orqa fon.'}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <CoinPill price={b.price} />
+                    <Button size="sm" className="mt-2" disabled={!owned && s.coins.balance < b.price} onClick={() => buyBg(b)}>
+                      {owned ? (active ? 'Tanlangan' : 'Tanlash') : 'Sotib olish'}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
 
             {/* Streak freeze */}
             <Card className="flex items-center gap-3.5">

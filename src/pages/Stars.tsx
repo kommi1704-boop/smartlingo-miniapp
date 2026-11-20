@@ -141,7 +141,7 @@ export function Stars() {
           <Section title="🪙 Coin paketlari" action={<Pill tone="indigo">⭐ Stars</Pill>}>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {PACKAGES.map((p) => {
-                const left = p.maxPerUser ? p.tinyLeft ?? tinyLeft ?? 0 : undefined;
+                const left = p.maxPerUser ? p.tinyLeft ?? tinyLeft ?? p.maxPerUser : undefined; // unknown != sold out (bug fix)
                 const soldOut = p.maxPerUser !== undefined && left !== undefined && left <= 0;
                 return (
                   <Card key={p.id} className={cx('relative !p-4 text-center', p.popular && '!border-amber-400')}>

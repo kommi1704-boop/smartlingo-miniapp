@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useEffect, useState, type ReactNode } from 'react';
 import type { Level, Profile, Skill, SkillAssessment } from '../types';
 import { LEVELS } from '../types';
 import { ACTIVITY_OPTIONS, GOALS, LEVEL_DESC, MINUTES, SELF_LEVELS } from '../data/options';
@@ -6,7 +6,8 @@ import {
   LISTENING_PROBES, SPEAKING_STATEMENTS, WRITING_PROBES,
   listeningProbeResult, speakingSelfResult, writingProbeResult,
 } from '../data/placement-skills';
-import { evaluate, levelGroup, placementOrderFor, PASS_MARK, sectionLabel, type PlacementAnswer, type Section } from '../lib/assessment';
+import { sectionLabel, type Section } from '../lib/assessment';
+import { xpApi, XpUnavailable, type PlacementResultDto } from '../lib/xpApi';
 import { computeSkillLevels, SKILL_EMOJI, SKILL_LABEL, confidenceLabel, sourceLabel } from '../lib/skills';
 import { checkText } from '../lib/writingCheck';
 import { parseTranscript, playLines, stopSpeaking, ttsAvailable } from '../lib/tts';
@@ -255,6 +256,11 @@ function finishWithoutTest() {
 }
 
 // ---------------------------------------------------------------- Assessment
+//
+// Phase 1: the placement test is SERVER-driven now — the answer key never
+// ships to the client, the adaptive walk and grading are deterministic on the
+// server (api/xp.ts → _lib/placement-bank.ts), attempts are stored in
+// placement_history and the +20 XP is ledgered once per day.
 export function Assessment() {
   const existing = useApp().profile;
   const draft: Draft | null = useMemo(
@@ -262,83 +268,131 @@ export function Assessment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  // Adaptive: the test starts one group below the self-declared level and climbs until a group fails.
-  const order = useMemo(() => placementOrderFor(draft?.selfLevel ?? 'A2'), [draft]);
+  const [order, setOrder] = useState<{ id: string; level?: string; section: string; passage?: string; q: string; options: string[] }[]>([]);
   const [idx, setIdx] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<PlacementAnswer[]>([]);
+  const [answers, setAnswers] = useState<{ id: string; picked: number }[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [err, setErr] = useState(false);
 
   if (!draft) {
     navigate('/onboarding', { replace: true });
     return null;
   }
 
-  const q = order[idx];
-
-  function commit(picked: number) {
-    const all = [...answers, { q, picked }];
-    // end of a level group: stop early when the group is failed
-    const group = levelGroup(q.level);
-    const done = all.filter((a) => a.q.level === q.level);
-    const lastInGroup = done.length === group.length;
-    const failed = lastInGroup && done.filter((a) => a.picked === a.q.answer).length < PASS_MARK;
-    if (failed || idx + 1 >= order.length) {
-      const r = evaluate(all, draft!.selfLevel);
-      const askedBy = { vocabulary: r.bySection.vocabulary.asked, grammar: r.bySection.grammar.asked, reading: r.bySection.reading.asked };
-      recordPlacement(r.total, r.asked, r.level);
-      saveProfile(buildProfile(draft!, r.level, { vocabulary: r.bySection.vocabulary.correct, grammar: r.bySection.grammar.correct, reading: r.bySection.reading.correct, total: r.total, max: r.asked, askedBy, confidence: r.confidence }));
-      // per-skill estimates: the MCQ placement measures vocabulary, grammar and reading;
-      // listening / writing / speaking stay unmeasured until the optional probes are taken.
-      const perSkill = (sec: Section): SkillAssessment => ({
-        level: r.level,
-        confidence: r.bySection[sec].asked >= 2 ? 'medium' : 'low',
-        source: 'placement',
-        accuracy: r.bySection[sec].asked ? r.bySection[sec].correct / r.bySection[sec].asked : undefined,
-        updatedAt: today(),
-      });
-      saveSkillLevels({ vocabulary: perSkill('vocabulary'), grammar: perSkill('grammar'), reading: perSkill('reading') });
-      navigate('/result', { replace: true });
-      return;
+  async function step(list: { id: string; picked: number }[], last?: { id: string; picked: number }) {
+    const all = last ? [...list, last] : list;
+    setBusy(true);
+    setErr(false);
+    try {
+      const resp = await xpApi.placementNext(draft!.selfLevel, all);
+      if (resp.done) finish(resp.result, resp.granted);
+      else {
+        setOrder(resp.questions);
+        setAnswers(all);
+        setIdx(0);
+        setSel(null);
+      }
+    } catch (e) {
+      setErr(!(e instanceof XpUnavailable) ? true : true); // both need the same UI
     }
-    setAnswers(all);
-    setIdx(idx + 1);
-    setSel(null);
+    setBusy(false);
   }
 
+  useEffect(() => {
+    void step([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function finish(r: PlacementResultDto, granted: number) {
+    const askedBy = { vocabulary: r.bySection.vocabulary?.asked ?? 0, grammar: r.bySection.grammar?.asked ?? 0, reading: r.bySection.reading?.asked ?? 0 };
+    recordPlacement(r.total, r.asked, r.level, granted);
+    saveProfile(
+      buildProfile(draft!, r.level as Level, {
+        vocabulary: r.bySection.vocabulary?.correct ?? 0,
+        grammar: r.bySection.grammar?.correct ?? 0,
+        reading: r.bySection.reading?.correct ?? 0,
+        total: r.total,
+        max: r.asked,
+        askedBy,
+        confidence: r.confidence,
+      }),
+    );
+    const perSkill = (sec: Section): SkillAssessment => {
+      const s = r.skills.find((x) => x.section === sec);
+      return {
+        level: r.level as Level,
+        confidence: (s?.asked ?? 0) >= 2 ? 'medium' : 'low',
+        source: 'placement',
+        accuracy: (s?.asked ?? 0) > 0 ? s!.accuracy : undefined,
+        updatedAt: today(),
+      };
+    };
+    saveSkillLevels({ vocabulary: perSkill('vocabulary'), grammar: perSkill('grammar'), reading: perSkill('reading') });
+    navigate('/result', { replace: true });
+  }
+
+  function commit(picked: number) {
+    const q = order[idx];
+    if (!q) return;
+    const last = { id: q.id, picked };
+    if (idx + 1 >= order.length) void step(answers, last); // end of group -> server decides
+    else {
+      setAnswers([...answers, last]);
+      setIdx(idx + 1);
+      setSel(null);
+    }
+  }
+
+  const q = order[idx];
+
   return (
-    <Frame step={idx + 1} total={order.length} title="Daraja aniqlash testi" subtitle={`${sectionLabel(q.section as Section)} · javob to‘g‘ri/noto‘g‘ri ekani oxirida ko‘rsatiladi`} onBack={() => navigate('/onboarding')}>
-      <div className="slide-up" key={q.id}>
-        {q.passage && (
-          <Card className="mb-3 bg-surface2 !shadow-none">
-            <p className="text-xs font-bold uppercase tracking-wide text-muted">Matn</p>
-            <p className="mt-1 text-[15px] leading-relaxed">{q.passage}</p>
-          </Card>
-        )}
-        <p className="text-lg font-bold leading-snug">{q.q}</p>
-        <div className="mt-4 grid gap-2.5" role="radiogroup" aria-label="Javob variantlari">
-          {q.options.map((o, i) => (
-            <button
-              key={i}
-              type="button"
-              role="radio"
-              aria-checked={sel === i}
-              onClick={() => setSel(i)}
-              className={cx(
-                'rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-medium transition',
-                sel === i ? 'border-sky-600 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
-              )}
-            >
-              {o}
-            </button>
-          ))}
+    <Frame title="Daraja aniqlash testi" subtitle={`Kalibrlangan savollar · javob to‘g‘ri/noto‘g‘ri ekani oxirida ko‘rsatiladi`} onBack={() => navigate('/onboarding')}>
+      {err ? (
+        <Card>
+          <Notice tone="warn">Testni yuklash muvaffaqiyatsiz — serverga ulanolmadik. Internetni tekshirib qayta urinib ko‘ring (javoblar serverda himoyalanadi).</Notice>
+          <Button className="mt-3" onClick={() => void step(answers)}>Qayta urinish</Button>
+        </Card>
+      ) : busy || !q ? (
+        <Card className="text-center">
+          <div className="text-5xl">⏳</div>
+          <p className="mt-2 font-bold">Savollar tayyorlanmoqda…</p>
+        </Card>
+      ) : (
+        <div className="slide-up" key={q.id}>
+          <div className="mb-2 text-sm font-bold text-muted">Savol {answers.length + idx + 1}</div>
+          {q.passage && (
+            <Card className="mb-3 bg-surface2 !shadow-none">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">Matn</p>
+              <p className="mt-1 text-[15px] leading-relaxed">{q.passage}</p>
+            </Card>
+          )}
+          <p className="text-lg font-bold leading-snug">{q.q}</p>
+          <div className="mt-4 grid gap-2.5" role="radiogroup" aria-label="Javob variantlari">
+            {q.options.map((o, i) => (
+              <button
+                key={i}
+                type="button"
+                role="radio"
+                aria-checked={sel === i}
+                onClick={() => setSel(i)}
+                className={cx(
+                  'rounded-2xl border-2 px-4 py-3 text-left text-[15px] font-medium transition',
+                  sel === i ? 'border-sky-600 bg-sky-50 dark:bg-sky-500/15' : 'border-line bg-surface hover:border-sky-300',
+                )}
+              >
+                {o}
+              </button>
+            ))}
+          </div>
+          <div className="mt-6 flex items-center gap-3">
+            <Button variant="secondary" disabled={busy} onClick={() => commit(-1)}>Bilmayman</Button>
+            <Button className="flex-1" disabled={sel === null || busy} onClick={() => sel !== null && commit(sel)}>
+              {idx + 1 >= order.length ? 'Yakunlash' : 'Keyingi'}
+            </Button>
+          </div>
         </div>
-        <div className="mt-6 flex items-center gap-3">
-          <Button variant="secondary" onClick={() => commit(-1)}>Bilmayman</Button>
-          <Button className="flex-1" disabled={sel === null} onClick={() => sel !== null && commit(sel)}>
-            {idx + 1 >= order.length ? 'Yakunlash' : 'Keyingi'}
-          </Button>
-        </div>
-      </div>
+      )}
     </Frame>
   );
 }

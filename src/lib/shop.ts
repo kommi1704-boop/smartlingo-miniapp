@@ -29,6 +29,8 @@ export const FRAMES: FrameItem[] = [
   { id: 'frame-circuit', name: 'Mikrosxema', price: 300, tier: 'premium', cls: 'frame-circuit' },
   { id: 'frame-frost', name: 'Ayoz', price: 300, tier: 'premium', cls: 'frame-frost' },
   { id: 'frame-fire', name: 'Olov', price: 380, tier: 'premium', cls: 'frame-fire' },
+  { id: 'frame-aurora', name: 'Aurora', price: 420, tier: 'premium', cls: 'frame-aurora' },
+  { id: 'frame-royal', name: 'Shoh ramka', price: 450, tier: 'premium', cls: 'frame-royal' },
 ];
 
 export const frameById = (id?: string): FrameItem | undefined => FRAMES.find((f) => f.id === id);
@@ -80,6 +82,9 @@ export const PREMIUM_AVATARS: AvatarItem[] = [
   { id: 'av-wizard', emoji: '🧙', name: 'Sehrgar', price: 120 },
   { id: 'av-dragon', emoji: '🐉', name: 'Ajdar', price: 150 },
   { id: 'av-unicorn', emoji: '🦄', name: 'Bir shox', price: 150 },
+  { id: 'av-owl', emoji: '🦉', name: 'Bilim burgasi', price: 120 },
+  { id: 'av-dino', emoji: '🦖', name: 'Dino', price: 180 },
+  { id: 'av-hero', emoji: '🦸', name: 'Qahramon', price: 200 },
 ];
 
 export const avatarById = (id?: string): AvatarItem | undefined => PREMIUM_AVATARS.find((a) => a.id === id);
@@ -97,6 +102,8 @@ export const TITLES: TitleItem[] = [
   { id: 'title-scholar', name: '📚 Bilimdon', price: 150 },
   { id: 'title-champion', name: '🏅 Kelajak chempioni', price: 200 },
   { id: 'title-legend', name: '👑 Afsonaviy o‘quvchi', price: 350 },
+  { id: 'title-explorer', name: '🧭 Kashfiyotchi', price: 150 },
+  { id: 'title-sensei', name: '🎓 Sensei ustoz', price: 180 },
 ];
 
 export const titleById = (id?: string): TitleItem | undefined => TITLES.find((t) => t.id === id);
@@ -226,6 +233,7 @@ export const NAME_COLORS: NameColorItem[] = [
   { id: 'nc-neon', name: 'Neon', price: 75, cls: 'nc-neon' },
   { id: 'nc-gold', name: 'Oltin', price: 75, cls: 'nc-gold' },
   { id: 'nc-rainbow', name: 'Kamalak', price: 100, cls: 'nc-rainbow' },
+  { id: 'nc-royal', name: 'Qiroyiy', price: 100, cls: 'nc-royal' },
 ];
 
 export interface NameFxItem {
@@ -240,6 +248,7 @@ export const NAME_FXS: NameFxItem[] = [
   { id: 'nfx-shadow', name: 'Uzun soya', price: 75, cls: 'nfx-shadow' },
   { id: 'nfx-underline', name: 'Chizgi', price: 75, cls: 'nfx-underline' },
   { id: 'nfx-neon', name: 'Neon nur', price: 75, cls: 'nfx-neon' },
+  { id: 'nfx-glow', name: 'Nur halosi', price: 100, cls: 'nfx-glow' },
 ];
 
 export const nameColorById = (id?: string): NameColorItem | undefined => NAME_COLORS.find((c) => c.id === id);
@@ -260,3 +269,22 @@ export function nameStyleClasses(
   if (fx) parts.push(fx);
   return parts.join(' ');
 }
+
+
+// ===== Store 2.0: premium profile backgrounds + champion cosmetic =====
+
+export const CHAMPION_FRAME_ID = 'frame-champion'; // weekly championship, place 1 — never purchasable
+
+export interface BgItem {
+  id: string; // "bg-aurora" — ownership id + the BgStyle it unlocks
+  name: string;
+  price: number;
+  style: 'aurora' | 'nebula';
+}
+
+export const BG_ITEMS: BgItem[] = [
+  { id: 'bg-aurora', name: 'Aurora foni', price: 250, style: 'aurora' },
+  { id: 'bg-nebula', name: 'Nebula foni', price: 250, style: 'nebula' },
+];
+
+export const bgItemByStyle = (style: string): BgItem | undefined => BG_ITEMS.find((b) => b.style === style);

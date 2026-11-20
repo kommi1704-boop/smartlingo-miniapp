@@ -17,6 +17,8 @@ export const BACKGROUNDS: { id: BgStyle; name: string; preview: string }[] = [
   { id: 'sunset', name: 'Estetik', preview: 'linear-gradient(160deg,#fed7aa 0%,#fbcfe8 45%,#c4b5fd 100%)' },
   { id: 'mint', name: 'Dengiz', preview: 'linear-gradient(160deg,#99f6e4 0%,#a5f3fc 50%,#bfdbfe 100%)' },
   { id: 'grid', name: 'Daftar', preview: 'repeating-linear-gradient(0deg,#eef2ff 0 5px,#dbeafe 5px 6px),repeating-linear-gradient(90deg,transparent 0 5px,rgba(99,102,241,.25) 5px 6px)' },
+  { id: 'aurora', name: 'Aurora ✨', preview: 'linear-gradient(135deg,#a5f3fc 0%,#818cf8 45%,#e879f9 100%)' },
+  { id: 'nebula', name: 'Nebula ✨', preview: 'linear-gradient(160deg,#c4b5fd 0%,#818cf8 50%,#38bdf8 100%)' },
 ];
 
 const BG_IDS = new Set(BACKGROUNDS.map((b) => b.id));

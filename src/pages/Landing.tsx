@@ -35,7 +35,7 @@ const BENEFITS = [
 const FAQ: { q: string; a: string }[] = [
   { q: 'Bu rasmiy CEFR imtihonimi?', a: 'Yo‘q. Daraja testi — qisqa dastlabki baho, rasmiy imtihon emas. Aniq daraja uchun rasmiy imtihonlardan o‘ting.' },
   { q: 'Lingo haqiqiy sun’iy intellektmi?', a: 'Server sozlangan bo‘lsa — ha, jonli AI. Aks holda Lingo “Demo rejim”da ishlaydi: tayyor javoblar va oddiy qoidalar. Ilova buni doim aniq ko‘rsatib turadi.' },
-  { q: 'Ma’lumotlarim qayerda saqlanadi?', a: 'Hozirgi demo versiyada natijalaringiz faqat shu qurilmadagi brauzer xotirasida saqlanadi. Boshqa qurilmaga ko‘chmaydi.' },
+  { q: 'Ma’lumotlarim qayerda saqlanadi?', a: 'Progress qurilmangizda saqlanadi. Sozlamalarda "Onlayn saqlash" yoqilsa — reyting va seriya uchun faqat umumiy statistika (ism, XP, daraja) xavfsiz serverga saqlanadi; chat va yozuvlar hech qachon yuborilmaydi.' },
   { q: 'Audio bormi?', a: 'Tinglash mashqlarida qurilmangizning matnni o‘qish (TTS) ovozi ishlatiladi — bu yozib olingan audio emas. Qurilma qo‘llamasa, mashq transkript asosida bajariladi.' },
   { q: 'Talaffuzimni tekshiradimi?', a: 'Hozircha yo‘q. Gaplashish bo‘limida namunalar, foydali iboralar va o‘zingizni baholash ro‘yxati bor.' },
   { q: 'Bepulmi?', a: 'Ha, demo tajriba to‘liq bepul va hech qanday obuna talab qilmaydi.' },

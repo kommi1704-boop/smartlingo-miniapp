@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { LEVELS } from '../types';
 import { useApp } from '../store/store';
-import { resetAll, updateProfile, updateSettings } from '../store/actions';
+import { isOwnedActive, resetAll, updateProfile, updateSettings } from '../store/actions';
 import { navigate } from '../lib/router';
 import { tutorIsLive } from '../lib/api';
 import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/sync';
@@ -173,7 +173,14 @@ export function Settings() {
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => updateSettings({ bg: b.id })}
+                  onClick={() => {
+                    if ((b.id === 'aurora' || b.id === 'nebula') && !isOwnedActive(`bg-${b.id}`)) {
+                      toast('Bu premium fon — Do‘kondan ochib oling! 🎨', 'warn');
+                      navigate('/shop');
+                      return;
+                    }
+                    updateSettings({ bg: b.id });
+                  }}
                   aria-pressed={s.settings.bg === b.id}
                   aria-label={b.name}
                   className={cx(

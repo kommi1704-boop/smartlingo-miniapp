@@ -33,6 +33,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/games', label: 'O‘yinlar', icon: 'game' },
   { path: '/battle', label: 'Janglar', icon: 'swords' },
   { path: '/leaderboard', label: 'Reyting', icon: 'trophy' },
+  { path: '/championship', label: 'Chempionat', icon: 'crown' },
   { path: '/progress', label: 'Progress', icon: 'chart' },
   { path: '/shop', label: 'Do‘kon', icon: 'cart' },
   { path: '/stars', label: 'Tanga do‘koni', icon: 'coins' },
@@ -47,7 +48,7 @@ const nav = (path: string): NavItem => NAV_ALL.find((n) => n.path === path)!;
 export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   { title: 'Asosiy', items: [nav('/'), nav('/universe'), nav('/learning'), nav('/tutor')] },
   { title: 'Ko‘nikmalar', items: [nav('/plan'), nav('/roadmap'), nav('/vocab'), nav('/grammar'), nav('/reading'), nav('/listening'), nav('/speaking'), nav('/resources')] },
-  { title: 'O‘yin va raqobat', items: [nav('/games'), nav('/battle'), nav('/leaderboard')] },
+  { title: 'O‘yin va raqobat', items: [nav('/games'), nav('/battle'), nav('/leaderboard'), nav('/championship')] },
   { title: 'Shaxsiy', items: [nav('/progress'), nav('/shop'), nav('/stars'), nav('/profile'), nav('/settings')] },
 ];
 
