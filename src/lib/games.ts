@@ -4,13 +4,15 @@ import { VOCAB } from '../data/vocab';
 import { getState } from '../store/store';
 import { dayOfYear, today } from './dates';
 import { shuffle } from './utils';
+import type { EmoName } from '../components/Emo';
 
 export type GameId = 'memory' | 'runner' | 'scramble' | 'blitz' | 'listen';
 
 export interface GameInfo {
   id: GameId;
   title: string;
-  emoji: string;
+  emoji: string; // legacy fallback — the UI renders `emo` (brand sticker) when present
+  emo: EmoName;
   tagline: string;
   how: string[];
   color: string; // tailwind gradient classes (full strings so Tailwind sees them)
@@ -22,6 +24,7 @@ export const GAMES: GameInfo[] = [
     id: 'memory',
     title: 'Xotira kartalari',
     emoji: '🃏',
+    emo: 'cards',
     tagline: 'Inglizcha so‘z va tarjimasini juftlang',
     how: ['Kartani bosib oching.', 'Inglizcha so‘z va uning o‘zbekcha tarjimasini toping.', 'Qancha kam harakat qilsangiz, shuncha ko‘p yulduz!'],
     color: 'from-fuchsia-500 to-pink-500',
@@ -30,6 +33,7 @@ export const GAMES: GameInfo[] = [
     id: 'runner',
     title: 'So‘z yuguruvchi',
     emoji: '🏃',
+    emo: 'shoe',
     tagline: 'To‘g‘ri darvozaga yuguring',
     how: ['Tepada o‘zbekcha so‘z chiqadi.', 'Yo‘lakni bosing (yoki ◀ ▶ tugmalari) va to‘g‘ri inglizcha darvozadan o‘ting.', '3 ta jon bor. Tezlik oshib boradi!'],
     color: 'from-emerald-500 to-teal-500',
@@ -38,6 +42,7 @@ export const GAMES: GameInfo[] = [
     id: 'scramble',
     title: 'Harflar o‘yini',
     emoji: '🔤',
+    emo: 'abc',
     tagline: 'Aralashgan harflardan so‘z tuzing',
     how: ['Tarjimaga qarab, harflarni to‘g‘ri tartibda bosing.', 'Adashsangiz, bosilgan harfni qayta bosib olib tashlang.', 'Qiyin bo‘lsa, “Ko‘rsatma” tugmasi bor (ball kamayadi).'],
     color: 'from-amber-500 to-orange-500',
@@ -46,6 +51,7 @@ export const GAMES: GameInfo[] = [
     id: 'blitz',
     title: 'Tezkor so‘z',
     emoji: '⚡',
+    emo: 'bolt',
     tagline: '60 soniyada ko‘proq so‘z toping',
     how: ['Inglizcha so‘zning tarjimasini tanlang.', 'Ketma-ket to‘g‘ri javoblar “combo” beradi.', 'Vaqt tugaguncha 60 soniya bor.'],
     color: 'from-sky-500 to-indigo-500',
@@ -54,6 +60,7 @@ export const GAMES: GameInfo[] = [
     id: 'listen',
     title: 'Eshitib top',
     emoji: '🎧',
+    emo: 'headset',
     tagline: 'Eshiting va to‘g‘ri so‘zni tanlang',
     how: ['So‘z ovoz bilan aytiladi.', 'To‘g‘ri yozilishini 4 ta variantdan tanlang.', '🔊 tugmasi bilan qayta eshitish mumkin.'],
     color: 'from-violet-500 to-purple-500',

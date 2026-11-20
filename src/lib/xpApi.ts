@@ -19,6 +19,7 @@ export interface XpSummaryDto {
 
 export interface GrantResponse {
   granted: number;
+  bonus?: number; // game_done: daily-challenge bonus included in granted, reported separately for the UI
   summary?: XpSummaryDto;
   milestone?: { milestone: number; record: boolean } | null;
   capped?: boolean;
@@ -124,6 +125,8 @@ export const xpApi = {
   vocabAnswers: (items: VocabAnswerItem[]) => post<GrantResponse & { evidence?: { id: string; correct: number; wrong: number }[] }>({ action: 'vocab_answers', items }),
   vocabLearned: (word: string) => post<GrantResponse>({ action: 'vocab_learned', word }),
   matching: (errors: number, items: VocabAnswerItem[]) => post<GrantResponse>({ action: 'matching', errors, items }),
+  games: (gameId: string, score: number, stars: number, daily: boolean, playId: string) =>
+    post<GrantResponse & { bonus?: number }>({ action: 'game_done', gameId, score, stars, daily, playId }),
   lessonDone: (lessonKey: string, score: number, total: number) => post<GrantResponse>({ action: 'lesson_done', lessonKey, score, total }),
 
   placementNext: (selfLevel: string, answers: { id: string; picked: number }[]) =>

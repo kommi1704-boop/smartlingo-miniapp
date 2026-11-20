@@ -60,7 +60,7 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
   if (outcome) {
     const ratio = outcome.total ? outcome.score / outcome.total : 0;
     const msg =
-      ratio === 1 ? 'Mukammal! Barcha javoblar to‘g‘ri 🎉' : ratio >= 0.8 ? 'Juda yaxshi natija! 👏' : ratio >= 0.6 ? 'Yaxshi! Dars bajarildi ✅' : 'Hech qisi yo‘q — xatolar eng yaxshi ustoz. Qayta urinib ko‘ring 💪';
+      ratio === 1 ? 'Ofarin — hammasi to‘g‘ri chiqdi!' : ratio >= 0.8 ? 'Zo‘r natija, bir-ikki tasini ham tuzatib olamiz' : ratio >= 0.6 ? 'Bajarildi — shunday davom eting' : 'Bu safar chiqmadi, mayli — xatolar eng yaxshi ustoz. Yana urinamiz';
     const mood: Mood = ratio === 1 ? 'cheer' : ratio >= 0.6 ? 'happy' : 'think';
     return (
       <Card className="pop-in relative text-center">
@@ -79,6 +79,7 @@ export function QuizRunner({ title, questions, kind, lessonKey, onAnswer, onExit
           +{outcome.xp} XP{outcome.firstCompletion ? ' (birinchi marta bajarildi uchun bonus bilan)' : ''}
           {outcome.mistakes > 0 && ` · ${outcome.mistakes} ta xato “Xatolar daftari”ga saqlandi`}
         </p>
+        {outcome.xpNote && <p className="mt-1 text-xs text-muted">{outcome.xpNote}</p>}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <Button variant="secondary" icon="refresh" onClick={restart}>Qayta urinish</Button>
           {onExit && <Button onClick={onExit}>{exitLabel}</Button>}

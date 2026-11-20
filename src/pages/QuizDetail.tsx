@@ -36,9 +36,9 @@ export function QuizDetail({ quizId, embedded }: { quizId: string; embedded?: bo
   if (error === 'not_found') {
     return (
       <div>
-        {!embedded && <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />}
+        {!embedded && <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />}
         <Empty
-          emoji="🔍"
+          emo="search"
           title="Quiz topilmadi"
           text="Havola eskirgan yoki noto‘g‘ri. Do‘stingizdan yangi havola so‘rang."
           action={<Button onClick={() => navigate('/friendquiz')}>Do‘st quizi</Button>}
@@ -49,15 +49,15 @@ export function QuizDetail({ quizId, embedded }: { quizId: string; embedded?: bo
   if (error) {
     return (
       <div>
-        {!embedded && <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />}
-        <Empty emoji="📡" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
+        {!embedded && <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />}
+        <Empty emo="signal" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
       </div>
     );
   }
   if (!data) {
     return (
       <div>
-        {!embedded && <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />}
+        {!embedded && <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />}
         <div className="h-52 animate-pulse rounded-2xl border border-line bg-surface2/50" />
       </div>
     );
@@ -70,7 +70,7 @@ export function QuizDetail({ quizId, embedded }: { quizId: string; embedded?: bo
 
   return (
     <div className="space-y-5">
-      {!embedded && <PageHeader emoji="🎯" title={quiz.title} subtitle={isCreator ? 'Sizning quizingiz' : `${quiz.creatorName} yuborgan`} back="/friendquiz" />}
+      {!embedded && <PageHeader emo="target" title={quiz.title} subtitle={isCreator ? 'Sizning quizingiz' : `${quiz.creatorName} yuborgan`} back="/friendquiz" />}
 
       {/* ---- info card ---- */}
       <Card>

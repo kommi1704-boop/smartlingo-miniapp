@@ -242,6 +242,7 @@ export interface QuizOutcome {
   completed: boolean;
   firstCompletion: boolean;
   mistakes: number;
+  xpNote?: string; // server said 0 (daily cap / duplicate) — the honest reason shown under the +XP line
 }
 
 const QUIZ_OFFLINE_CAP = 50; // offline fallback only — the server caps properly when online
@@ -321,21 +322,28 @@ export async function finishQuiz(args: {
   if (completedNow) tickQuest('lessons', 1);
   if (firstCompletion) addCoins(FIRST_LESSON_COINS);
 
-  // ---- server-authoritative XP (0 offline except the small fallback below) ----
+  // ---- server-authoritative XP (offline fallback ONLY when the server is unreachable —
+  // a deliberate server 0 (daily cap / duplicate) must never be replaced by local XP) ----
   let xp = 0;
+  let offline = false;
+  let xpNote: string | undefined;
   try {
     if (kind === 'vocab-quiz') {
       const batch = items.map((i) => ({ id: i.quiz.id.replace('vq-', ''), known: i.picked === i.quiz.answer, ctx: 'quiz' as const }));
       const r = await xpApi.vocabAnswers(batch);
-      xp = r.granted;
+      xp = Number(r.granted) || 0;
+      if (xp <= 0 && r.capped) xpNote = 'Bugungi so‘z-test XP limiti (30) to‘ldi — ertaga davom eting!';
+      else if (xp <= 0 && r.duplicate) xpNote = 'Bu javoblar uchun XP allaqachon berilgan.';
     } else if (lessonKey && completedNow) {
       const r = await xpApi.lessonDone(lessonKey, score, total);
-      xp = r.granted;
+      xp = Number(r.granted) || 0;
+      if (xp <= 0 && r.capped) xpNote = 'Bugungi dars XP limiti (40) to‘ldi — ertaga davom eting!';
     }
   } catch (e) {
-    if (!(e instanceof XpUnavailable)) console.warn('quiz award failed', e);
+    offline = e instanceof XpUnavailable;
+    if (!offline) console.warn('quiz award failed', e);
   }
-  if (xp <= 0) {
+  if (xp <= 0 && offline) {
     const want = kind === 'vocab-quiz'
       ? 0 // self-serve vocab quiz offline: no XP without the ledger (anti-farm)
       : firstCompletion
@@ -347,10 +355,15 @@ export async function finishQuiz(args: {
     record({ xp });
     if (isXpBoosted(getState())) showXp(xp);
   }
-  return { score, total, xp, completed: completedNow, firstCompletion, mistakes: wrong.length };
+  return { score, total, xp, completed: completedNow, firstCompletion, mistakes: wrong.length, xpNote };
 }
 
-export async function recordMatching(errors: number, title: string, pairs: number, items?: VocabAnswerItem[]): Promise<number> {
+export interface MatchingAward {
+  xp: number;
+  note?: string; // server said 0 (cap / duplicate) — shown in the matching end card
+}
+
+export async function recordMatching(errors: number, title: string, pairs: number, items?: VocabAnswerItem[]): Promise<MatchingAward> {
   setState((s) => ({
     ...s,
     quizHistory: [
@@ -360,15 +373,20 @@ export async function recordMatching(errors: number, title: string, pairs: numbe
   }));
   record({ quizzes: 1 });
   let xp = 0;
+  let offline = false;
+  let note: string | undefined;
   try {
     const r = await xpApi.matching(errors, items ?? []);
-    xp = r.granted;
+    xp = Number(r.granted) || 0;
+    if (xp <= 0 && r.capped) note = 'Bugungi juftlash XP limiti (20) to‘ldi — ertaga davom eting!';
+    else if (xp <= 0 && r.duplicate) note = 'Bugungi juftlash XP’si allaqachon berilgan — ertaga yana o‘ynang.';
   } catch (e) {
-    if (!(e instanceof XpUnavailable)) console.warn('matching award failed', e);
+    offline = e instanceof XpUnavailable;
+    if (!offline) console.warn('matching award failed', e);
   }
-  if (xp <= 0) xp = offlineXp(Math.max(5, 20 - errors * 2)); // legacy formula, daily-capped
+  if (xp <= 0 && offline) xp = offlineXp(Math.max(5, 20 - errors * 2)); // legacy formula, daily-capped
   if (xp > 0) record({ xp });
-  return xp;
+  return { xp, note };
 }
 
 export interface GameOutcome {
@@ -378,19 +396,41 @@ export interface GameOutcome {
   capped: boolean;
   bestStars: number;
   coins: number;
+  pending?: boolean; // true while the server ledger confirms the amounts
 }
 
-/** Saves a finished game: personal best, stars, XP (capped per day so games never replace lessons) and the daily challenge. */
-export function finishGame(r: GameResult, daily: boolean): GameOutcome {
+/** Saves a finished game. XP is server-authoritative (fixed per-result rule, 60/day cap,
+ *  +15 daily-challenge bonus once per day, idempotent) — the local formula below is the
+ *  offline-only fallback. Personal best, stars and coins stay local immediately. */
+export async function finishGame(r: GameResult, daily: boolean): Promise<GameOutcome> {
   const t = today();
   const st = getState().games;
   const prev = st.best[r.game] ?? { score: 0, stars: 0, plays: 0 };
   const isRecord = r.score > prev.score && prev.plays > 0;
-  const usedToday = st.xpToday.date === t ? st.xpToday.xp : 0;
-  const want = xpForResult(r);
-  const xp = Math.max(0, Math.min(want, GAME_XP_CAP - usedToday));
-  const capped = xp < want;
-  const dailyBonus = daily && r.stars >= 1 && !(st.daily.date === t && st.daily.done) ? DAILY_BONUS_XP : 0;
+  const dailyEligible = daily && r.stars >= 1 && !(st.daily.date === t && st.daily.done);
+
+  let xp = 0;
+  let dailyBonus = 0;
+  let capped = false;
+  let offline = false;
+  try {
+    const playId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const resp = await xpApi.games(r.game, r.score, r.stars, daily, playId);
+    xp = Number(resp.granted) || 0;
+    dailyBonus = Number(resp.bonus) || 0;
+    capped = !!resp.capped;
+  } catch (e) {
+    offline = e instanceof XpUnavailable;
+    if (!offline) console.warn('game award failed', e);
+  }
+  if (offline) {
+    const usedToday = st.xpToday.date === t ? st.xpToday.xp : 0;
+    const want = xpForResult(r);
+    xp = Math.max(0, Math.min(want, GAME_XP_CAP - usedToday));
+    capped = xp < want;
+    dailyBonus = dailyEligible ? DAILY_BONUS_XP : 0;
+  }
+
   setState((s) => ({
     ...s,
     games: {
@@ -400,12 +440,12 @@ export function finishGame(r: GameResult, daily: boolean): GameOutcome {
         ...s.games.best,
         [r.game]: { score: Math.max(prev.score, r.score), stars: Math.max(prev.stars, r.stars), plays: prev.plays + 1 },
       },
-      xpToday: { date: t, xp: usedToday + xp },
-      daily: dailyBonus ? { date: t, done: true } : s.games.daily,
-      dailyCount: s.games.dailyCount + (dailyBonus ? 1 : 0),
+      xpToday: { date: t, xp: (s.games.xpToday.date === t ? s.games.xpToday.xp : 0) + xp },
+      daily: dailyEligible ? { date: t, done: true } : s.games.daily,
+      dailyCount: s.games.dailyCount + (dailyEligible ? 1 : 0),
     },
   }));
-  record({ xp: xp + dailyBonus });
+  if (xp + dailyBonus > 0) record({ xp: xp + dailyBonus });
   // Coins: stars + record bonus, with a daily cap so games never replace tasks either
   const wantCoins = coinsForResult(r, isRecord);
   const cState = getState().coins;

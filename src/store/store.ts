@@ -31,6 +31,7 @@ export function defaultState(): PersistedState {
     battle: { ratingDelta: 0, wins: 0, losses: 0, draws: 0, ratedToday: { date: '', count: 0 }, history: [] },
     skills: {},
     aiRoadmap: null,
+    journey: null,
   };
 }
 
@@ -49,6 +50,7 @@ function hydrate(): PersistedState {
     battle: { ...base.battle, ...(saved.battle ?? {}) },
     skills: { ...(saved.skills ?? {}) },
     aiRoadmap: saved.aiRoadmap ?? null,
+    journey: saved.journey ?? null,
   };
 }
 

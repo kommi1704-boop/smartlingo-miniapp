@@ -142,7 +142,7 @@ export function Profile() {
 
   return (
     <div>
-      <PageHeader emoji="🧑‍🚀" title="Profil" subtitle="Reyting, avatar va yutumlaringiz" />
+      <PageHeader emo="rocket" title="Profil" subtitle="Reyting, avatar va yutumlaringiz" />
 
       {/* Hero */}
       <div className="feature-ring relative overflow-hidden rounded-2xl bg-surface p-5">

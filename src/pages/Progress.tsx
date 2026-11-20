@@ -272,7 +272,7 @@ export function Progress() {
 
   return (
     <div>
-      <PageHeader emoji="📊" title="Progress" subtitle={`Tajriba darajasi ${xp.level} · ${fmt(s.xp)} XP`} />
+      <PageHeader emo="chart" title="Progress" subtitle={`Tajriba darajasi ${xp.level} · ${fmt(s.xp)} XP`} />
 
       <div className="grid grid-cols-3 gap-2">
         <StatTile icon="flame" tone="amber" label="Seriya" value={`${streak} 🔥`} />
@@ -306,7 +306,7 @@ export function Progress() {
 
       <Section title="So‘nggi test natijalari">
         {quizzes.length === 0 ? (
-          <Empty emoji="📝" title="Hali test topshirilmagan" text="Grammatika yoki o‘qish bo‘limida birinchi testni bajaring." />
+          <Empty emo="pen" title="Hali test topshirilmagan" text="Grammatika yoki o‘qish bo‘limida birinchi testni bajaring." />
         ) : (
           <ul className="space-y-2">
             {quizzes.map((q) => {

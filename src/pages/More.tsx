@@ -39,7 +39,7 @@ export function More() {
   const items = NAV_ALL.filter((n) => !['/', '/universe', '/tutor', '/learning', '/profile'].includes(n.path));
   return (
     <div>
-      <PageHeader emoji="🧰" title="Boshqa bo‘limlar" subtitle="Barcha o‘quv vositalari" />
+      <PageHeader emo="toolbox" title="Boshqa bo‘limlar" subtitle="Barcha o‘quv vositalari" />
       <div className="grid gap-2.5 sm:grid-cols-2">
         {items.map((n) => (
           <A key={n.path} to={n.path} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/40">

@@ -28,7 +28,7 @@ export function Resources() {
 
   return (
     <div>
-      <PageHeader emoji="🌐" title="Resurslar kutubxonasi" subtitle={`${RESOURCES.length} ta tanlangan manba`} />
+      <PageHeader emo="globe" title="Resurslar kutubxonasi" subtitle={`${RESOURCES.length} ta tanlangan manba`} />
       <div className="relative">
         <Icon name="search" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
@@ -44,7 +44,7 @@ export function Resources() {
       </div>
 
       {shown.length === 0 ? (
-        <Empty emoji="🔍" title="Hech narsa topilmadi" text="Qidiruv so‘zini yoki toifani o‘zgartiring." />
+        <Empty emo="search" title="Hech narsa topilmadi" text="Qidiruv so‘zini yoki toifani o‘zgartiring." />
       ) : (
         <ul className="space-y-3">
           {shown.map((r) => {

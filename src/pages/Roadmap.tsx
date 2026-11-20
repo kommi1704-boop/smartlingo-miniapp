@@ -238,7 +238,7 @@ export function Roadmap() {
 
   return (
     <div>
-      <PageHeader emoji="🗺️" title="Shaxsiy yo‘l xaritasi" subtitle={`${p.estimatedLevel} → ${p.targetLevel}`} />
+      <PageHeader emo="map" title="Shaxsiy yo‘l xaritasi" subtitle={`${p.estimatedLevel} → ${p.targetLevel}`} />
       <Card>
         <ul className="space-y-1 text-sm text-muted">
           {lines.map((l) => <li key={l}>• {l}</li>)}

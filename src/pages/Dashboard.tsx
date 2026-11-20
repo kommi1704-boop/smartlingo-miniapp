@@ -9,13 +9,15 @@ import { buildPlan, planSummary } from '../lib/plan';
 import { streakOf, xpProgress, BADGES } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import { isOwnedActive, claimQuest } from '../store/actions';
-import { today } from '../lib/dates';
+import { today, dayOfYear } from '../lib/dates';
 import { Button, Card, LevelBadge, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
 import { LingoBubble, Mascot, type Mood } from '../components/Mascot';
 import { CountUp, DotChart, StreakWeek } from '../components/Alive';
 import { ChampionshipCard, DiscoveryCard } from '../components/DailyExtras';
+import { JourneyCard } from '../components/journey/JourneyCard';
+import { Emo } from '../components/Emo';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
@@ -58,15 +60,25 @@ export function Dashboard() {
   const hour = new Date().getHours();
   const everActive = Object.keys(s.activity).length > 0;
   const lingoMood: Mood = sum.allDone ? 'proud' : hour >= 22 || hour < 5 ? 'sleep' : everActive && streak === 0 ? 'sad' : !everActive ? 'wow' : streak >= 7 ? 'love' : 'happy';
-  const greet = hour < 5 ? 'Tungi boyqush' : hour < 11 ? 'Xayrli tong' : hour < 18 ? 'Salom' : 'Xayrli kech';
+  // a small set of natural greetings per time of day — the day of the year picks one,
+  // so it feels less scripted but stays stable within a day
+  const greetSets = [
+    ['Tungi boyqush'], // night
+    ['Xayrli tong', 'Assalomu alaykum', 'Ertalabki salom'], // morning
+    ['Salom', 'Qaleysiz', 'Ajoyib kun'], // day
+    ['Xayrli kech', 'Kunning yaxshi yakuni'], // evening
+  ] as const;
+  const greet = greetSets[hour < 5 ? 0 : hour < 11 ? 1 : hour < 18 ? 2 : 3][dayOfYear(today()) % greetSets[hour < 5 ? 0 : hour < 11 ? 1 : hour < 18 ? 2 : 3].length];
   const lingoLine = useMemo(() => {
-    if (lingoMood === 'sleep') return 'Zzz… kech bo‘ldi! Bitta qisqa mashq qilamiz-u, keyin dam olamiz 🌙';
-    if (lingoMood === 'sad') return 'Kechagi kunni o‘tkazib yuboribsan… Bugun bitta mashq bilan seriyani qaytaramiz! 💪';
-    if (lingoMood === 'proud') return 'Zo‘r! Bugungi reja tayyor 🎉 Endi o‘yin yoki jang vaqti!';
-    if (lingoMood === 'wow') return 'Salom! Men Lingo. Birga birinchi mashqni boshlaymizmi? ✨';
-    if (lingoMood === 'love') return `${streak} kunlik seriya! Sen eng zo‘r o‘quvchisan 💜`;
-    if (streak >= 3) return `${streak} kunlik seriya! Olovni o‘chirmaylik 🔥`;
-    return next ? `Bugun «${next.title}» dan boshlaymizmi? Men tayyorman!` : 'Bugun yangi so‘zlar o‘rganamizmi?';
+    const day = dayOfYear(today());
+    const pick = (arr: readonly string[]): string => arr[day % arr.length];
+    if (lingoMood === 'sleep') return pick(['Zzz… kech bo‘ldi-da. Bitta qisqa mashq, keyin dam — kelishdikmi?', 'Uyquda ham lug‘at yodlayman 😴 Bitami, keyin bo’shamiz?']);
+    if (lingoMood === 'sad') return pick(['Kechagi kun o‘tib ketdi… mayli, bo‘ldi qilib qo‘yamiz. Bugun bitta mashq bilan seriyani qaytaramiz', 'Seriyani yo‘qotdik, chidiydir. Bugungi mashq bilan qayta boshlaymizmi?']);
+    if (lingoMood === 'proud') return pick(['Bugungisi ham tugadi — zo‘r ketyapsiz! Xohlasangiz o‘yin yoki jang bilan yakunlaymiz', 'Reja bitdi! Endi dam olish ham mumkin, o‘yin ham 😄']);
+    if (lingoMood === 'wow') return pick(['Salom! Men Lingo. Birinchi mashqni birga boshlaymizmi?', 'Ooh, yangi o‘quvchi! Bir so‘zdan boshlaymiz, bo‘ladimi?']);
+    if (lingoMood === 'love') return pick([`${streak} kunlik seriya! Men birovga bu qadar xursand bo‘lmasdim 😊`, `${streak} kun ketma-ket — o‘chirmaymiz bu olovni!`]);
+    if (streak >= 3) return pick([`${streak} kunlik seriya bor. O‘chirmaymiz!`, `Seriya ${streak} kunda — davomi bor-ku!`]);
+    return next ? pick([`Bugun «${next.title}» dan boshlaymizmi? Men tayyorman`, `«${next.title}» sizni kutmoqda. Boshlaymizmi?`]) : pick(['Bugun yangi so‘zlar o‘rganamizmi?', 'Keling, bugun ham bir-ikki so‘z qo‘shamiz']);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lingoMood, streak, next?.title]);
 
@@ -104,8 +116,8 @@ export function Dashboard() {
     <div>
       {/* ---------- B. Sky hero: greeting + Lingo + XP ---------- */}
       <section className="sky-hero rise-in p-4 pb-7 sm:p-5 sm:pb-8">
-        <span className="pg-drift pointer-events-none absolute right-5 top-14 text-xl opacity-80" aria-hidden>⭐</span>
-        <span className="pg-drift pointer-events-none absolute left-[46%] top-3 text-base opacity-70" style={{ animationDelay: '1.2s' }} aria-hidden>✨</span>
+        <span className="pg-drift pointer-events-none absolute right-5 top-14 opacity-80" aria-hidden><Emo n="star" size={22} /></span>
+        <span className="pg-drift pointer-events-none absolute left-[46%] top-3 opacity-70" style={{ animationDelay: '1.2s' }} aria-hidden><Emo n="sparkle" size={17} /></span>
         <div className="relative z-[1] flex items-center justify-between gap-2">
           <A to="/profile" className="flex min-w-0 items-center gap-2" aria-label="Profil">
             {s.shop.equipped.avatar && <Avatar emoji={s.shop.equipped.avatar} size={34} />}
@@ -121,18 +133,18 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="relative z-[1] mt-3 grid grid-cols-3 gap-2">
+        <div className="relative z-[1] mt-3 grid grid-cols-3 gap-2 tnum">
           <A to="/progress" className="tap rounded-2xl bg-white/90 px-2.5 py-2 shadow-sm dark:bg-white/10">
             <span className="block text-[11px] font-bold text-muted">Seriya</span>
-            <span className="text-base font-black text-[#d6523f]"><span className="flame-dance">🔥</span> <CountUp value={streak} /></span>
+            <span className="flex items-center gap-1 text-base font-black text-[#d6523f]"><span className="flame-dance inline-flex"><Emo n="flame" size={17} /></span> <CountUp value={streak} /></span>
           </A>
           <A to="/progress" className="tap rounded-2xl bg-[#fff3c2] px-2.5 py-2 shadow-sm dark:bg-white/10">
             <span className="block text-[11px] font-bold text-[#8a6a00] dark:text-white/70">XP</span>
-            <span className="text-base font-black text-[#5a3d00] dark:text-white">⭐ <CountUp value={s.xp} /></span>
+            <span className="flex items-center gap-1 text-base font-black text-[#5a3d00] dark:text-white"><Emo n="star" size={17} /> <CountUp value={s.xp} /></span>
           </A>
           <A to="/shop" className="tap rounded-2xl bg-[#fff3c2] px-2.5 py-2 shadow-sm dark:bg-white/10">
             <span className="block text-[11px] font-bold text-[#8a6a00] dark:text-white/70">Coin</span>
-            <span className="text-base font-black text-[#5a3d00] dark:text-white"><span className="coin-spin">🪙</span> <CountUp value={s.coins.balance} /></span>
+            <span className="flex items-center gap-1 text-base font-black text-[#5a3d00] dark:text-white"><span className="coin-spin inline-flex"><Emo n="coin" size={17} /></span> <CountUp value={s.coins.balance} /></span>
           </A>
         </div>
       </section>
@@ -147,6 +159,9 @@ export function Dashboard() {
           <div className="xp-fill h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(4, xp.pct)}%` }} />
         </div>
       </div>
+
+      {/* ---------- Daily Learning Journey (Phase: AI daily session) ---------- */}
+      <JourneyCard />
 
       {/* ---------- Today's Discovery (Phase 2, server-cached, +10 XP) ---------- */}
       <DiscoveryCard />

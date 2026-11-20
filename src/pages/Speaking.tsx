@@ -28,7 +28,7 @@ export function SpeakingList() {
   });
   return (
     <div>
-      <PageHeader emoji="🗣️" title="Gaplashish" subtitle="Ovoz chiqarib mashq qiling va o‘zingizni baholang" />
+      <PageHeader emo="mic" title="Gaplashish" subtitle="Ovoz chiqarib mashq qiling va o‘zingizni baholang" />
       <div className="mb-3"><Notice>Hozircha talaffuz tahlil qilinmaydi (ovoz yozib olish va tekshirish yo‘q). Mashq: ovoz chiqarib ayting, namuna bilan solishtiring va ro‘yxat bo‘yicha o‘zingizni baholang.</Notice></div>
       <Tabs<'conversation' | 'ielts'>
         value={kind}

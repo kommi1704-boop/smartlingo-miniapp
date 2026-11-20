@@ -6,6 +6,7 @@ import { useApp } from '../store/store';
 import { isXpBoosted } from '../store/actions';
 import { streakOf, xpProgress } from '../lib/gamification';
 import { ProgressBar } from './ui';
+import { Emo } from './Emo';
 import { Mascot } from './Mascot';
 
 export interface NavItem {
@@ -119,14 +120,14 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="mt-3 rounded-2xl border border-line bg-surface p-3">
+        <div className="mt-3 rounded-2xl border border-line bg-surface p-3 tnum">
           <div className="flex items-center justify-between text-xs font-semibold">
-            <span>🔥 {streak} kun</span>
-            <span>⭐ {fmt(s.xp)} XP</span>
+            <span className="flex items-center gap-1.5"><Emo n="flame" size={15} /> {streak} kun</span>
+            <span className="flex items-center gap-1.5"><Emo n="star" size={15} /> {fmt(s.xp)} XP</span>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs font-semibold">
-            <A to="/shop" className="text-gold hover:underline">🪙 {fmt(s.coins.balance)} Coin</A>
-            {isXpBoosted(s) && <span className="text-gold">⚡ 2x XP</span>}
+            <A to="/shop" className="flex items-center gap-1.5 text-gold hover:underline"><Emo n="coin" size={15} /> {fmt(s.coins.balance)} Coin</A>
+            {isXpBoosted(s) && <span className="flex items-center gap-1.5 text-gold"><Emo n="bolt" size={15} /> 2x XP</span>}
           </div>
           <ProgressBar value={xp.pct} className="mt-2" label="Keyingi darajagacha" />
           <div className="mt-1 text-[11px] text-muted">Tajriba darajasi {xp.level}</div>
@@ -143,13 +144,13 @@ export function Shell({ children }: { children: ReactNode }) {
             </A>
             <div className="flex items-center gap-1.5">
               <StatPill to="/progress" label="Kunlik seriya va progress" className="bg-coral/25 text-rose-600">
-                <span className="flame-dance">🔥</span> {streak}
+                <span className="flame-dance inline-flex"><Emo n="flame" size={16} /></span> {streak}
               </StatPill>
               <StatPill to="/progress" label="XP va daraja" className="bg-sky-500/15 text-sky-600">
-                ⭐ {fmt(s.xp)}
+                <Emo n="star" size={16} /> {fmt(s.xp)}
               </StatPill>
               <StatPill to="/shop" label="Coin balansi va do‘kon" className="bg-sun/30 text-amber-600">
-                🪙 {fmt(s.coins.balance)}
+                <span className="coin-spin inline-flex"><Emo n="coin" size={16} /></span> {fmt(s.coins.balance)}
               </StatPill>
             </div>
           </div>

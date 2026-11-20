@@ -105,7 +105,7 @@ export function Leaderboard() {
   return (
     <div>
       <PageHeader
-        emoji="🏆"
+        emo="trophy"
         title="Reyting jadvali"
         subtitle="Jang reytingi va haftalik / oylik XP musobaqalari"
         right={
@@ -180,7 +180,7 @@ export function Leaderboard() {
 
           <Section title={tab === 'global' ? `Top ${rows.length} o‘quvchi (jang reytingi)` : tab === 'week' ? 'Haftalik XP poygasi' : 'Oylik XP poygasi'}>
             {rows.length === 0 ? (
-              <Empty emoji="🏆" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing — mashq qilsangiz ismingiz shu yerda paydo bo‘ladi!" />
+              <Empty emo="trophy" title="Jadval hali bo‘sh" text="Birinchi bo‘lib jadvalga chiqing — mashq qilsangiz ismingiz shu yerda paydo bo‘ladi!" />
             ) : (
               <div className="space-y-2">
                 {rows.map((r, i) => (

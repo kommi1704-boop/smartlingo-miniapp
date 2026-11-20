@@ -58,7 +58,7 @@ export function Learn() {
 
   return (
     <div>
-      <PageHeader emoji="🎓" tone="green" title="O‘quv markazi" subtitle="Barcha ko‘nikmalar va vositalar bir joyda" />
+      <PageHeader emo="grad" tone="green" title="O‘quv markazi" subtitle="Barcha ko‘nikmalar va vositalar bir joyda" />
 
       {/* Today's plan — compact strip */}
       <A

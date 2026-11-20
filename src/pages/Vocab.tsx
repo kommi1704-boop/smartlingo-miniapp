@@ -88,7 +88,7 @@ export function Vocab() {
 
   return (
     <div>
-      <PageHeader emoji="🃏" title="So‘zlar" subtitle={`${VOCAB.length} ta so‘z · ${stats.learned} ta o‘rganildi · ${stats.review} ta takrorlash kerak`} />
+      <PageHeader emo="cards" title="So‘zlar" subtitle={`${VOCAB.length} ta so‘z · ${stats.learned} ta o‘rganildi · ${stats.review} ta takrorlash kerak`} />
 
       <Card className="!p-3.5">
         <div className="flex items-center justify-between text-sm">
@@ -359,7 +359,7 @@ function WordList({ words, level, setLevel, topic, setTopic }: { words: VocabWor
         ))}
       </div>
       <p className="my-2 text-xs text-muted">{shown.length} ta so‘z</p>
-      {shown.length === 0 ? <Empty emoji="🔍" title="Hech narsa topilmadi" text="Qidiruv yoki filtrni o‘zgartiring." /> : <ul className="space-y-2">{shown.map((w) => <WordRow key={w.id} w={w} />)}</ul>}
+      {shown.length === 0 ? <Empty emo="search" title="Hech narsa topilmadi" text="Qidiruv yoki filtrni o‘zgartiring." /> : <ul className="space-y-2">{shown.map((w) => <WordRow key={w.id} w={w} />)}</ul>}
     </div>
   );
 }
@@ -409,10 +409,11 @@ function Matching({ pool }: { pool: VocabWord[] }) {
   const [errors, setErrors] = useState(0);
   const [missed, setMissed] = useState<string[]>([]);
   const [xp, setXp] = useState<number | null>(null);
+  const [xpNote, setXpNote] = useState<string | null>(null);
 
   function reset() {
     setRound((r) => r + 1);
-    setSelL(null); setSelR(null); setDone([]); setWrong(null); setErrors(0); setMissed([]); setXp(null);
+    setSelL(null); setSelR(null); setDone([]); setWrong(null); setErrors(0); setMissed([]); setXp(null); setXpNote(null);
   }
 
   function pick(side: 'l' | 'r', id: string) {
@@ -428,7 +429,10 @@ function Matching({ pool }: { pool: VocabWord[] }) {
         setSelL(null); setSelR(null);
         if (!missed.includes(l)) reviewWord(l, true, { silent: true });
         if (nd.length === pairs.length) {
-          void recordMatching(errors, 'Juftlash o‘yini', pairs.length, pairs.map((w) => ({ id: w.id, known: !missed.includes(w.id), ctx: 'match' as const }))).then(setXp);
+          void recordMatching(errors, 'Juftlash o‘yini', pairs.length, pairs.map((w) => ({ id: w.id, known: !missed.includes(w.id), ctx: 'match' as const }))).then((a) => {
+            setXp(a.xp);
+            setXpNote(a.note ?? null);
+          });
         }
       } else {
         haptic('error');
@@ -476,6 +480,7 @@ function Matching({ pool }: { pool: VocabWord[] }) {
           <div className="text-4xl">🎉</div>
           <p className="mt-1 font-bold">Hammasi juftlandi! {errors === 0 ? 'Xatosiz!' : `${errors} ta xato bilan.`}</p>
           <p className="text-sm text-muted">+{xp} XP</p>
+          {xpNote && <p className="mt-1 text-xs text-muted">{xpNote}</p>}
           <Button className="mt-3" icon="refresh" onClick={reset}>Yana o‘ynash</Button>
         </Card>
       )}

@@ -39,9 +39,9 @@ export function QuizPlay({ quizId }: { quizId: string }) {
   if (error === 'not_found') {
     return (
       <div>
-        <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />
+        <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />
         <Empty
-          emoji="🔍"
+          emo="search"
           title="Quiz topilmadi"
           text="Havola noto‘g‘ri yoki quiz o‘chirilgan. Do‘stingizdan yangi havola so‘rang."
           action={<Button onClick={() => navigate('/friendquiz')}>Do‘st quizi</Button>}
@@ -52,15 +52,15 @@ export function QuizPlay({ quizId }: { quizId: string }) {
   if (error) {
     return (
       <div>
-        <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />
-        <Empty emoji="📡" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
+        <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />
+        <Empty emo="signal" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
       </div>
     );
   }
   if (!data) {
     return (
       <div>
-        <PageHeader emoji="🎯" title="Do‘st quizi" back="/friendquiz" />
+        <PageHeader emo="target" title="Do‘st quizi" back="/friendquiz" />
         <div className="h-52 animate-pulse rounded-2xl border border-line bg-surface2/50" />
       </div>
     );
@@ -184,7 +184,7 @@ function Runner({ data }: { data: QuizGetResponse }) {
 
   return (
     <div className="slide-up">
-      <PageHeader emoji="🎯" title={data.quiz.title} subtitle={`${data.quiz.creatorName} yuborgan quiz`} back="/friendquiz" />
+      <PageHeader emo="target" title={data.quiz.title} subtitle={`${data.quiz.creatorName} yuborgan quiz`} back="/friendquiz" />
       <div className="mb-3 flex items-center gap-3">
         <span className="shrink-0 text-sm font-semibold text-muted">
           Savol {idx + 1}/{questions.length}
@@ -276,7 +276,7 @@ export function QuizResult({
 
   return (
     <div className="space-y-5">
-      <PageHeader emoji="🏁" title="Natija" subtitle={title} back={`/friendquiz/view/${quizId}`} />
+      <PageHeader emo="flag" title="Natija" subtitle={title} back={`/friendquiz/view/${quizId}`} />
       <ResultCard
         quizTitle={title}
         creatorName={creatorName}

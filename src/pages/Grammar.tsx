@@ -26,7 +26,7 @@ export function GrammarList() {
   });
   return (
     <div>
-      <PageHeader emoji="🧩" title="Grammatika" subtitle={`${GRAMMAR.length} ta dars · ${done} tasi tugatilgan`} />
+      <PageHeader emo="puzzle" title="Grammatika" subtitle={`${GRAMMAR.length} ta dars · ${done} tasi tugatilgan`} />
       <ContentList items={items} base="/grammar" />
     </div>
   );

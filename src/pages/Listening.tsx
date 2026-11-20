@@ -27,7 +27,7 @@ export function ListeningList() {
   });
   return (
     <div>
-      <PageHeader emoji="🎧" title="Tinglash" subtitle={`${LISTENING.length} ta mashq · ${done} tasi tugatilgan`} />
+      <PageHeader emo="headset" title="Tinglash" subtitle={`${LISTENING.length} ta mashq · ${done} tasi tugatilgan`} />
       <div className="mb-3">
         <Notice>
           {tts
@@ -91,7 +91,7 @@ export function ListeningPage({ id }: { id: string }) {
 
   return (
     <div>
-      <PageHeader back="/listening" emoji="🎧" title={act.title} subtitle="Tinglash mashqi" right={<LevelBadge level={act.level} />} />
+      <PageHeader back="/listening" emo="headset" title={act.title} subtitle="Tinglash mashqi" right={<LevelBadge level={act.level} />} />
       <Card>
         <p className="text-sm font-semibold text-muted">Vaziyat</p>
         <p className="mt-1">{act.situationUz}</p>

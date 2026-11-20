@@ -90,7 +90,7 @@ export function Stars() {
 
   return (
     <div>
-      <PageHeader emoji="⭐" title="Tanga do‘koni" subtitle="Telegram Stars bilan Coin oling — darhol hisobga tushadi" />
+      <PageHeader emo="star" title="Tanga do‘koni" subtitle="Telegram Stars bilan Coin oling — darhol hisobga tushadi" />
 
       {/* Balance hero */}
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-sky-600 via-violet-600 to-purple-600 p-5 text-white shadow-lg shadow-violet-500/25">

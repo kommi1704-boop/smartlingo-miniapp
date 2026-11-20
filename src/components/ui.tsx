@@ -2,6 +2,7 @@ import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 're
 import type { Level } from '../types';
 import { cx, LEVEL_STYLE } from '../lib/utils';
 import { Icon, type IconName } from './Icon';
+import { Emo, type EmoName } from './Emo';
 import { goBack } from '../lib/router';
 import { Mascot } from './Mascot';
 
@@ -182,7 +183,7 @@ const HEADER_TONES: Record<string, string> = {
   coral: 'bg-coral/25 text-rose-500 dark:text-[#ffb3a6]',
 };
 
-export function PageHeader({ title, subtitle, back, right, emoji, tone }: { title: string; subtitle?: string; back?: string | boolean; right?: ReactNode; emoji?: string; tone?: keyof typeof HEADER_TONES }) {
+export function PageHeader({ title, subtitle, back, right, emoji, emo, tone }: { title: string; subtitle?: string; back?: string | boolean; right?: ReactNode; emoji?: string; emo?: EmoName; tone?: keyof typeof HEADER_TONES }) {
   return (
     <header className="mb-4 flex items-start gap-3">
       {back && (
@@ -197,8 +198,8 @@ export function PageHeader({ title, subtitle, back, right, emoji, tone }: { titl
       )}
       <div className="min-w-0 flex-1">
         <h1 className="flex items-center gap-2 text-xl font-extrabold leading-tight tracking-tight sm:text-2xl">
-          {emoji && tone && <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl', HEADER_TONES[tone])}>{emoji}</span>}
-          {emoji && !tone && <span className="text-2xl">{emoji}</span>}
+          {(emoji || emo) && tone && <span className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl', HEADER_TONES[tone])}>{emo ? <Emo n={emo} size={24} /> : emoji}</span>}
+          {(emoji || emo) && !tone && (emo ? <Emo n={emo} size={28} /> : <span className="text-2xl">{emoji}</span>)}
           <span className="min-w-0">{title}</span>
         </h1>
         {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
@@ -208,11 +209,11 @@ export function PageHeader({ title, subtitle, back, right, emoji, tone }: { titl
   );
 }
 
-export function Empty({ emoji = '🌤️', title, text, action }: { emoji?: string; title: string; text?: string; action?: ReactNode }) {
+export function Empty({ emoji = '🌤️', emo, title, text, action }: { emoji?: string; emo?: EmoName; title: string; text?: string; action?: ReactNode }) {
   return (
     <div className="rounded-3xl border-2 border-dashed border-line p-8 text-center">
       <div className="flex justify-center"><Mascot mood="think" size={84} /></div>
-      <div className="float-y mt-1 text-3xl">{emoji}</div>
+      <div className="float-y mt-1 text-3xl">{emo ? <Emo n={emo} size={40} /> : emoji}</div>
       <p className="mt-2 font-bold">{title}</p>
       {text && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{text}</p>}
       {action && <div className="mt-4 flex justify-center">{action}</div>}

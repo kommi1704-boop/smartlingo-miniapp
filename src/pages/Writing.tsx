@@ -29,7 +29,7 @@ export function WritingList() {
   });
   return (
     <div>
-      <PageHeader emoji="✍️" title="Yozish" subtitle="Qisqa matnlar yozing va tezkor fikr-mulohaza oling" />
+      <PageHeader emo="pen" title="Yozish" subtitle="Qisqa matnlar yozing va tezkor fikr-mulohaza oling" />
       <div className="mb-3"><Notice>Tezkor tekshiruv oddiy qoidalarga asoslangan. Bundan tashqari har bir matnni <b>AI ustoz</b> ham tekshiradi: baho, xatolar va tuzatilgan variant beradi (kuniga 5 marta).</Notice></div>
       <ContentList items={items} base="/writing" />
     </div>
@@ -149,7 +149,7 @@ export function WritingPage({ id }: { id: string }) {
 
   return (
     <div>
-      <PageHeader back="/writing" emoji="✍️" title={prompt.title} subtitle={`Kamida ${prompt.minWords} ta so‘z`} right={<LevelBadge level={prompt.level} />} />
+      <PageHeader back="/writing" emo="pen" title={prompt.title} subtitle={`Kamida ${prompt.minWords} ta so‘z`} right={<LevelBadge level={prompt.level} />} />
       <Card>
         <p className="text-xs font-bold uppercase tracking-wide text-muted">Topshiriq</p>
         <p className="mt-1 text-lg font-bold leading-snug">{prompt.promptEn}</p>

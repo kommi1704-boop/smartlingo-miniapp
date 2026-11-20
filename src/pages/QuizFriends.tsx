@@ -53,7 +53,7 @@ export function QuizFriends() {
 
   return (
     <div>
-      <PageHeader emoji="🎯" title="Do‘st quizi" subtitle="Quiz tuz, do‘stlarga yubor, jadvalda bellash" />
+      <PageHeader emo="target" title="Do‘st quizi" subtitle="Quiz tuz, do‘stlarga yubor, jadvalda bellash" />
       {!online && online !== null && (
         <div className="mb-4">
           <Notice tone="warn">
@@ -290,7 +290,7 @@ function MineTab({ online, goCreate }: { online: boolean | null; goCreate: () =>
   if (data.created.length === 0) {
     return (
       <Empty
-        emoji="🎯"
+        emo="target"
         title="Hali quiz yaratmagansiz"
         text="«Yaratish» bo‘limida birinchi quizngizni tuzing va do‘stlaringizga yuboring."
         action={<Button onClick={goCreate}>Yaratish</Button>}
@@ -341,7 +341,7 @@ function HistoryTab({ online }: { online: boolean | null }) {
   if (error) return <Notice tone="warn">Natijalarni olish qiyinlashdi — keyinroq urinib ko‘ring.</Notice>;
   if (!data) return <LoadingRows />;
   if (data.attempts.length === 0) {
-    return <Empty emoji="🏆" title="Hali birorta quizda qatnashmagansiz" text="Do‘stlaringiz sizga quiz yuborsa, natijalaringiz shu yerda ko‘rinadi." />;
+    return <Empty emo="trophy" title="Hali birorta quizda qatnashmagansiz" text="Do‘stlaringiz sizga quiz yuborsa, natijalaringiz shu yerda ko‘rinadi." />;
   }
   return (
     <div className="space-y-2.5">

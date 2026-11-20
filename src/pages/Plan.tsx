@@ -3,9 +3,12 @@ import { A } from '../lib/router';
 import { useApp } from '../store/store';
 import { updateProfile } from '../store/actions';
 import { buildPlan, planSummary } from '../lib/plan';
+import { themeById } from '../lib/journey';
+import { useJourneySession } from '../components/journey/useJourney';
 import { prettyDate, today } from '../lib/dates';
 import { Card, Chip, Notice, PageHeader, Pill, ProgressBar, ProgressRing, Button } from '../components/ui';
 import { Icon } from '../components/Icon';
+import { Emo } from '../components/Emo';
 import { MINUTES } from '../data/options';
 import { cx } from '../lib/utils';
 import { navigate } from '../lib/router';
@@ -17,10 +20,34 @@ export function Plan() {
   const sum = planSummary(plan);
   const day = s.activity[today()];
   const next = plan.find((i) => !i.done);
+  const jData = useJourneySession();
 
   return (
     <div>
-      <PageHeader emoji="📅" title="Kunlik reja" subtitle={`Bugun, ${prettyDate(today())} · reja tanlagan vaqtingizga moslashadi`} />
+      <PageHeader emo="cal" title="Kunlik reja" subtitle={`Bugun, ${prettyDate(today())} · reja tanlagan vaqtingizga moslashadi`} />
+
+      {jData && (
+        <button
+          type="button"
+          onClick={() => navigate('/journey')}
+          className={cx(
+            'rise-in mb-4 flex w-full items-center gap-3 overflow-hidden rounded-[26px] bg-gradient-to-br p-4 text-left text-white shadow-lg transition active:scale-[0.99]',
+            themeById(jData.session.themeId).gradient,
+          )}
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15"><Emo n={themeById(jData.session.themeId).emo} size={26} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[10.5px] font-black uppercase tracking-widest text-white/80">AI Daily Learning Journey</span>
+            <span className="block truncate text-[15.5px] font-black leading-snug">{jData.session.titleEn}</span>
+            <span className="block text-[11.5px] font-bold text-white/85">
+              {jData.session.stages.filter((st) => jData.j.stages[st.id]?.done).length === jData.session.stages.length
+                ? '✓ Bugungi safar bajarildi'
+                : `${jData.session.minutes} daqiqa · ${jData.session.stages.length} bosqich`}
+            </span>
+          </span>
+          <Icon name="right" className="h-5 w-5 shrink-0" />
+        </button>
+      )}
 
       <Card>
         <div className="flex items-center gap-4">

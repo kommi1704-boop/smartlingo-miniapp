@@ -74,7 +74,7 @@ export function PublicProfile({ uid }: { uid: string }) {
   if (state === 'loading') {
     return (
       <div>
-        <PageHeader emoji="🧑‍🚀" title="Profil" back />
+        <PageHeader emo="rocket" title="Profil" back />
         <div className="h-44 animate-pulse rounded-[1.75rem] bg-surface2" />
         <div className="mt-3 grid grid-cols-2 gap-3">
           {[0, 1, 2, 3].map((i) => (
@@ -88,8 +88,8 @@ export function PublicProfile({ uid }: { uid: string }) {
   if (state === 'notfound') {
     return (
       <div>
-        <PageHeader emoji="🔍" title="Profil topilmadi" back />
-        <Empty emoji="🕵️" title="Bunday o‘quvchi yo‘q" text="Bu o‘quvchi hali onlayn saqlashni yoqib, appni ochmagan bo‘lishi mumkin." />
+        <PageHeader emo="search" title="Profil topilmadi" back />
+        <Empty emo="search" title="Bunday o‘quvchi yo‘q" text="Bu o‘quvchi hali onlayn saqlashni yoqib, appni ochmagan bo‘lishi mumkin." />
       </div>
     );
   }
@@ -97,7 +97,7 @@ export function PublicProfile({ uid }: { uid: string }) {
   if (state === 'off' || state === 'auth' || state === 'error') {
     return (
       <div>
-        <PageHeader emoji="🧑‍🚀" title="Profil" back />
+        <PageHeader emo="rocket" title="Profil" back />
         {state === 'off' && (
           <Notice tone="warn">
             Profillar onlayn rejada ko‘rinadi: serverda <b>/api/profile</b> + Supabase sozlanishi kerak.
@@ -117,7 +117,7 @@ export function PublicProfile({ uid }: { uid: string }) {
 
   return (
     <div>
-      <PageHeader emoji="🧑‍🚀" title="O‘quvchi profili" subtitle="Ochiq (jamoa) sahifa" back />
+      <PageHeader emo="rocket" title="O‘quvchi profili" subtitle="Ochiq (jamoa) sahifa" back />
 
       {/* Hero */}
       <div className={cx('relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br p-5 text-white shadow-lg shadow-sky-500/25', HERO_BG[p.bg] ?? HERO_BG.doodle)}>

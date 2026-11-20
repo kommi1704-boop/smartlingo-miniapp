@@ -3,6 +3,7 @@ import { A, navigate } from '../lib/router';
 import { useApp } from '../store/store';
 import { finishGame, type GameOutcome } from '../store/actions';
 import { DAILY_BONUS_XP, GAMES, GAME_XP_CAP, dailyGameId, gameInfo, type GameInfo, type GameResult } from '../lib/games';
+import { Emo } from '../components/Emo';
 import { ttsAvailable } from '../lib/tts';
 import { today } from '../lib/dates';
 import { streakOf } from '../lib/gamification';
@@ -36,7 +37,7 @@ export function GamesHub() {
 
   return (
     <div>
-      <PageHeader emoji="🎮" title="O‘yinlar" subtitle="O‘ynab o‘rganing: so‘zlar sizning darajangizga mos" />
+      <PageHeader emo="game" title="O‘yinlar" subtitle="O‘ynab o‘rganing: so‘zlar sizning darajangizga mos" />
 
       <A
         to="/games/daily"
@@ -48,17 +49,17 @@ export function GamesHub() {
         <div className="flex items-center gap-3">
           <div className="rounded-3xl bg-white/20 p-1.5"><Mascot mood={dailyDone ? 'cheer' : 'wow'} size={58} /></div>
           <div className="min-w-0">
-            <div className="text-xs font-bold uppercase tracking-wide opacity-90">📅 Kunlik challenge</div>
-            <div className="text-xl font-extrabold leading-tight">{dailyInfo.emoji} {dailyInfo.title}</div>
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide opacity-90"><Emo n="cal" size={15} /> Kunlik challenge</div>
+            <div className="flex items-center gap-2 text-xl font-extrabold leading-tight"><Emo n={dailyInfo.emo} size={24} /> {dailyInfo.title}</div>
             <div className="text-sm opacity-90">{dailyDone ? 'Bajarildi! Ertaga yangi o‘yin bo‘ladi 🎉' : `Bugungi so‘zlar bilan o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</div>
           </div>
         </div>
       </A>
 
       <div className="mb-4 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="text-lg font-extrabold">🔥 {streak}</div><div className="text-[11px] font-semibold text-muted">KUN SERIYA</div></div>
-        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="text-lg font-extrabold">⭐ {totalStars}<span className="text-xs text-muted">/{GAMES.length * 3}</span></div><div className="text-[11px] font-semibold text-muted">YULDUZLAR</div></div>
-        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="text-lg font-extrabold">🎮 {s.games.plays}</div><div className="text-[11px] font-semibold text-muted">O‘YINLAR</div></div>
+        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="flex items-center justify-center gap-1.5 text-lg font-extrabold"><Emo n="flame" size={19} /> {streak}</div><div className="text-[11px] font-semibold text-muted">KUN SERIYA</div></div>
+        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="flex items-center justify-center gap-1.5 text-lg font-extrabold"><Emo n="star" size={19} /> {totalStars}<span className="text-xs text-muted">/{GAMES.length * 3}</span></div><div className="text-[11px] font-semibold text-muted">YULDUZLAR</div></div>
+        <div className="rounded-2xl border border-line bg-surface p-2.5"><div className="flex items-center justify-center gap-1.5 text-lg font-extrabold"><Emo n="game" size={19} /> {s.games.plays}</div><div className="text-[11px] font-semibold text-muted">O‘YINLAR</div></div>
       </div>
 
       <Section title="Barcha o‘yinlar">
@@ -70,7 +71,7 @@ export function GamesHub() {
               <A key={g.id} to={`/games/${g.id}`} className={cx('block', noAudio && 'pointer-events-none opacity-50')}>
                 <Card className="h-full transition hover:border-sky-300">
                   <div className="flex items-start gap-3">
-                    <div className={cx('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-3xl shadow-sm', g.color)}>{g.emoji}</div>
+                    <div className={cx('flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br shadow-sm', g.color)}><Emo n={g.emo} size={34} /></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-extrabold">{g.title}</h3>
@@ -110,7 +111,7 @@ export function GamePage({ id }: { id: string }) {
   const [end, setEnd] = useState<{ result: GameResult; outcome: GameOutcome } | null>(null);
 
   if (!info) {
-    return <Empty emoji="🎮" title="O‘yin topilmadi" text="Bunday o‘yin yo‘q." action={<Button onClick={() => navigate('/games')}>O‘yinlarga qaytish</Button>} />;
+    return <Empty emo="game" title="O‘yin topilmadi" text="Bunday o‘yin yo‘q." action={<Button onClick={() => navigate('/games')}>O‘yinlarga qaytish</Button>} />;
   }
 
   const Comp = COMPONENTS[info.id];
@@ -118,14 +119,17 @@ export function GamePage({ id }: { id: string }) {
   const noAudio = info.needsAudio && !ttsAvailable();
 
   const onFinish = (result: GameResult) => {
-    const outcome = finishGame(result, daily);
-    setEnd({ result, outcome });
+    // show the end screen immediately; XP arrives a moment later from the server ledger
+    setEnd({ result, outcome: { xp: 0, dailyBonus: 0, record: false, capped: false, bestStars: result.stars, coins: 0, pending: true } });
     setPhase('end');
+    void finishGame(result, daily).then((outcome) => {
+      setEnd((e) => (e && e.result === result ? { result, outcome } : e));
+    });
   };
 
   return (
     <div>
-      <PageHeader back="/games" emoji={info.emoji} title={info.title} subtitle={daily ? `Kunlik challenge · +${DAILY_BONUS_XP} XP bonus` : info.tagline} />
+      <PageHeader back="/games" emo={info.emo} title={info.title} subtitle={daily ? `Kunlik challenge · +${DAILY_BONUS_XP} XP bonus` : info.tagline} />
       {phase === 'intro' && <Intro info={info} best={b?.stars ?? 0} score={b?.score} daily={daily} noAudio={!!noAudio} onStart={() => setPhase('play')} />}
       {phase === 'play' && <Comp key={round} daily={daily} onFinish={onFinish} />}
       {phase === 'end' && end && (
@@ -148,7 +152,7 @@ export function GamePage({ id }: { id: string }) {
 function Intro({ info, best, score, daily, noAudio, onStart }: { info: GameInfo; best: number; score?: number; daily: boolean; noAudio: boolean; onStart: () => void }) {
   return (
     <Card className="text-center">
-      <div className={cx('mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br text-5xl shadow', info.color)}>{info.emoji}</div>
+      <div className={cx('mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br shadow', info.color)}><Emo n={info.emo} size={44} /></div>
       <h2 className="mt-3 text-xl font-extrabold">Qanday o‘ynaladi?</h2>
       <ol className="mx-auto mt-3 max-w-md space-y-2 text-left text-sm">
         {info.how.map((h, i) => (

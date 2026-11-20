@@ -91,7 +91,7 @@ export function Settings() {
 
   return (
     <div>
-      <PageHeader emoji="⚙️" title="Sozlamalar" />
+      <PageHeader emo="gear" title="Sozlamalar" />
 
       <Section title="Profil">
         <Card>

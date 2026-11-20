@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import type { GameOutcome } from '../../store/actions';
 import { markManyForReview } from '../../store/actions';
-import { DAILY_BONUS_XP, type GameInfo, type GameResult } from '../../lib/games';
+import { type GameInfo, type GameResult } from '../../lib/games';
+import { Emo } from '../Emo';
 import { Mascot, Confetti } from '../Mascot';
 import { SpeakButton } from '../SpeakButton';
 import { Button, Card, Pill } from '../ui';
@@ -21,7 +22,7 @@ export function Stars({ n, size = 'text-4xl', animate }: { n: number; size?: str
           className={cx(size, i < n ? '' : 'opacity-25 grayscale', animate && i < n && 'pop-in')}
           style={animate ? { animationDelay: `${i * 220}ms` } : undefined}
         >
-          ⭐
+          <Emo n="star" />
         </span>
       ))}
     </div>
@@ -41,7 +42,7 @@ export function Hud({ items }: { items: { label: string; value: ReactNode; tone?
   );
 }
 
-const STAR_MSG = ['Yana urinib ko‘ring, albatta chiqadi!', 'Yaxshi boshlanish!', 'Juda yaxshi!', 'A’lo! Mukammal natija!'];
+const STAR_MSG = ['Bu safar chiqmadi — mayli, yana urinamiz. Xatolar ustoz-ku', 'Yaxshi boshlanish! Bir-ikki xato oddiy gap', 'Juda zo‘r ketyapsiz — shunday davom eting', 'Toza o‘ynadingiz! Aynan shunday bo‘ladi'];
 
 export function GameEnd({ info, result, outcome, daily, onAgain, onExit }: { info: GameInfo; result: GameResult; outcome: GameOutcome; daily: boolean; onAgain: () => void; onExit: () => void }) {
   const [added, setAdded] = useState(false);
@@ -51,21 +52,22 @@ export function GameEnd({ info, result, outcome, daily, onAgain, onExit }: { inf
       {result.stars >= 2 && <Confetti />}
       <Card className="text-center">
         <div className="flex justify-center"><Mascot mood={mood} size={96} /></div>
-        <h2 className="mt-1 text-xl font-extrabold">{info.emoji} {info.title}</h2>
+        <h2 className="mt-1 flex items-center justify-center gap-2 text-xl font-extrabold"><Emo n={info.emo} size={22} /> {info.title}</h2>
         <div className="mt-2"><Stars n={result.stars} animate /></div>
         <p className="mt-1 text-sm text-muted">{STAR_MSG[result.stars]}</p>
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-2xl bg-surface2 p-2.5"><div className="text-xl font-extrabold">{result.score}</div><div className="text-[11px] font-semibold text-muted">BALL</div></div>
           <div className="rounded-2xl bg-surface2 p-2.5"><div className="text-xl font-extrabold">{result.correct}/{result.total}</div><div className="text-[11px] font-semibold text-muted">TO‘G‘RI</div></div>
-          <div className="rounded-2xl bg-surface2 p-2.5"><div className="text-xl font-extrabold">+{outcome.xp + outcome.dailyBonus}</div><div className="text-[11px] font-semibold text-muted">XP</div></div>
+          <div className="rounded-2xl bg-surface2 p-2.5"><div className="text-xl font-extrabold">{outcome.pending ? '…' : `+${outcome.xp + outcome.dailyBonus}`}</div><div className="text-[11px] font-semibold text-muted">XP</div></div>
         </div>
 
         <div className="mt-3 flex flex-wrap justify-center gap-2">
-          {outcome.record && <Pill tone="amber">🏅 Yangi rekord!</Pill>}
-          {outcome.coins > 0 && <Pill tone="amber">🪙 +{outcome.coins} Coin</Pill>}
-          {outcome.dailyBonus > 0 && <Pill tone="green">📅 Kunlik challenge bajarildi +{DAILY_BONUS_XP} XP</Pill>}
-          {daily && outcome.dailyBonus === 0 && result.stars === 0 && <Pill tone="neutral">Kunlik challenge uchun kamida 1 yulduz kerak</Pill>}
+          {outcome.pending && <Pill tone="neutral">⏳ XP server hisoblanmoqda…</Pill>}
+          {outcome.record && <Pill tone="amber"><Emo n="trophy" size={14} /> Yangi rekord!</Pill>}
+          {outcome.coins > 0 && <Pill tone="amber"><Emo n="coin" size={14} /> +{outcome.coins} Coin</Pill>}
+          {outcome.dailyBonus > 0 && <Pill tone="green"><Emo n="cal" size={14} /> Kunlik challenge bajarildi +{outcome.dailyBonus} XP</Pill>}
+          {daily && !outcome.pending && outcome.dailyBonus === 0 && result.stars === 0 && <Pill tone="neutral">Kunlik challenge uchun kamida 1 yulduz kerak</Pill>}
         </div>
         {result.note && <p className="mt-2 text-xs text-muted">{result.note}</p>}
         {outcome.capped && (

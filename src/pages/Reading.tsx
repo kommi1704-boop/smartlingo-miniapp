@@ -236,7 +236,7 @@ export function ReadingList() {
   });
   return (
     <div>
-      <PageHeader emoji="📖" title="O‘qish" subtitle={`${READING.length} ta matn · ${done} tasi tugatilgan`} />
+      <PageHeader emo="book" title="O‘qish" subtitle={`${READING.length} ta matn · ${done} tasi tugatilgan`} />
       <AiReadingCard />
       <ContentList items={items} base="/reading" />
     </div>
@@ -292,7 +292,7 @@ export function ReadingPage({ id }: { id: string }) {
 
   return (
     <div>
-      <PageHeader back="/reading" emoji="📖" title={passage.title} subtitle={`${wordCount(passage.text)} ta so‘z`} right={<LevelBadge level={passage.level} />} />
+      <PageHeader back="/reading" emo="book" title={passage.title} subtitle={`${wordCount(passage.text)} ta so‘z`} right={<LevelBadge level={passage.level} />} />
 
       <Card>
         {active && (

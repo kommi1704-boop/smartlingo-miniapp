@@ -87,7 +87,7 @@ export function Shop() {
 
   return (
     <div>
-      <PageHeader emoji="🛒" title="Do‘kon" subtitle="Coin yig‘ing va o‘zingizni yangilang!" />
+      <PageHeader emo="cart" title="Do‘kon" subtitle="Coin yig‘ing va o‘zingizni yangilang!" />
 
       {/* Balance hero */}
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-amber-400 to-orange-500 p-5 text-white shadow-lg shadow-amber-500/25">

@@ -45,7 +45,7 @@ export function Notify() {
   if (error === 'not_configured') {
     return (
       <div>
-        <PageHeader emoji="🔔" title="Bildirishnomalar" back="/settings" />
+        <PageHeader emo="bell" title="Bildirishnomalar" back="/settings" />
         <Notice tone="warn">
           Sozlamalar serveri ulanmagan. <b>supabase/schema.sql</b> qayta ishga tushirilsin va <b>/api/notifications</b> deploy qilinsin.
         </Notice>
@@ -55,8 +55,8 @@ export function Notify() {
   if (error || !data) {
     return (
       <div>
-        <PageHeader emoji="🔔" title="Bildirishnomalar" back="/settings" />
-        <Empty emoji="📡" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
+        <PageHeader emo="bell" title="Bildirishnomalar" back="/settings" />
+        <Empty emo="signal" title="Yuklanmadi" text="Internetni tekshirib, qayta urinib ko‘ring." action={<Button onClick={load}>Qayta urinish</Button>} />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export function Notify() {
 
   return (
     <div>
-      <PageHeader emoji="🔔" title="Bildirishnomalar" subtitle="Nima, qachon va qanday xabarlar kelishini o‘zingiz tanlang" back="/settings" />
+      <PageHeader emo="bell" title="Bildirishnomalar" subtitle="Nima, qachon va qanday xabarlar kelishini o‘zingiz tanlang" back="/settings" />
 
       {paused && (
         <div className="mb-4">
