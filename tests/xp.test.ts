@@ -18,7 +18,7 @@ function section(name: string): void {
 }
 
 import {
-  MILESTONES, shiftDay, streakStep, tashkentDay, weekMonday, xpForBattle, xpForMatching, XP_RULES, type StreakRow,
+  MILESTONES, shiftDay, streakStep, tashkentDay, weekMonday, GAME_IDS, gameXpFor, xpForBattle, xpForMatching, XP_RULES, type StreakRow,
 } from '../api/_lib/xpcore.js';
 import { CATALOG, catalogItem } from '../api/_lib/catalog.js';
 import { FRAMES, PREMIUM_AVATARS, TITLES, NAME_COLORS, NAME_FXS, BG_ITEMS, RANK_TIERS } from '../src/lib/shop';
@@ -76,6 +76,10 @@ section('XP rules (server-authoritative amounts + caps)');
   ok(XP_RULES.discovery.amount === 10, 'discovery completion: +10');
   ok(xpForMatching(0) === 20 && xpForMatching(3) === 14 && xpForMatching(50) === 5, 'matching: 20 - 2*errors, floor 5');
   ok(xpForBattle('win') === 5 && xpForBattle('draw') === 3 && xpForBattle('loss') === 2, 'verified PvP XP: 5/3/2');
+  ok(gameXpFor(0) === 2 && gameXpFor(1) === 8 && gameXpFor(2) === 12 && gameXpFor(3) === 16, 'games: mirrors client xpForResult (2/8/12/16 by stars)');
+  ok(XP_RULES.game.cap === 60 && XP_RULES.game.source === 'game', 'games: 60 XP/day cap');
+  ok(XP_RULES.gameDaily.amount === 15 && XP_RULES.gameDaily.cap === 15, 'daily challenge bonus: +15 once/day');
+  ok((GAME_IDS as readonly string[]).join(',') === 'memory,runner,scramble,blitz,listen', 'game whitelist matches the O\'yinlar page');
   ok(MILESTONES.includes(7) && MILESTONES.includes(100), 'milestones include 7 and 100');
 }
 

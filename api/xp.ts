@@ -6,7 +6,8 @@
 //  GET  /api/xp?k=championship (auth)     -> { week, standings, me, champions, prizes }
 //  POST { action:'vocab_answers',  items:[{id, known, ctx:'quiz'|'match'}], errors? } -> { granted, evidence, summary, milestone }
 //  POST { action:'vocab_learned',  word }   -> { ok, granted, summary } | { ok:false, reason:'evidence' }
-//  POST { action:'matching',       errors, items? } -> { granted, summary }
+//  POST { action:'matching',       errors, items? } -> { granted, capped, duplicate, summary }
+//  POST { action:'game_done',      gameId, score, stars, daily, playId } -> { granted, bonus, capped, duplicate, summary, milestone }
 //  POST { action:'lesson_done',    lessonKey, score, total } -> { granted, completed, summary, milestone }
 //  POST { action:'placement_next', selfLevel, answers } -> { done:false, questions, group } | { done:true, result }
 //         (the final call also stores history, awards XP and updates the profile)
@@ -28,7 +29,7 @@
 import crypto from 'node:crypto';
 import { dispatch } from './_lib/notify.js';
 import {
-  champTop, events, grantXp, MILESTONES, tashkentDay, weekMonday,
+  champTop, events, GAME_IDS, gameXpFor, grantXp, MILESTONES, tashkentDay, weekMonday,
   xpForMatching, xpForBattle, XP_RULES, xpSummary, type GrantResult, type Ledger,
 } from './_lib/xpcore.js';
 import { adaptiveStep, sanitizeAnswers, LEVELS, type Level } from './_lib/placement-bank.js';
@@ -180,7 +181,7 @@ async function handleVocabAnswers(db: Ledger, uid: number, body: Record<string, 
     }
   }
   const summary = await xpSummary(db, uid);
-  return { granted: grantedTotal, evidence, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, lastGrant) };
+  return { granted: grantedTotal, capped: grantedTotal === 0 && !!lastGrant?.capped, evidence, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, lastGrant) };
 }
 
 async function handleVocabLearned(db: Ledger, uid: number, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -191,7 +192,7 @@ async function handleVocabLearned(db: Ledger, uid: number, body: Record<string, 
   if (!ok) return { ok: false, reason: 'evidence', correct: j?.[0]?.correct ?? (j as unknown as { correct?: number })?.correct ?? 0 };
   const g = await grantXp(db, uid, events.vocabLearned(word), XP_RULES.vocabLearned.source, XP_RULES.vocabLearned.amount, XP_RULES.vocabLearned.cap, true);
   const summary = await xpSummary(db, uid);
-  return { ok: true, granted: g?.granted ?? 0, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, g) };
+  return { ok: true, granted: g?.granted ?? 0, capped: !!g?.capped, duplicate: !!g?.duplicate, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, g) };
 }
 
 async function handleMatching(db: Ledger, uid: number, body: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -204,10 +205,49 @@ async function handleMatching(db: Ledger, uid: number, body: Record<string, unkn
   const day = tashkentDay();
   const g = await grantXp(db, uid, events.vocabMatch(day), XP_RULES.vocabMatch.source, xpForMatching(errors), XP_RULES.vocabMatch.cap, true);
   const summary = await xpSummary(db, uid);
-  return { granted: g?.granted ?? 0, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, g) };
+  return {
+    granted: g?.granted ?? 0,
+    capped: !!g?.capped,
+    duplicate: !!g?.duplicate,
+    summary,
+    milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, g),
+  };
 }
 
-const LESSON_KEY_RE = /^[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,40}$/i;
+/** Lesson-key contract: `part:part`, each part [a-z0-9-] max 41 chars (also exported for tests). */
+export const LESSON_KEY_RE = /^[a-z0-9][a-z0-9-]{0,40}:[a-z0-9][a-z0-9-]{0,40}$/i;
+
+/** O'yinlar page (memory/runner/scramble/blitz/listen): fixed per-result reward, 60 XP/day cap,
+ *  daily-challenge bonus (+15, idempotent once per day). XP amounts come from the server rules,
+ *  never from the client — the client only reports gameId/score/stars/daily plus a play id. */
+async function handleGameDone(db: Ledger, uid: number, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const gameId = String(body.gameId ?? '');
+  if (!(GAME_IDS as readonly string[]).includes(gameId)) return { error: 'bad_game' };
+  const stars = Number(body.stars);
+  const score = Number(body.score);
+  if (!Number.isInteger(stars) || stars < 0 || stars > 3) return { error: 'bad_stars' };
+  if (!Number.isFinite(score) || score < 0 || score > 100_000) return { error: 'bad_score' };
+  const daily = body.daily === true;
+  const day = tashkentDay();
+  const playId = String(body.playId ?? '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32) || crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+
+  const g = await grantXp(db, uid, events.gamePlay(day, playId), XP_RULES.game.source, gameXpFor(stars), XP_RULES.game.cap, true);
+  let bonus = 0;
+  let bonusCapped = false;
+  if (daily && stars >= 1) {
+    const gb = await grantXp(db, uid, events.gameDaily(day), XP_RULES.gameDaily.source, XP_RULES.gameDaily.amount, XP_RULES.gameDaily.cap, true);
+    bonus = gb?.granted ?? 0;
+    bonusCapped = !!gb?.capped;
+  }
+  return {
+    granted: (g?.granted ?? 0) + bonus,
+    bonus,
+    capped: !!g?.capped || bonusCapped,
+    duplicate: !!g?.duplicate,
+    summary: await xpSummary(db, uid),
+    milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, g),
+  };
+}
 
 async function handleLessonDone(db: Ledger, uid: number, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const lessonKey = typeof body.lessonKey === 'string' ? body.lessonKey.trim() : '';
@@ -240,7 +280,7 @@ async function handleLessonDone(db: Ledger, uid: number, body: Record<string, un
     }
   }
   const summary = await xpSummary(db, uid);
-  return { completed, granted, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, lastGrant) };
+  return { completed, granted, capped: granted === 0 && !!lastGrant?.capped, summary, milestone: await maybeCelebrate(db, process.env.TELEGRAM_BOT_TOKEN?.trim(), appUrlOf(), uid, lastGrant) };
 }
 
 function cleanLevel(v: unknown): Level {
@@ -470,6 +510,9 @@ export default async function handler(req: Req, res: Res): Promise<void> {
         return;
       case 'matching':
         res.status(200).json(await handleMatching(db, uid, body ?? {}));
+        return;
+      case 'game_done':
+        res.status(200).json(await handleGameDone(db, uid, body ?? {}));
         return;
       case 'lesson_done':
         res.status(200).json(await handleLessonDone(db, uid, body ?? {}));

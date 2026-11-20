@@ -90,6 +90,8 @@ export const XP_RULES = {
   vocabQuiz: { amount: 2, cap: 30, source: 'vocab' }, // one correct recall answer
   vocabLearned: { amount: 3, cap: 30, source: 'vocab' }, // "O'rganildi" with evidence
   vocabMatch: { cap: 20, source: 'vocab' }, // amount = xpForMatching(errors)
+  game: { cap: 60, source: 'game' }, // amount = gameXpFor(stars) — O'yinlar sahifasi
+  gameDaily: { amount: 15, cap: 15, source: 'game_daily' }, // kunlik challenge bonusi (bir marta/kun)
   lessonDay: { amount: 5, cap: 40, source: 'lesson' },
   lessonPerfect: { amount: 5, cap: 40, source: 'lesson' }, // same-day bonus
   lessonFirst: { amount: 20, cap: 40, source: 'lesson' },
@@ -119,6 +121,15 @@ export function xpForMatching(errors: number): number {
   const e = Math.max(0, Math.min(20, Math.floor(errors) || 0));
   return Math.max(5, 20 - e * 2);
 }
+
+/** Games page: fixed reward per result — mirrors the client's xpForResult (offline fallback). */
+export function gameXpFor(stars: number): number {
+  const s = Math.max(0, Math.min(3, Math.floor(stars) || 0));
+  return s === 0 ? 2 : 4 + s * 4; // 2, 8, 12, 16
+}
+
+/** The five games on the O'yinlar page — server-side whitelist for game_done. */
+export const GAME_IDS = ['memory', 'runner', 'scramble', 'blitz', 'listen'] as const;
 
 export const LEGACY_SEED_MAX = 100_000;
 
@@ -235,6 +246,8 @@ export const events = {
   vocabQuiz: (day: string, word: string) => `vq:${day}:${word.slice(0, 48)}`,
   vocabLearned: (word: string) => `vl:${word.slice(0, 48)}`,
   vocabMatch: (day: string) => `vm:${day}`,
+  gamePlay: (day: string, playId: string) => `gp:${day}:${playId.slice(0, 32)}`, // unique per play — the daily cap bounds farming
+  gameDaily: (day: string) => `gd:${day}`, // daily challenge bonus: idempotent once per day
   lessonDay: (lessonKey: string, day: string) => `lesson:${lessonKey.slice(0, 60)}:${day}`,
   lessonPerfect: (lessonKey: string, day: string) => `lesson-perfect:${lessonKey.slice(0, 55)}:${day}`,
   lessonFirst: (lessonKey: string) => `lesson-first:${lessonKey.slice(0, 60)}`,

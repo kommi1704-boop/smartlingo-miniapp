@@ -140,11 +140,11 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const prefs = await fetchPrefsMap(db);
     const texts = {
       warn:
-        '🔥 Seriyangiz xavf ostida!\n\nBugun hali mashq qilmadingiz — bir-ikki mashq bilan kunlik seriyangiz davom etadi. Javoblar tayyor, siz tayyormisiz? 💪',
+        '🔥 Seriyangiz xavf ostida!\n\nBugun hali mashq qilmadingiz — bugungi Learning Journey bir-ikki bosqich bilan seriyani davom ettiradi. Sizni kutmoqda! 💪',
       invite:
-        '📚 Bugungi o‘rganish vaqti keldi!\n\nKichik mashq — katta odatning boshlanishi. 10 ta so‘z yoki bitta dars bilan kunni yopamizmi? Siz uchun kunlik reja tayyor 🚀',
+        '🚀 Bugungi o‘rganish safari tayyor!\n\nSiz uchun shaxsiy mavzu va bosqichlar tanlandi: kashfiyot, yangi so‘zlar, grammatika va mini-o‘yin. 15-25 daqiqada kunlik safarni yakunlang!',
       restart:
-        '🌱 Yangi boshlanish — endi biz bilan!\n\nSeriya uzilgan bo‘lsa ham muammo yo‘q: eng uzun seriyalarni boshidan boshlaganlar yutadi. Bugun bitta mashq bilan yana olovni yoqamizmi? 🔥',
+        '🌱 Yangi boshlanish — endi biz bilan!\n\nSeriya uzilgan bo‘lsa ham muammo yo‘q: eng uzun seriyalarni boshidan boshlaganlar yutadi. Bugungi safarning birinchi bosqichi bilan olovni yana yoqamizmi? 🔥',
     } as const;
 
     let sent = 0;
@@ -168,7 +168,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     };
 
     await runBatch(warn.map((r) => r.telegram_user_id), `streak_warn:${day}`, texts.warn, '🔥 Seriyani saqlash');
-    await runBatch(invite, `streak_invite:${day}`, texts.invite, '🚀 Rejani ochish');
+    await runBatch(invite, `streak_invite:${day}`, texts.invite, '🚀 Safarni boshlash');
     await runBatch(restart.map((r) => r.telegram_user_id), `streak_restart:${day}`, texts.restart, '🌱 Yana boshlash');
 
     res.status(200).json({
