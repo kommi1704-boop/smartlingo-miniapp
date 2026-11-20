@@ -18,6 +18,7 @@
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
+import { shiftDay, tashkentDay, weekMonday, xpSummary, xpTopDays } from './_lib/xpcore.js';
 
 interface Req {
   method?: string;
@@ -347,6 +348,15 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const allRows = (await allRes.json()) as { telegram_user_id: number; state: unknown }[];
     const identityRows = (await idRes.json()) as { username: string | null }[];
 
+    // Verified XP windows (Phase 4/5): the xp_ledger is authoritative for users
+    // with ledger rows; blob-derived numbers remain only for legacy learners.
+    const day = tashkentDay();
+    const [ledgerWeek, ledgerMonth, summary] = await Promise.all([
+      xpTopDays(db, weekMonday(day), day, 500),
+      xpTopDays(db, shiftDay(day, -29), day, 500),
+      xpSummary(db, Number(target)),
+    ]);
+
     const enriched = allRows.map((x) => {
       const st = (x.state ?? {}) as Record<string, unknown>;
       const battle = (st.battle ?? {}) as { wins?: number; losses?: number; draws?: number; ratingDelta?: number };
@@ -357,14 +367,21 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       return {
         id: String(x.telegram_user_id),
         rating: ratingFromBattle({ wins, losses, draws, delta: Math.round(Number(battle.ratingDelta) || 0) }),
-        xpWeek: xpInWindow(activity, 7, todayUtc),
-        xpMonth: xpInWindow(activity, 30, todayUtc),
+        xpWeek: ledgerWeek.get(x.telegram_user_id) ?? xpInWindow(activity, 7, todayUtc),
+        xpMonth: ledgerMonth.get(x.telegram_user_id) ?? xpInWindow(activity, 30, todayUtc),
       };
     });
     const ranks = buildRanks(enriched);
 
     const profile = projectPublic(String(targetRow.telegram_user_id), targetRow.state, { username: identityRows[0]?.username ?? undefined }, ranks, todayUtc);
-    if (profile) profile.lastActive = typeof targetRow.updated_at === 'string' ? targetRow.updated_at.slice(0, 10) : null;
+    if (profile) {
+      profile.lastActive = typeof targetRow.updated_at === 'string' ? targetRow.updated_at.slice(0, 10) : null;
+      const tid = Number(target);
+      if (ledgerWeek.has(tid)) profile.xpWeek = ledgerWeek.get(tid)!;
+      if (ledgerMonth.has(tid)) profile.xpMonth = ledgerMonth.get(tid)!;
+      if ((summary?.xpTotal ?? 0) > 0) profile.xp = summary!.xpTotal; // verified lifetime XP
+      if (summary?.streak?.current) profile.streak = summary.streak.current; // server-authoritative streak
+    }
 
     res.status(200).json({ profile });
   } catch (e) {

@@ -11,6 +11,7 @@
 // Also upserts the requester's public identity (username / first name) for student profiles.
 // Env (server only): TELEGRAM_BOT_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import crypto from 'node:crypto';
+import { shiftDay, tashkentDay, weekMonday, xpTopDays } from './_lib/xpcore.js';
 
 interface Req {
   method?: string;
@@ -219,6 +220,20 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     const parsed = rows
       .map((x) => rowFromState(String(x.telegram_user_id), x.state, todayUtc))
       .filter((x): x is LeaderRow => x !== null);
+    // Verified XP windows (Phase 4/5): when a learner has xp_ledger rows, the
+    // ledger is the source of truth for weekly/monthly XP — the client blob can
+    // no longer inflate the boards. Learners without ledger rows (legacy, never
+    // synced a verified action) keep their blob-derived numbers as before.
+    const day = tashkentDay();
+    const [ledgerWeek, ledgerMonth] = await Promise.all([
+      xpTopDays(db, weekMonday(day), day, 500),
+      xpTopDays(db, shiftDay(day, -29), day, 500),
+    ]);
+    for (const row of parsed) {
+      const id = Number(row.id);
+      if (ledgerWeek.has(id)) row.xpWeek = ledgerWeek.get(id)!;
+      if (ledgerMonth.has(id)) row.xpMonth = ledgerMonth.get(id)!;
+    }
     const list = [...parsed]
       .sort((a, b) => b.rating - a.rating || b.wins - a.wins || a.losses - b.losses || a.name.localeCompare(b.name))
       .slice(0, LIMIT);

@@ -23,6 +23,19 @@ interface Res {
   json(body: unknown): void;
 }
 
+const hits = new Map<string, { n: number; reset: number }>();
+
+function rateLimited(key: string, limit = 12, windowMs = 60_000): boolean {
+  const now = Date.now();
+  const cur = hits.get(key);
+  if (!cur || cur.reset < now) {
+    hits.set(key, { n: 1, reset: now + windowMs });
+    return false;
+  }
+  cur.n++;
+  return cur.n > limit;
+}
+
 function header(req: Req, name: string): string {
   const v = req.headers[name.toLowerCase()];
   return Array.isArray(v) ? v[0] ?? '' : v ?? '';
@@ -141,6 +154,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     return;
   }
   const uid = Number(auth.userId);
+  if (rateLimited(auth.userId)) {
+    res.status(429).json({ error: 'too_many_requests' });
+    return;
+  }
 
   try {
     if (req.method === 'GET') {

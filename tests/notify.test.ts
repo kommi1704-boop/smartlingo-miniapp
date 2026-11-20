@@ -129,8 +129,8 @@ section('presence snapshot (feeds the streak cron)');
 section('integration wiring (static checks)');
 {
   const reminders = readFileSync(new URL('../api/reminders.ts', import.meta.url), 'utf8');
-  ok(reminders.includes("kind: 'streak'") && reminders.includes('eventKey: `streak:${today}`'), 'streak cron goes through the dispatcher with a daily event key');
-  ok(reminders.includes('reminded_on: today'), 'streak cron keeps the 1/day presence guard');
+  ok(reminders.includes("kind: 'streak'") && reminders.includes('`streak_warn:${day}`') && reminders.includes('`streak_invite:${day}`'), 'streak cron goes through the dispatcher with per-type daily event keys');
+  ok(reminders.includes('selectTargets') && reminders.includes('skipped_block'), 'streak engine: server streak table targeting + transparent freeze skips (Phase 3)');
   ok(reminders.includes("'skipped_block'"), 'freeze holders get a transparent skip record');
 
   // weekly.ts was merged into admin-notify.ts (Vercel Hobby 12-function limit);

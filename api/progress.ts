@@ -17,6 +17,7 @@
 // The browser never talks to Supabase. The user id is taken only from the verified initData, never from the body.
 // Chat history and writing texts are NOT stored online (privacy: the learners are minors).
 import crypto from 'node:crypto';
+import { seedLegacyXp } from './_lib/xpcore.js';
 
 interface Req {
   method?: string;
@@ -172,6 +173,14 @@ const settled = new Set<number>();
 /** Best-effort presence upsert + referral settle. Called after GET and PUT. */
 async function afterSync(db: { url: string; key: string }, uid: number, state: unknown, botToken: string | undefined): Promise<void> {
   try {
+    // 0) one-time legacy seed: pre-ledger client XP becomes lifetime display XP
+    //    (source 'legacy' is excluded from weekly boards and the championship,
+    //    and it does NOT touch the streak — see schema-2.0.sql grant_xp)
+    const clientXp = state && typeof state === 'object' && !Array.isArray(state) ? (state as { xp?: unknown }).xp : 0;
+    if (typeof clientXp === 'number' && clientXp > 0) {
+      await seedLegacyXp(db, uid, clientXp);
+    }
+
     // 1) presence snapshot (for the reminder cron)
     const p = presenceFromState(state);
     if (p.last_active) {

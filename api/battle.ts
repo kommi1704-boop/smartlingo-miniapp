@@ -27,6 +27,7 @@
 // Schema: supabase/schema.sql adds `alter table battles add column if not exists live jsonb`.
 import crypto from 'node:crypto';
 import { dispatch } from './_lib/notify.js';
+import { events, grantXp, xpForBattle } from './_lib/xpcore.js';
 
 interface Quiz {
   id: string;
@@ -352,6 +353,14 @@ async function notifyBattleEnd(db: { url: string; key: string }, token: string, 
       if ((row.live as LiveState | null)?.aborted) return;
       const s1 = row.p1_score ?? 0;
       const s2 = row.p2_score ?? 0;
+      // Verified PvP XP (Phase 4): the server decided the result, so this is
+      // real practice — winner +5, draw +3, loser +2, once per battle per player.
+      const res1 = row.winner === 0 ? 'draw' : row.winner === row.p1 ? 'win' : 'loss';
+      const res2 = row.winner === 0 ? 'draw' : row.winner === row.p2 ? 'win' : 'loss';
+      await Promise.allSettled([
+        grantXp(db, row.p1, events.battle(row.id, res1), 'battle', xpForBattle(res1), 15, true),
+        grantXp(db, row.p2, events.battle(row.id, res2), 'battle', xpForBattle(res2), 15, true),
+      ]);
       const line = (name: string, you: number, them: number, delta: number | null): string => {
         const verdict = you > them ? 'G‘alaba sizniki! 🏆' : you < them ? 'Bu safar raqib kuchli bo‘ldi — keyingi jangda ochasiz! 💪' : 'Durrang! Ikkala jangchi ham kuchli ekan 🤝';
         return `⚔️ «${name}» bilan jang yakunlandi!\n\nNatija: ${you}:${them}${delta ? ` (reyting ${delta > 0 ? '+' : ''}${delta})` : ''}\n\n${verdict}`;

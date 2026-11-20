@@ -24,6 +24,7 @@
 import crypto from 'node:crypto';
 import { adminIdsFromEnv } from './bot.js';
 import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify.js';
+import { champSettle, events, grantXp, shiftDay, tashkentDay, weekMonday, type ChampWinner, type Ledger } from './_lib/xpcore.js';
 import { uztDay } from './progress.js';
 
 export const AUDIENCES = ['all', 'active', 'inactive'] as const;
@@ -420,13 +421,20 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           res.status(404).json({ error: 'not_found' });
           return;
         }
+        const bodyText = `🧪 TEST — bu faqat sizga yuborildi.\n\n${campaignText(row)}`;
         const payload: Record<string, unknown> = {
           chat_id: adminId,
-          text: `🧪 TEST — bu faqat sizga yuborildi.\n\n${campaignText(row)}`,
           link_preview_options: { is_disabled: true },
         };
+        // a campaign with an image goes out as sendPhoto (text = caption) — test it the same way
+        if (row.image_url) {
+          payload.photo = row.image_url;
+          payload.caption = bodyText;
+        } else {
+          payload.text = bodyText;
+        }
         if (row.button_url) payload.reply_markup = { inline_keyboard: [[{ text: row.button_label || 'Ochish', url: row.button_url }]] };
-        const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        const r = await fetch(`https://api.telegram.org/bot${botToken}/${row.image_url ? 'sendPhoto' : 'sendMessage'}`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(payload),
@@ -582,10 +590,65 @@ function safeParse(s: string): unknown {
 // =============================================================================
 // SECTION: weekly.ts (cron, ?k=weekly) — moved verbatim from api/weekly.ts
 // =============================================================================
+// Fixed (audit: the old text promised "+50 XP for 5 exercises" that was never
+// implemented): the weekly message now advertises the REAL weekly championship.
 const WEEKLY_TEXT =
-  '🏁 Haftalik challenge boshlandi!\n\n' +
-  'Shu hafta ichida 5 ta mashqni bajaring va +50 XP bonus oling! Har kuni kichik qadam — hafta oxirida katta natija. 🚀\n\n' +
+  '🏁 Haftalik chempionat boshlandi!\n\n' +
+  'Shu haftada eng ko‘p XP to‘plagan 3 ta o‘quvchi mukofot oladi: 🥇 500 Coin + Chempion ramkasi, 🥈 250 Coin, 🥉 100 Coin. Har bir mashq sizni yuqoriga ko‘taradi! 🚀\n\n' +
   'Do‘stlaringizni ham challenge’ga taklif qiling — birga o‘rganish ancha qiziqarli!';
+
+// ---------- weekly championship settlement (Phase 5) ----------
+const CHAMP_MEDAL = (place: number): string => (place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉');
+
+function champText(w: ChampWinner): string {
+  const coins = w.prizes?.coins ?? 0;
+  const xp = w.prizes?.xp ?? 0;
+  const frame = w.prizes?.frame ? ' va 🏆 shaxsiy Chempion ramkasi' : '';
+  return (
+    `${CHAMP_MEDAL(w.place)} Haftalik chempionat: ${w.place}-o‘rin!\n\n` +
+    `Shu hafta siz ${w.xp} XP to‘plab, top-3 ga kirdingiz.\n\n` +
+    `Mukofotlar: 🪙 +${coins} Coin, ⭐ +${xp} XP${frame}.\n\n` +
+    `Yangi hafta boshlandi — jangni davom ettiring! 🚀`
+  );
+}
+
+/**
+ * Settles the FINISHED week atomically and hands out the prizes:
+ *  - champ_settle RPC: top-3 by verified ledger XP -> champions table (the
+ *    (week_start, place) PK makes a retry a no-op, so prizes can never double).
+ *  - coins through the coin_grants ledger the Mini App already applies
+ *    exactly once (deterministic id gr_champ_<week>_<place>).
+ *  - prize XP through grant_xp WITHOUT touching the streak (it is not today's
+ *    practice; it is also excluded from championship windows via the source).
+ * Runs on EVERY daily cron for the previous week — idempotent, so a missed
+ * Monday settles on Tuesday. The new week's XP is a fresh ledger window.
+ */
+async function settleChampionship(db: DbCtx, token: string, appUrl: string): Promise<Record<string, unknown>> {
+  const lastWeek = shiftDay(weekMonday(tashkentDay()), -7);
+  const settle = await champSettle(db, lastWeek);
+  if (!settle) return { week: lastWeek, error: 'storage' };
+  if (!settle.settled) return { week: lastWeek, settled: false };
+  const awarded: number[] = [];
+  for (const w of settle.winners) {
+    const coins = w.prizes?.coins ?? 0;
+    await fetch(`${db.url}/rest/v1/coin_grants?on_conflict=id`, {
+      method: 'POST',
+      headers: { ...sbHeaders(db.key), prefer: 'resolution=ignore-duplicates,return=minimal' },
+      body: JSON.stringify({ id: `gr_champ_${lastWeek}_${w.place}`, telegram_user_id: w.uid, coins, source: 'championship' }),
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => undefined);
+    await grantXp(db, w.uid, events.champPrize(lastWeek, w.place), 'champ_prize', w.prizes?.xp ?? 0, undefined, false);
+    await dispatch(db, token, appUrl, {
+      uid: w.uid,
+      kind: 'achievements',
+      eventKey: `champ:${lastWeek}:${w.place}`,
+      text: champText(w),
+      button: { label: '🏆 Chempionat', webApp: true },
+    });
+    awarded.push(w.uid);
+  }
+  return { week: lastWeek, settled: true, winners: settle.winners.map((w) => ({ place: w.place, uid: w.uid, xp: w.xp })), awarded };
+}
 
 async function weeklyHandler(req: Req, res: Res): Promise<void> {
   const secret = process.env.CRON_SECRET?.trim();
@@ -612,6 +675,9 @@ async function weeklyHandler(req: Req, res: Res): Promise<void> {
   const out: Record<string, unknown> = { ok: true, day: today };
 
   try {
+    // ---------- 0) weekly championship settlement (Phase 5; idempotent) ----------
+    out.championship = await settleChampionship(db, token, appUrl);
+
     // ---------- 1) weekly challenge (Mondays, active learners, prefs respected) ----------
     if (isMonday || force) {
       const prefs = await fetchPrefsMap(db);
