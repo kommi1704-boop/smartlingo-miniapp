@@ -1386,3 +1386,8 @@ html.dark[data-bg='nebula'] body {
     radial-gradient(44rem 32rem at 10% 90%, rgba(59, 130, 246, 0.2), transparent 60%),
     linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
 }
+
+/* Numbers count up in real time — tabular figures stop the digits from wobbling. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

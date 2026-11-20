@@ -15,6 +15,8 @@ import { Dashboard } from './pages/Dashboard';
 import { Learn } from './pages/Learn';
 import { Roadmap } from './pages/Roadmap';
 import { Plan } from './pages/Plan';
+import { JourneyPreview } from './components/journey/JourneyPreview';
+import { JourneyRunner } from './components/journey/JourneyRunner';
 import { Tutor } from './pages/Tutor';
 import { Vocab } from './pages/Vocab';
 import { GamesHub, GamePage } from './pages/Games';
@@ -98,6 +100,7 @@ export function App() {
     case 'learning': body = <Learn />; break;
     case 'roadmap': body = <Roadmap />; break;
     case 'plan': body = <Plan />; break;
+    case 'journey': body = seg[1] === 'run' ? <JourneyRunner key={s.journey?.date ?? 'd'} /> : <JourneyPreview />; break;
     case 'tutor': body = <Tutor />; break;
     case 'vocab': body = <Vocab />; break;
     case 'games': body = seg[1] ? <GamePage key={seg[1]} id={seg[1]} /> : <GamesHub />; break;
