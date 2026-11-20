@@ -214,6 +214,8 @@ export interface Mistake {
   explain: string;
   date: string;
   corrected: boolean;
+  /** Phase 4: the one-time +3 XP for correcting was already granted (anti-toggle-farm). */
+  xpAwarded?: boolean;
 }
 
 export interface ChatMessage {
@@ -319,7 +321,7 @@ export interface BattleState {
   history: BattleRecord[]; // latest first, capped at 20
 }
 
-export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid';
+export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid' | 'aurora' | 'nebula';
 
 /** Accent theme: recolours the whole interface (Settings → "Mavzu rangi"). */
 export type AccentStyle = 'green' | 'pink' | 'red' | 'blue' | 'purple' | 'orange';
@@ -369,4 +371,6 @@ export interface PersistedState {
   skills?: SkillLevels;
   /** AI-generated roadmap (null until the learner generates one; optional field keeps old saves loading). */
   aiRoadmap?: AiRoadmap | null;
+  /** Offline fallback only: today's quiz XP cap counter (server-verified XP bypasses this). */
+  quizXpToday?: { date: string; xp: number };
 }

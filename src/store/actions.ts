@@ -12,11 +12,12 @@ import { uid } from '../lib/utils';
 import { haptic, setHapticsEnabled } from '../lib/telegram';
 import { DAILY_BONUS_XP, GAME_XP_CAP, xpForResult, type GameResult } from '../lib/games';
 import {
-  CHEST_PRICE, FIRST_LESSON_COINS, FRAME_DAYS, FREEZE_PRICE, GAME_COIN_CAP, LEVEL_UP_COINS,
+  BG_ITEMS, CHAMPION_FRAME_ID, CHEST_PRICE, FIRST_LESSON_COINS, FRAME_DAYS, FREEZE_PRICE, GAME_COIN_CAP, LEVEL_UP_COINS,
   NAME_STYLE_DAYS, STREAK_BONUS_COINS, XP_BOOST_HOURS, XP_BOOST_PRICE, coinsForResult, questById, rollChest,
-  type AvatarItem, type ChestReward, type FrameItem, type NameColorItem, type NameFxItem, type QuestCounter, type TitleItem,
+  type AvatarItem, type BgItem, type ChestReward, type FrameItem, type NameColorItem, type NameFxItem, type QuestCounter, type TitleItem,
 } from '../lib/shop';
 import { AI_BATTLES_PER_DAY } from '../lib/battle';
+import { xpApi, XpUnavailable, type VocabAnswerItem } from '../lib/xpApi';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -135,7 +136,7 @@ export function updateSettings(patch: Partial<Settings>): void {
   if (patch.haptics !== undefined) setHapticsEnabled(patch.haptics);
 }
 
-export function recordPlacement(score: number, max: number, level: string): void {
+export function recordPlacement(score: number, max: number, level: string, granted = 20): void {
   setState((s) => ({
     ...s,
     quizHistory: [
@@ -143,7 +144,7 @@ export function recordPlacement(score: number, max: number, level: string): void
       { id: uid('qh'), kind: 'placement' as ContentKind, title: `Daraja aniqlash testi (${level})`, score, total: max, date: new Date().toISOString() },
     ].slice(-200),
   }));
-  record({ xp: 20, quizzes: 1 });
+  record({ xp: granted, quizzes: 1 });
 }
 
 // ---------- Skill-based assessment (adaptive learning phase) ----------
@@ -164,15 +165,52 @@ export function clearAiRoadmap(): void {
 
 // ---------- Vocabulary ----------
 
+/**
+ * Phase 4: XP for vocabulary is server-authoritative. Self-report buttons
+ * ("Bilaman"/"Bilmayman" on flashcards) never award XP — only demonstrated
+ * recall (Test + Juftlash) does, capped per day server-side.
+ */
 export function reviewWord(id: string, know: boolean, opts: { silent?: boolean } = {}): void {
   setState((s) => ({ ...s, vocab: { ...s.vocab, [id]: applyReview(s.vocab[id], know) } }));
-  record({ words: 1, xp: opts.silent ? 0 : know ? 2 : 1 });
+  record({ words: 1 });
+  void opts; // kept for compatibility (was: xp amount)
 }
 
-export function markLearned(id: string): void {
-  setState((s) => ({ ...s, vocab: { ...s.vocab, [id]: markLearnedProgress(s.vocab[id]) } }));
-  record({ words: 1, xp: 3 });
-  toast('So‘z “o‘rganildi” deb belgilandi', 'success');
+/** Sends a batch of REAL recall answers (Test / Juftlash) to the XP ledger and credits the granted amount. */
+export async function awardVocabAnswers(items: VocabAnswerItem[]): Promise<number> {
+  try {
+    const r = await xpApi.vocabAnswers(items);
+    if (r.granted > 0) record({ xp: r.granted });
+    return r.granted;
+  } catch (e) {
+    if (!(e instanceof XpUnavailable)) console.warn('vocab award failed', e);
+    return 0; // offline: no XP (honest) — SRS progress still saved locally
+  }
+}
+
+/** "O'rganildi" needs evidence: 2+ correct recall answers (server-checked). */
+export async function markLearned(id: string): Promise<boolean> {
+  try {
+    const r = await xpApi.vocabLearned(id);
+    if (r.ok) {
+      setState((s) => ({ ...s, vocab: { ...s.vocab, [id]: markLearnedProgress(s.vocab[id]) } }));
+      if (r.granted > 0) record({ xp: r.granted, words: 1 });
+      toast('So‘z “o‘rganildi” deb belgilandi ✓', 'success');
+      return true;
+    }
+    markForReview(id);
+    toast(`“O‘rganildi” uchun isbot kerak: testda yana ${Math.max(1, 2 - (r.correct ?? 0))} marta to‘g‘ri javob bering`, 'warn');
+    return false;
+  } catch (e) {
+    if (e instanceof XpUnavailable) {
+      // offline: the status stays a local bookmark, XP only via the server
+      setState((s) => ({ ...s, vocab: { ...s.vocab, [id]: markLearnedProgress(s.vocab[id]) } }));
+      toast('So‘z belgilandi (XP uchun internet kerak)', 'success');
+      return true;
+    }
+    console.warn('markLearned failed', e);
+    return false;
+  }
 }
 
 export function markForReview(id: string): void {
@@ -206,12 +244,30 @@ export interface QuizOutcome {
   mistakes: number;
 }
 
-export function finishQuiz(args: {
+const QUIZ_OFFLINE_CAP = 50; // offline fallback only — the server caps properly when online
+
+/** Offline-only XP helper with a daily cap (the server-verified path bypasses this). */
+function offlineXp(want: number): number {
+  const t = today();
+  const s = getState();
+  const used = s.quizXpToday?.date === t ? s.quizXpToday.xp : 0;
+  const grant = Math.max(0, Math.min(Math.max(0, Math.floor(want)), QUIZ_OFFLINE_CAP - used));
+  if (grant > 0) setState((st) => ({ ...st, quizXpToday: { date: t, xp: used + grant } }));
+  return grant;
+}
+
+/**
+ * Phase 4: quiz XP is server-authoritative. The lesson outcome is journaled
+ * locally immediately, but XP arrives only from the XP ledger (idempotent,
+ * daily-capped). Vocabulary quizzes route through the recall ledger; lessons
+ * through the lesson ledger; anything else keeps a small offline fallback.
+ */
+export async function finishQuiz(args: {
   kind: ContentKind;
   title: string;
   items: QuizItemResult[];
   lessonKey?: string; // e.g. "grammar:g01"
-}): QuizOutcome {
+}): Promise<QuizOutcome> {
   const { kind, title, items, lessonKey } = args;
   const total = items.length;
   const score = items.filter((i) => i.picked === i.quiz.answer).length;
@@ -219,7 +275,6 @@ export function finishQuiz(args: {
   const ratio = total ? score / total : 0;
   const completedNow = ratio >= 0.6;
   const firstCompletion = !!lessonKey && !prev?.completed && completedNow;
-  const xp = score * 5 + (firstCompletion ? 20 : 0) + (score === total && total >= 3 ? 10 : 0);
   const date = new Date().toISOString();
 
   const wrong = items.filter((i) => i.picked !== i.quiz.answer);
@@ -262,14 +317,40 @@ export function finishQuiz(args: {
 
   const counter: Counters =
     kind === 'grammar' ? { grammar: 1 } : kind === 'reading' ? { reading: 1 } : kind === 'listening' ? { listening: 1 } : {};
-  record({ xp, quizzes: 1, ...counter });
+  record({ quizzes: 1, ...counter });
   if (completedNow) tickQuest('lessons', 1);
   if (firstCompletion) addCoins(FIRST_LESSON_COINS);
+
+  // ---- server-authoritative XP (0 offline except the small fallback below) ----
+  let xp = 0;
+  try {
+    if (kind === 'vocab-quiz') {
+      const batch = items.map((i) => ({ id: i.quiz.id.replace('vq-', ''), known: i.picked === i.quiz.answer, ctx: 'quiz' as const }));
+      const r = await xpApi.vocabAnswers(batch);
+      xp = r.granted;
+    } else if (lessonKey && completedNow) {
+      const r = await xpApi.lessonDone(lessonKey, score, total);
+      xp = r.granted;
+    }
+  } catch (e) {
+    if (!(e instanceof XpUnavailable)) console.warn('quiz award failed', e);
+  }
+  if (xp <= 0) {
+    const want = kind === 'vocab-quiz'
+      ? 0 // self-serve vocab quiz offline: no XP without the ledger (anti-farm)
+      : firstCompletion
+        ? score * 5 + 20 + (score === total && total >= 3 ? 10 : 0)
+        : Math.min(score * 5, 10);
+    xp = offlineXp(want);
+  }
+  if (xp > 0) {
+    record({ xp });
+    if (isXpBoosted(getState())) showXp(xp);
+  }
   return { score, total, xp, completed: completedNow, firstCompletion, mistakes: wrong.length };
 }
 
-export function recordMatching(errors: number, title: string, pairs: number): number {
-  const xp = Math.max(5, 20 - errors * 2);
+export async function recordMatching(errors: number, title: string, pairs: number, items?: VocabAnswerItem[]): Promise<number> {
   setState((s) => ({
     ...s,
     quizHistory: [
@@ -277,7 +358,16 @@ export function recordMatching(errors: number, title: string, pairs: number): nu
       { id: uid('qh'), kind: 'matching' as ContentKind, title, score: Math.max(0, pairs - errors), total: pairs, date: new Date().toISOString() },
     ].slice(-200),
   }));
-  record({ xp, quizzes: 1 });
+  record({ quizzes: 1 });
+  let xp = 0;
+  try {
+    const r = await xpApi.matching(errors, items ?? []);
+    xp = r.granted;
+  } catch (e) {
+    if (!(e instanceof XpUnavailable)) console.warn('matching award failed', e);
+  }
+  if (xp <= 0) xp = offlineXp(Math.max(5, 20 - errors * 2)); // legacy formula, daily-capped
+  if (xp > 0) record({ xp });
   return xp;
 }
 
@@ -337,9 +427,13 @@ export function finishGame(r: GameResult, daily: boolean): GameOutcome {
 }
 
 export function toggleMistake(id: string): void {
-  setState((s) => ({ ...s, mistakes: s.mistakes.map((m) => (m.id === id ? { ...m, corrected: !m.corrected } : m)) }));
-  const m = getState().mistakes.find((x) => x.id === id);
-  if (m?.corrected) {
+  const target = getState().mistakes.find((m) => m.id === id);
+  if (!target) return;
+  const nowCorrected = !target.corrected;
+  setState((s) => ({ ...s, mistakes: s.mistakes.map((m) => (m.id === id ? { ...m, corrected: nowCorrected } : m)) }));
+  // Phase 4 fix: the +3 XP is granted ONCE per mistake (toggle farming removed)
+  if (nowCorrected && !target.xpAwarded) {
+    setState((s) => ({ ...s, mistakes: s.mistakes.map((m) => (m.id === id ? { ...m, xpAwarded: true } : m)) }));
     const before = getState().xp;
     setState((s) => bump(s, { xp: 3 }));
     afterChange(before);
@@ -541,6 +635,11 @@ function markOwned(id: string, days?: number): void {
   }));
 }
 
+/** Store 2.0: journals the purchase on the server (duplicate-safe, price-validated). */
+function journalPurchase(itemId: string): void {
+  void xpApi.purchase(itemId).catch(() => undefined);
+}
+
 /** Buys a 7-day avatar frame and equips it right away. Renewing: just call again while active. */
 export function buyFrame(item: FrameItem): boolean {
   if (isOwnedActive(item.id)) {
@@ -550,6 +649,7 @@ export function buyFrame(item: FrameItem): boolean {
   }
   if (!spend(item.price)) return false;
   markOwned(item.id, FRAME_DAYS);
+  journalPurchase(item.id);
   equipFrame(item.id);
   haptic('success');
   toast(`${item.name} taqildi! ${FRAME_DAYS} kun davom etadi 🎉`, 'success');
@@ -565,6 +665,7 @@ export function renewFrame(item: FrameItem): boolean {
     ...st,
     shop: { ...st.shop, owned: { ...st.shop.owned, [item.id]: { ...st.shop.owned[item.id], expiresAt: new Date(base + FRAME_DAYS * DAY_MS).toISOString() } } },
   }));
+  journalPurchase(item.id);
   equipFrame(item.id);
   haptic('success');
   toast(`${item.name} ${FRAME_DAYS} kunga uzaytirildi ✓`, 'success');
@@ -578,6 +679,7 @@ export function equipFrame(id?: string): void {
 export function buyAvatar(item: AvatarItem): boolean {
   if (!spend(item.price)) return false;
   markOwned(item.id);
+  journalPurchase(item.id);
   equipAvatar(item.emoji);
   haptic('success');
   toast(`${item.name} avatari sizniki! 🎉`, 'success');
@@ -591,6 +693,7 @@ export function equipAvatar(emoji: string): void {
 export function buyTitle(item: TitleItem): boolean {
   if (!spend(item.price)) return false;
   markOwned(item.id);
+  journalPurchase(item.id);
   setState((st) => ({ ...st, shop: { ...st.shop, equipped: { ...st.shop.equipped, title: item.id } } }));
   haptic('success');
   toast(`“${item.name}” unvoni taqildi! 🎉`, 'success');
@@ -610,6 +713,7 @@ export function buyNameStyle(item: NameColorItem | NameFxItem, kind: 'nameColor'
     return true;
   }
   if (!spend(item.price)) return false;
+  journalPurchase(item.id);
   const expired = !!getState().shop.owned[item.id]; // had it before -> renew, extending the old expiry
   if (expired) {
     const current = getState().shop.owned[item.id]?.expiresAt;
@@ -658,6 +762,27 @@ export function buyXpBoost(): boolean {
   haptic('success');
   toast(`⚡ 2x XP yoqildi! ${XP_BOOST_HOURS} soat davom etadi`, 'success');
   return true;
+}
+
+/** Buys a premium profile background (permanent unlock of a BgStyle). */
+export function buyBg(item: BgItem): boolean {
+  if (isOwnedActive(item.id)) {
+    updateSettings({ bg: item.style });
+    toast(`${item.name} tanlandi`, 'success');
+    return true;
+  }
+  if (!spend(item.price)) return false;
+  markOwned(item.id);
+  journalPurchase(item.id);
+  updateSettings({ bg: item.style });
+  haptic('success');
+  toast(`${item.name} ochildi! 🎨`, 'success');
+  return true;
+}
+
+/** The champion frame is earned, never bought: granted when the server says place 1. */
+export function grantChampionFrame(): void {
+  if (!isOwnedActive(CHAMPION_FRAME_ID)) markOwned(CHAMPION_FRAME_ID);
 }
 
 /** Buys one streak freeze (auto-used when a day is missed). */

@@ -32,6 +32,7 @@ import { Stars } from './pages/Stars';
 import { Profile } from './pages/Profile';
 import { Battle } from './pages/Battle';
 import { Leaderboard } from './pages/Leaderboard';
+import { Championship } from './pages/Championship';
 import { PublicProfile } from './pages/PublicProfile';
 import { Notify } from './pages/Notify';
 
@@ -125,6 +126,7 @@ export function App() {
       );
       break;
     case 'leaderboard': body = <Leaderboard />; break;
+    case 'championship': body = <Championship />; break;
     case 'notify': body = <Notify />; break;
     case 'u': body = seg[1] && /^\d{1,15}$/.test(seg[1]) ? <PublicProfile uid={seg[1]} /> : (
       <Empty emoji="🔍" title="O‘quvchi topilmadi" text="Bunday sahifa yo‘q." action={<Button onClick={() => navigate('/leaderboard')}>Reyting jadvali</Button>} />
