@@ -12,6 +12,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test": "for f in tests/*.test.ts; do npx tsx \"$f\" || exit 1; done",
     "setup-bot": "node scripts/setup-bot.mjs"
   },
   "dependencies": {
