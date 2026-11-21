@@ -710,6 +710,10 @@ function rotate<T>(arr: T[], k: number): T[] {
   return [...arr.slice(r), ...arr.slice(0, r)];
 }
 
+/** vocab-extra.ts ships ~700 bulk sentences of this one shape; blanking the word
+ *  leaves "I want to learn the word _____" — no context, every option fits. */
+const TEMPLATE_EX = /^i want to learn the word\b/i;
+
 export function vocabRecallItems(wordIds: string[]): VocabRecallItem[] {
   const words = wordIds
     .map((id) => VOCAB.find((w) => w.id === id))
@@ -718,10 +722,10 @@ export function vocabRecallItems(wordIds: string[]): VocabRecallItem[] {
 
   return words.map((w, i) => {
     const others = words.filter((x) => x.id !== w.id);
-    // --- try fill-in-the-blank ---
+    // --- try fill-in-the-blank (template sentences carry no context → meaning-match) ---
     const wordRe = new RegExp(`\\b${escapeRe(w.en)}\\b`, 'i');
     const occurrences = w.exEn.match(new RegExp(wordRe.source, 'gi'))?.length ?? 0;
-    if (occurrences === 1) {
+    if (occurrences === 1 && !TEMPLATE_EX.test(w.exEn)) {
       const safeOthers = others
         .map((o) => o.en)
         .filter((o) => o !== w.en && !new RegExp(`\\b${escapeRe(o)}\\b`, 'i').test(w.exEn));
