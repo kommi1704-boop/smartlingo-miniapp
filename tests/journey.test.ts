@@ -46,7 +46,7 @@ g.AbortSignal = AbortSignal;
 // ---------------------------------------------------------------------------
 const {
   buildJourney, validateJourney, buildFallbackJourney, minimalJourney, withAiText,
-  journeyDoneKey, journeyStageKey, JOURNEY_THEMES, pickTheme,
+  journeyDoneKey, journeyStageKey, JOURNEY_THEMES, pickTheme, vocabRecallItems,
 } = await import('../src/lib/journey');
 const { LESSON_KEY_RE } = await import('../api/xp.js');
 import type { PersistedState, Profile } from '../src/types';
@@ -225,6 +225,65 @@ section('Journey engine — AI reading merge');
   ok(!r?.readingId, 'A10b: catalog id cleared for AI stage');
   ok(r?.title.includes('The Secrets of Space'), 'A10c: AI title used');
   ok(validateJourney(merged, s), 'A10d: merged session passes QC');
+}
+
+section('Journey engine — vocab recall items are never ambiguous');
+{
+  const s = makeState();
+  const j = buildJourney(s, DATE);
+  const stage = j.stages.find((st) => st.kind === 'vocab');
+  const ids = stage?.words ?? [];
+  const items = vocabRecallItems(ids);
+  ok(items.length === ids.length, `V1: one item per word (${items.length}/${ids.length})`);
+  let blanks = 0;
+  let meanings = 0;
+  let safe = true;
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for (const it of items) {
+    if (new Set(it.options).size !== it.options.length) safe = false; // duplicate options
+    if (it.answer < 0 || it.answer >= it.options.length) safe = false; // answer out of range
+    if (it.options.filter((o) => o === it.options[it.answer]).length !== 1) safe = false; // double correct
+    if (it.kind === 'blank') {
+      blanks++;
+      if (!it.prompt.includes('_____')) safe = false; // blank not actually applied
+      if (new RegExp(`\\b${esc(it.word)}\\b`, 'i').test(it.prompt)) safe = false; // answer still visible
+      // no other option may also fit the sentence
+      for (const o of it.options) {
+        if (o === it.options[it.answer]) continue;
+        if (new RegExp(`\\b${esc(o)}\\b`, 'i').test(it.prompt)) safe = false;
+      }
+    } else meanings++;
+  }
+  ok(safe, 'V2: every item — unique options, exactly one correct answer, no leakage');
+  ok(blanks + meanings === items.length, `V3: kinds valid (blank=${blanks}, meaning=${meanings})`);
+  ok(JSON.stringify(vocabRecallItems(ids)) === JSON.stringify(items), 'V4: items deterministic (stable during the day)');
+}
+
+section('Journey engine — themed discover checks + videos');
+{
+  const answers = new Set<number>();
+  let allOk = true;
+  for (const t of JOURNEY_THEMES) {
+    const q = t.check;
+    if (!q.q || q.options.length !== 4) allOk = false;
+    if (new Set(q.options.map((o) => o.toLowerCase())).size !== 4) allOk = false;
+    if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer > 3) allOk = false;
+    if (!q.explain) allOk = false;
+    answers.add(q.answer);
+  }
+  ok(allOk, 'C1: all 12 theme checks are valid quizzes');
+  ok(answers.size >= 3, `C2: answer positions vary (${[...answers].join(',')}) — no always-True questions`);
+
+  const s = makeState();
+  const j = buildJourney(s, DATE);
+  const d = j.stages[0];
+  const { THEME_VIDEOS } = await import('../src/data/videos');
+  if (d.videoId) {
+    ok(THEME_VIDEOS.some((v) => v.videoId === d.videoId && v.themeId === j.themeId), `D1: video is curated + matches theme (${d.videoId})`);
+  } else {
+    ok(true, 'D1: no video for this theme (allowed — the player hides)');
+  }
+  ok(validateJourney(j, s), 'D2: session with themed check passes QC');
 }
 
 // ---------------------------------------------------------------------------

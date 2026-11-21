@@ -418,7 +418,23 @@ async function handleChampionship(db: Ledger, uid: number): Promise<Record<strin
     const row = identities.find((x) => Number(x.telegram_user_id) === id);
     return (row?.first_name || row?.username || 'O‘quvchi').slice(0, 24);
   };
-  const standings = top.map((r, i) => ({ rank: i + 1, uid: r.uid, xp: r.xp, name: nameOf(r.uid), me: r.uid === uid }));
+  // avatars for the weekly XP table — the same minimal field the rating leaderboard exposes
+  const avatarMap = new Map<number, string>();
+  if (ids.length) {
+    const progs = (await rest<{ telegram_user_id: number; state: unknown }[]>(
+      db,
+      `progress?telegram_user_id=in.(${ids.join(',')})&select=telegram_user_id,state&limit=100`,
+    )) ?? [];
+    for (const p of progs) {
+      try {
+        const shop = ((p.state as { shop?: { equipped?: { avatar?: string } } })?.shop ?? {});
+        const av = shop.equipped?.avatar;
+        if (typeof av === 'string' && av) avatarMap.set(Number(p.telegram_user_id), av.slice(0, 8));
+      } catch { /* malformed state row: skip silently */ }
+    }
+  }
+  const avatarOf = (id: number) => avatarMap.get(id);
+  const standings = top.map((r, i) => ({ rank: i + 1, uid: r.uid, xp: r.xp, name: nameOf(r.uid), avatar: avatarOf(r.uid), me: r.uid === uid }));
   const myRow = standings.find((s) => s.uid === uid);
   const myXp = myRow?.xp ?? (await xpSummary(db, uid))?.xpWeek ?? 0;
   const myRank = myRow?.rank ?? (myXp > 0 ? null : null);
