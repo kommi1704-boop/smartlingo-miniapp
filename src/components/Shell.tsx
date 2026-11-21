@@ -22,7 +22,7 @@ export const NAV_ALL: NavItem[] = [
   { path: '/', label: 'Bosh sahifa', icon: 'home' },
   { path: '/universe', label: 'Learning Universe', icon: 'planet' },
   { path: '/learning', label: 'O‘quv markazi', icon: 'grad' },
-  { path: '/plan', label: 'Kunlik reja', icon: 'calendar' },
+  { path: '/journey', label: 'Kunlik safari', icon: 'calendar' },
   { path: '/roadmap', label: 'Yo‘l xaritasi', icon: 'map' },
   { path: '/tutor', label: 'Lingo (AI)', icon: 'chat' },
   { path: '/vocab', label: 'So‘zlar', icon: 'cards' },
@@ -48,7 +48,7 @@ const nav = (path: string): NavItem => NAV_ALL.find((n) => n.path === path)!;
 /** Groups for the desktop sidebar / hub pages: label + members (path-based, index-safe). */
 export const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   { title: 'Asosiy', items: [nav('/'), nav('/universe'), nav('/learning'), nav('/tutor')] },
-  { title: 'Ko‘nikmalar', items: [nav('/plan'), nav('/roadmap'), nav('/vocab'), nav('/grammar'), nav('/reading'), nav('/listening'), nav('/speaking'), nav('/resources')] },
+  { title: 'Ko‘nikmalar', items: [nav('/journey'), nav('/roadmap'), nav('/vocab'), nav('/grammar'), nav('/reading'), nav('/listening'), nav('/speaking'), nav('/resources')] },
   { title: 'O‘yin va raqobat', items: [nav('/games'), nav('/battle'), nav('/leaderboard'), nav('/championship')] },
   { title: 'Shaxsiy', items: [nav('/progress'), nav('/shop'), nav('/stars'), nav('/profile'), nav('/settings')] },
 ];

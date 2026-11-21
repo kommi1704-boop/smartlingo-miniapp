@@ -98,6 +98,88 @@ export interface Resource {
   url?: string; // ONLY a verified URL; omit when not verified
 }
 
+// ---------- Daily Learning Journey (AI-personalized session) ----------
+
+export type JourneyStageKind = 'discover' | 'vocab' | 'grammar' | 'listening' | 'reading' | 'game' | 'challenge';
+
+export interface JourneyFact {
+  en: string;
+  uz: string;
+}
+
+export interface JourneyChallenge {
+  type: 'speaking' | 'writing' | 'mistakes';
+  promptId?: string; // speaking/writing prompt id
+  count?: number; // mistakes to repair
+}
+
+/** A stage of the daily journey. Payload fields depend on `kind`. */
+export interface JourneyStage {
+  id: string; // 's0'.. — stable per session
+  kind: JourneyStageKind;
+  emo: string; // brand sticker name (EmoName)
+  title: string; // UZ, shown on the journey path
+  desc: string; // UZ one-liner
+  minutes: number;
+  reason?: string; // why the engine assigned this stage
+  // ---- payloads ----
+  facts?: JourneyFact[]; // discover
+  check?: Quiz; // discover mini-check
+  videoId?: string; // discover: curated YouTube video (verified, see data/videos.ts)
+  words?: string[]; // vocab: VOCAB ids (3-6)
+  grammarId?: string;
+  listeningId?: string;
+  readingId?: string; // catalog reading id (when aiText is absent)
+  gameId?: string;
+  challenge?: JourneyChallenge;
+  aiText?: JourneyAiText; // cached AI reading (reading stage only)
+  aiQuiz?: Quiz[]; // questions built from the AI text
+}
+
+export interface JourneyAiText {
+  title: string;
+  text: string;
+  questions: { q: string; options: string[]; answerIndex: number }[];
+  words: { en: string; uz: string }[];
+  interest: string;
+}
+
+export interface JourneySession {
+  date: string;
+  seed: string;
+  themeId: string;
+  titleEn: string;
+  titleUz: string;
+  hookUz: string;
+  level: Level;
+  minutes: number;
+  stages: JourneyStage[];
+  objectives: string[];
+  rewardsXp: [number, number]; // honest estimate range shown in the preview
+}
+
+/** One stage's run record (progress + the XP the server actually granted). */
+export interface JourneyStageRun {
+  done: boolean;
+  score: number;
+  total: number;
+  xp: number;
+  at?: string;
+}
+
+export interface JourneyState {
+  date: string; // YYYY-MM-DD the session belongs to
+  themeId: string;
+  session?: JourneySession; // frozen content for the day — regeneration never changes it
+  stages: Record<string, JourneyStageRun>; // key: stage id ('s0'..)
+  startedAt?: string;
+  finishedAt?: string;
+  celebrated?: boolean; // completion celebration shown once
+  bonusDone?: boolean; // session-completion XP already claimed (server key is idempotent anyway)
+  aiText?: JourneyAiText | null; // AI reading for today (optional, cached)
+  themeHistory: string[]; // recent theme ids — the engine avoids repeating them
+}
+
 // ---------- App state ----------
 
 export type VocabStatus = 'new' | 'learning' | 'learned' | 'review';
@@ -321,7 +403,7 @@ export interface BattleState {
   history: BattleRecord[]; // latest first, capped at 20
 }
 
-export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid' | 'aurora' | 'nebula';
+export type BgStyle = 'doodle' | 'plain' | 'mesh' | 'sunset' | 'mint' | 'grid' | 'aurora' | 'nebula' | 'custom';
 
 /** Accent theme: recolours the whole interface (Settings → "Mavzu rangi"). */
 export type AccentStyle = 'green' | 'pink' | 'red' | 'blue' | 'purple' | 'orange';
@@ -329,6 +411,8 @@ export type AccentStyle = 'green' | 'pink' | 'red' | 'blue' | 'purple' | 'orange
 export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   bg: BgStyle; // app backdrop style (Settings → "Orqa fon")
+  /** Custom backdrop image (data URL) — used only when bg === 'custom' (250-coin shop item). */
+  customBg?: string | null;
   accent: AccentStyle; // interface accent colour (Settings → "Mavzu rangi")
   dailyWordGoal: number;
   haptics: boolean;
@@ -371,6 +455,8 @@ export interface PersistedState {
   skills?: SkillLevels;
   /** AI-generated roadmap (null until the learner generates one; optional field keeps old saves loading). */
   aiRoadmap?: AiRoadmap | null;
+  /** Daily Learning Journey: today's generated session + progress (optional for old saves). */
+  journey?: JourneyState | null;
   /** Offline fallback only: today's quiz XP cap counter (server-verified XP bypasses this). */
   quizXpToday?: { date: string; xp: number };
 }

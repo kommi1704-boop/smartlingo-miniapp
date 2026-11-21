@@ -50,7 +50,7 @@ export function Learn() {
   const tools: { path: string; label: string; desc: string; icon: IconName; emoji: string }[] = [
     { path: '/games', label: 'O‘yinlar', desc: `${GAMES.length} ta o‘yin + kunlik challenge`, icon: 'game', emoji: '🎮' },
     { path: '/battle', label: 'Do‘stona jang', desc: 'Raqibga qarshi reyting uchun', icon: 'swords', emoji: '⚔️' },
-    { path: '/plan', label: 'Kunlik reja', desc: `${sum.doneCount}/${sum.count} bajarildi`, icon: 'calendar', emoji: '📅' },
+    { path: '/journey', label: 'Kunlik safari', desc: 'AI sessiya · bitta tugma', icon: 'calendar', emoji: '🚀' },
     { path: '/roadmap', label: 'Yo‘l xaritasi', desc: 'Bosqichma-bosqich reja', icon: 'map', emoji: '🗺️' },
     { path: '/tutor', label: 'Lingo (AI)', desc: 'Erkin suhbat mashqi', icon: 'chat', emoji: '🤖' },
     { path: '/resources', label: 'Resurslar', desc: `${RESOURCES.length} ta tanlangan manba`, icon: 'globe', emoji: '🌍' },
@@ -60,14 +60,14 @@ export function Learn() {
     <div>
       <PageHeader emo="grad" tone="green" title="O‘quv markazi" subtitle="Barcha ko‘nikmalar va vositalar bir joyda" />
 
-      {/* Today's plan — compact strip */}
+      {/* Today's journey — compact strip */}
       <A
-        to="/plan"
+        to="/journey"
         className="play-card wash-sun flex items-center gap-3 p-4 transition active:scale-[0.98]"
       >
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-xl">📅</span>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-xl">🚀</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-extrabold">Bugungi reja · {sum.pct}%</span>
+          <span className="block text-sm font-extrabold">Bugungi safari · {sum.pct}%</span>
           <span className="block truncate text-xs text-muted">
             {next ? `Keyingi: ${next.title}` : 'Barcha mashqlar bajarildi — barakalla!'}
           </span>

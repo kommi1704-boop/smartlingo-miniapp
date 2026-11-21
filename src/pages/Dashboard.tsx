@@ -1,7 +1,7 @@
 // SmartLingo Home — premium dark restructure.
-// Hierarchy: greeting → Today's Discovery → continue learning → weekly championship →
-// Learning Universe teaser → daily challenge → quick access → stats → recent activity.
-// Every number is derived from real state / real catalogs — nothing fake.
+// Hierarchy: greeting → Bugungi reja (Daily Learning Journey, one CTA) → weekly streak →
+// weekly championship → Learning Universe teaser → daily challenge → quick access →
+// stats → recent activity. Every number is derived from real state / real catalogs.
 import { useMemo } from 'react';
 import { A, navigate } from '../lib/router';
 import { useApp } from '../store/store';
@@ -10,12 +10,12 @@ import { streakOf, xpProgress, BADGES } from '../lib/gamification';
 import { nameStyleClasses } from '../lib/shop';
 import { isOwnedActive, claimQuest } from '../store/actions';
 import { today, dayOfYear } from '../lib/dates';
-import { Button, Card, LevelBadge, ProgressBar, ProgressRing, Section, StatTile } from '../components/ui';
+import { Button, Card, LevelBadge, ProgressBar, Section, StatTile } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
 import { LingoBubble, Mascot, type Mood } from '../components/Mascot';
 import { CountUp, DotChart, StreakWeek } from '../components/Alive';
-import { ChampionshipCard, DiscoveryCard } from '../components/DailyExtras';
+import { ChampionshipCard } from '../components/DailyExtras';
 import { JourneyCard } from '../components/journey/JourneyCard';
 import { Emo } from '../components/Emo';
 import { cx, fmt } from '../lib/utils';
@@ -160,34 +160,12 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* ---------- Daily Learning Journey (Phase: AI daily session) ---------- */}
+      {/* ---------- Bugungi reja = Daily Learning Journey ----------
+          ONE engaging AI session per day with a single CTA (Duolingo-style). The old
+          adaptive task list no longer clutters the home screen (the classic exercises
+          stay available in the Learn hub), and the Daily Discovery now lives INSIDE
+          the journey's first stage — so nothing on the home screen awards XP for free. */}
       <JourneyCard />
-
-      {/* ---------- Today's Discovery (Phase 2, server-cached, +10 XP) ---------- */}
-      <DiscoveryCard />
-
-      {/* ---------- Daily plan (prominent) ---------- */}
-      <Section title="Bugungi reja" action={<A to="/plan" className="text-sm font-bold text-[#2fa763]">Hammasi →</A>}>
-        <div className="play-card wash-green rise-in !border-[#bfe9cf] p-4">
-          <div className="flex items-center gap-4">
-            <ProgressRing value={sum.pct} size={76} stroke={9}>
-              <span className="text-base font-black">{sum.pct}%</span>
-            </ProgressRing>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-black">{next ? next.title : 'Bugungi reja bajarildi 🎉'}</p>
-              <p className="mt-0.5 truncate text-xs font-semibold text-muted">
-                {lastMeta
-                  ? `Oxirgi: ${lastMeta.emoji} ${lastMeta.label} · ${sum.doneCount}/${sum.count} bugun`
-                  : `${sum.doneCount}/${sum.count} mashq · ${p.dailyMinutes} daqiqa maqsad`}
-              </p>
-              <p className="mt-0.5 truncate text-[11px] text-muted">So‘zlar: {Math.min(day?.words ?? 0, goal)}/{goal} · {next?.reason ?? 'Yangi mashqlar kutmoqda'}</p>
-            </div>
-          </div>
-          <Button className="mt-3.5" size="lg" full icon="play" onClick={() => navigate(next ? next.route : '/universe')}>
-            {next ? 'Davom ettirish' : 'Universeni ochish'}
-          </Button>
-        </div>
-      </Section>
 
       {/* ---------- Weekly streak (hex badges) ---------- */}
       <div className="play-card rise-in mt-4 p-4">

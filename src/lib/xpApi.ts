@@ -116,7 +116,7 @@ export const xpApi = {
   championship: () =>
     get<{
       week: { start: string; end: string; daysLeft: number };
-      standings: { rank: number; uid: number; xp: number; name: string; me: boolean }[];
+      standings: { rank: number; uid: number; xp: number; name: string; avatar?: string; me: boolean }[];
       me: { uid: number; xp: number; rank: number | null; provisional: boolean };
       champions: { week: string; winners: { rank: number; uid: number; xp: number; name: string }[] }[];
       isChampion: boolean;

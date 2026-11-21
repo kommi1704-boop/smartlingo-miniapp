@@ -19,6 +19,7 @@ export const BACKGROUNDS: { id: BgStyle; name: string; preview: string }[] = [
   { id: 'grid', name: 'Daftar', preview: 'repeating-linear-gradient(0deg,#eef2ff 0 5px,#dbeafe 5px 6px),repeating-linear-gradient(90deg,transparent 0 5px,rgba(99,102,241,.25) 5px 6px)' },
   { id: 'aurora', name: 'Aurora ✨', preview: 'linear-gradient(135deg,#a5f3fc 0%,#818cf8 45%,#e879f9 100%)' },
   { id: 'nebula', name: 'Nebula ✨', preview: 'linear-gradient(160deg,#c4b5fd 0%,#818cf8 50%,#38bdf8 100%)' },
+  { id: 'custom', name: 'Shaxsiy fon 📷', preview: 'linear-gradient(135deg,#a78bfa 0%,#38bdf8 100%)' }, // your own photo (250-coin shop item)
 ];
 
 const BG_IDS = new Set(BACKGROUNDS.map((b) => b.id));
@@ -44,10 +45,15 @@ export function applyAccent(accent?: string): void {
   else delete html.dataset.accent;
 }
 
-export function applyTheme(theme: Settings['theme'], bg: string = 'doodle', accent?: string): void {
+export function applyTheme(theme: Settings['theme'], bg: string = 'doodle', accent?: string, customBg?: string | null): void {
+  const html = document.documentElement;
   const dark = isDark(theme);
-  document.documentElement.classList.toggle('dark', dark);
-  document.documentElement.dataset.bg = BG_IDS.has(bg as BgStyle) ? bg : 'doodle';
+  html.classList.toggle('dark', dark);
+  const style = BG_IDS.has(bg as BgStyle) ? bg : 'doodle';
+  html.dataset.bg = style;
+  // custom backdrop: the data URL is injected as a CSS variable (index.css uses it)
+  if (style === 'custom' && customBg) html.style.setProperty('--bg-custom', `url("${customBg}")`);
+  else html.style.removeProperty('--bg-custom');
   applyAccent(accent);
   const color = dark ? '#0b1020' : '#f3f5fc';
   setTgColors(color);
@@ -59,7 +65,7 @@ export function applyTheme(theme: Settings['theme'], bg: string = 'doodle', acce
 export function watchTheme(getSettings: () => Settings): () => void {
   const handler = () => {
     const s = getSettings();
-    applyTheme(s.theme, s.bg, s.accent);
+    applyTheme(s.theme, s.bg, s.accent, s.customBg);
   };
   const off = onTgEvent('themeChanged', handler);
   const mq = window.matchMedia?.('(prefers-color-scheme: dark)');

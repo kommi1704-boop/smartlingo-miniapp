@@ -7,13 +7,13 @@ import { navigate } from '../lib/router';
 import { PageHeader, Card, Pill, Empty, Notice } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { Emo, type MedalTone } from '../components/Emo';
-import { Avatar } from '../components/Avatar';
+import { Avatar, AvatarGlyph } from '../components/Avatar';
 import { xpApi, refreshServerStats, type ServerStats } from '../lib/xpApi';
 import { cx } from '../lib/utils';
 
 interface ChampionshipData {
   week: { start: string; end: string; daysLeft: number };
-  standings: { rank: number; uid: number; xp: number; name: string; me: boolean }[];
+  standings: { rank: number; uid: number; xp: number; name: string; avatar?: string; me: boolean }[];
   me: { uid: number; xp: number; rank: number | null; provisional: boolean };
   champions: { week: string; winners: { rank: number; uid: number; xp: number; name: string }[] }[];
   isChampion: boolean;
@@ -118,7 +118,7 @@ export function Championship() {
                   )}
                 >
                   <span className="flex w-8 shrink-0 items-center justify-center text-center text-sm font-black text-muted">{MEDAL_TONE(row.rank) ? <Emo n="medal" tone={MEDAL_TONE(row.rank)!} size={20} /> : row.rank}</span>
-                  <Avatar emoji="🙂" size={30} />
+                  <AvatarGlyph value={row.avatar} size={32} />
                   <span className="min-w-0 flex-1 truncate text-[15px] font-bold">
                     {row.name}
                     {row.me && <Pill tone="violet">Siz</Pill>}

@@ -279,12 +279,13 @@ export interface BgItem {
   id: string; // "bg-aurora" — ownership id + the BgStyle it unlocks
   name: string;
   price: number;
-  style: 'aurora' | 'nebula';
+  style: 'aurora' | 'nebula' | 'custom'; // 'custom' = the learner's own photo backdrop
 }
 
 export const BG_ITEMS: BgItem[] = [
   { id: 'bg-aurora', name: 'Aurora foni', price: 250, style: 'aurora' },
   { id: 'bg-nebula', name: 'Nebula foni', price: 250, style: 'nebula' },
+  { id: 'bg-custom', name: 'Shaxsiy fon (o‘z rasmingiz)', price: 250, style: 'custom' },
 ];
 
 export const bgItemByStyle = (style: string): BgItem | undefined => BG_ITEMS.find((b) => b.style === style);

@@ -32,7 +32,10 @@ import { completeJourneyStage, addJourneyStageXp } from '../../store/journeyActi
 import { xpApi } from '../../lib/xpApi';
 import { aiPost, aiErrorHint, aiLeftToday } from '../../lib/aiUsage';
 import { checkText } from '../../lib/writingCheck';
-import { speak, stopSpeaking, ttsAvailable, RATE_SLOW } from '../../lib/tts';
+import { speak, stopSpeaking, ttsAvailable, parseTranscript, playLines } from '../../lib/tts';
+import { vocabRecallItems, type VocabRecallItem } from '../../lib/journey';
+import { THEME_VIDEOS } from '../../data/videos';
+import { VideoPlayer } from './VideoPlayer';
 import { haptic } from '../../lib/telegram';
 import { playSfx } from '../../lib/sfx';
 import { Emo } from '../Emo';
@@ -161,50 +164,60 @@ function StageQuiz({ title, questions, kind, lessonKey, onDone }: {
 }
 
 // ---------------------------------------------------------------------------
-// 01 DISCOVER
+// 01 DISCOVER — video + facts + comprehension check.
+// The Daily Discovery lives HERE now: its +10 XP is granted only when the
+// learner has opened the facts AND answered the check question — never on
+// mount, never for free (the old home-screen quick-complete button is gone).
 // ---------------------------------------------------------------------------
 
 export function DiscoverStage({ stage, onDone }: StageProps) {
   const s = getState();
   const [opened, setOpened] = useState<number[]>([]);
   const [quizDone, setQuizDone] = useState<QuizOutcome | null>(null);
-  const [discoveryXp, setDiscoveryXp] = useState(0);
+  const [discoveryPending, setDiscoveryPending] = useState<{ day: string } | null>(null);
   const facts = stage.facts ?? [];
   const allOpen = facts.length > 0 && opened.length >= facts.length;
   const check = stage.check;
+  const video = stage.videoId ? THEME_VIDEOS.find((v) => v.videoId === stage.videoId) : undefined;
+  const doneRef = useRef(false);
 
-  // the Daily Discovery is the same hook — completing the stage completes it server-side once
+  // fetch today's Discovery so its XP can be claimed at the END of the stage (never on mount)
   useEffect(() => {
     let live = true;
     xpApi
       .discoveryGet(s.profile?.estimatedLevel ?? 'A2', s.profile?.interests ?? [])
-      .then((r) => {
-        if (!live || r.completed) return;
-        return xpApi
-          .discoveryDone(r.day)
-          .then((res) => {
-            if (!live || res.granted <= 0) return;
-            setDiscoveryXp(res.granted);
-            addJourneyStageXp(stage.id, res.granted);
-          })
-          .catch(() => undefined);
-      })
+      .then((r) => { if (live && !r.completed) setDiscoveryPending({ day: r.day }); })
       .catch(() => undefined);
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function finish() {
-    if (!quizDone) return;
+  async function finish() {
+    if (!quizDone || doneRef.current) return;
+    doneRef.current = true;
+    let bonusXp = 0;
+    if (discoveryPending) {
+      try {
+        const res = await xpApi.discoveryDone(discoveryPending.day);
+        bonusXp = res.granted;
+      } catch { /* offline: the ledger keeps it claimable later */ }
+    }
+    const totalXp = quizDone.xp + bonusXp;
     completeJourneyStage(stage.id, quizDone.score, quizDone.total);
-    addJourneyStageXp(stage.id, quizDone.xp);
-    onDone({ score: quizDone.score, total: quizDone.total, xp: quizDone.xp + discoveryXp });
+    addJourneyStageXp(stage.id, totalXp);
+    onDone({ score: quizDone.score, total: quizDone.total, xp: totalXp });
   }
 
   if (!check) return <BrokenStage stage={stage} onDone={onDone} />;
 
   return (
     <StageShell stage={stage} step={opened.length + (quizDone ? 1 : 0)} total={facts.length + 1}>
+      {video && (
+        <div className="mb-4">
+          <p className="mb-2 px-1 text-[13px] font-black">🎬 Mavzuni videodan ko‘rib chiqing:</p>
+          <VideoPlayer videoId={video.videoId} title={video.title} channel={video.channel} noteUz={video.noteUz} />
+        </div>
+      )}
       <p className="px-1 text-[13px] font-semibold text-muted">Kartochkalarni ochib ko‘ring — har birida qiziqarli fakt:</p>
       <div className="mt-2 space-y-2">
         {facts.map((f, i) => {
@@ -237,7 +250,7 @@ export function DiscoverStage({ stage, onDone }: StageProps) {
           <StageQuiz title="Kashfiyot tekshiruvi" questions={[check]} kind="reading" onDone={(o) => setQuizDone(o)} />
         </div>
       )}
-      {quizDone && <Button className="mt-4" size="lg" full icon="check" onClick={finish}>Bosqichni yakunlash</Button>}
+      {quizDone && <Button className="mt-4" size="lg" full icon="check" onClick={() => void finish()}>Bosqichni yakunlash</Button>}
     </StageShell>
   );
 }
@@ -246,10 +259,13 @@ export function DiscoverStage({ stage, onDone }: StageProps) {
 // 02 VOCABULARY — flashcards then fill-in-the-blank recall
 // ---------------------------------------------------------------------------
 
-function blankSentence(sentence: string, word: string): string {
-  const re = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w*\\b`, 'i');
-  return re.test(sentence) ? sentence.replace(re, '_____') : sentence;
-}
+// ---------------------------------------------------------------------------
+// 02 VOCABULARY — flashcards, then SAFE recall questions.
+// Items come from the pure vocabRecallItems() engine helper: fill-in-the-blank
+// only when the word appears exactly once AND no other option fits the
+// sentence; otherwise an unambiguous English→Uzbek meaning match. No weird,
+// double-correct questions (the bug the learner reported).
+// ---------------------------------------------------------------------------
 
 export function VocabStage({ stage, onDone }: StageProps) {
   const words = useMemo(() => (stage.words ?? []).map((id) => VOCAB.find((w) => w.id === id)).filter(Boolean) as typeof VOCAB, [stage.words]);
@@ -260,18 +276,7 @@ export function VocabStage({ stage, onDone }: StageProps) {
   const answers = useRef<{ id: string; ok: boolean }[]>([]);
   const finishedRef = useRef(false);
 
-  const items = useMemo(() => {
-    // one fill-in-the-blank per word: sentence = example, options = 4 candidate words
-    return words.map((w, i) => {
-      const others = words.filter((_, j) => j !== i).map((x) => x.en);
-      const filler = VOCAB.filter((x) => x.level === w.level && !words.includes(x)).map((x) => x.en);
-      const pool = [...others, ...filler].filter((v) => v && v !== w.en);
-      const opts = [w.en, ...pool.slice(0, 3)];
-      const rot = i % Math.max(1, opts.length);
-      const options = [...opts.slice(rot), ...opts.slice(0, rot)];
-      return { word: w, sentence: blankSentence(w.exEn, w.en), options };
-    });
-  }, [words]);
+  const items = useMemo(() => vocabRecallItems(stage.words ?? []), [stage.words]);
 
   if (words.length < 3) return <BrokenStage stage={stage} onDone={onDone} />;
 
@@ -285,10 +290,11 @@ export function VocabStage({ stage, onDone }: StageProps) {
     }
   }
 
-  function answer(wordId: string, en: string, ok: boolean) {
-    setPicked(en);
-    if (!answers.current.some((a) => a.id === wordId)) answers.current.push({ id: wordId, ok });
-    reviewWord(wordId, ok);
+  function answer(item: VocabRecallItem, choice: string) {
+    const ok = choice === item.options[item.answer];
+    setPicked(choice);
+    if (!answers.current.some((a) => a.id === item.wordId)) answers.current.push({ id: item.wordId, ok });
+    reviewWord(item.wordId, ok);
     haptic(ok ? 'success' : 'error');
     playSfx(ok ? 'correct' : 'wrong');
   }
@@ -334,19 +340,26 @@ export function VocabStage({ stage, onDone }: StageProps) {
     return null;
   }
   const revealed = picked !== null;
-  const ok = picked === item.word.en;
+  const okChoice = revealed && picked === item.options[item.answer];
   return (
     <StageShell stage={stage} step={qi + 1} total={items.length}>
       <Card>
-        <p className="text-sm font-extrabold text-muted">Bo‘sh joyni to‘ldiring:</p>
-        <h3 className="mt-1 text-[17px] font-extrabold leading-snug">{item.sentence}</h3>
+        <p className="text-sm font-extrabold text-muted">{item.kind === 'blank' ? 'Bo‘sh joyni to‘ldiring:' : 'Bu so‘z nimani anglatadi?'}</p>
+        {item.kind === 'blank' ? (
+          <h3 className="mt-1 text-[17px] font-extrabold leading-snug">{item.prompt}</h3>
+        ) : (
+          <div className="mt-1.5 flex items-center gap-3">
+            <h3 className="text-2xl font-black">{item.prompt}</h3>
+            <SpeakButton text={item.prompt} />
+          </div>
+        )}
         <div className="mt-3 space-y-2">
           {item.options.map((o) => (
             <button key={o} type="button" disabled={revealed}
-              onClick={() => answer(item.word.id, o, o === item.word.en)}
+              onClick={() => answer(item, o)}
               className={cx(
                 'block w-full rounded-2xl border-2 px-4 py-3 text-left text-[14.5px] font-bold transition',
-                revealed && o === item.word.en ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
+                revealed && o === item.options[item.answer] ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
                   : revealed && o === picked ? 'border-rose-300 bg-rose-50 dark:bg-rose-500/15' : 'border-line bg-surface hover:border-sky-300',
               )}
             >{o}</button>
@@ -354,7 +367,9 @@ export function VocabStage({ stage, onDone }: StageProps) {
         </div>
         {revealed && (
           <>
-            <p className="mt-3 rounded-2xl bg-surface2 px-3.5 py-2.5 text-[13px] font-semibold"><span className="font-black">{item.word.en}</span> — {item.word.uz}</p>
+            <p className={cx('mt-3 rounded-2xl px-3.5 py-2.5 text-[13px] font-semibold', okChoice ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-surface2')}>
+              <span className="font-black">{item.word}</span> — {item.uz}
+            </p>
             {qi + 1 >= items.length
               ? <Button className="mt-3" size="lg" full icon="check" onClick={() => void finish()}>Yakunlash</Button>
               : <Button className="mt-3" size="lg" full icon="right" onClick={() => { setPicked(null); setQi(qi + 1); }}>Keyingi</Button>}
@@ -457,22 +472,51 @@ export function GrammarStage({ stage, session, onDone }: StageProps) {
 }
 
 // ---------------------------------------------------------------------------
-// 04 LISTENING — TTS dialog + comprehension quiz
+// 04 LISTENING — the proven ListeningPage audio engine: parseTranscript +
+// playLines with per-line voices, active-line highlight, slow/normal speed,
+// and a clean stop on unmount. Fixes the audio glitches reported earlier.
 // ---------------------------------------------------------------------------
 
 export function ListeningStage({ stage, onDone }: StageProps) {
   const activity = LISTENING.find((l) => l.id === stage.listeningId);
   const [phase, setPhase] = useState<'listen' | 'quiz'>('listen');
-  const [lineIdx, setLineIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [rate, setRate] = useState(0.85);
+  const [showText, setShowText] = useState(false);
   const canTts = ttsAvailable();
 
-  if (!activity) return <BrokenStage stage={stage} onDone={onDone} />;
-  const lines = activity.transcript.split('\n').filter(Boolean);
+  // parseTranscript assigns each speaker its own voice — "Name:" prefixes are
+  // stripped from the spoken text (the old stage read them out loud)
+  const lines = useMemo(() => (activity ? parseTranscript(activity.transcript) : []), [activity]);
 
-  function playUpTo(i: number) {
-    setLineIdx(i);
-    stopSpeaking();
-    speak(lines.slice(0, i + 1).join(' '), { rate: RATE_SLOW });
+  // always stop the synthesizer when leaving the stage
+  useEffect(() => () => stopSpeaking(), []);
+
+  if (!activity) return <BrokenStage stage={stage} onDone={onDone} />;
+  if (!lines.length) return <BrokenStage stage={stage} onDone={onDone} />;
+
+  function play() {
+    setPlaying(true);
+    playLines(lines.map((l) => ({ text: l.speak, role: l.role })), {
+      rate,
+      onLine: setActive,
+      onEnd: () => {
+        setPlaying(false);
+        setActive(-1);
+      },
+    });
+    setShowText(true); // follow along while listening
+  }
+
+  function toggle() {
+    if (playing) {
+      stopSpeaking();
+      setPlaying(false);
+      setActive(-1);
+    } else {
+      play();
+    }
   }
 
   return (
@@ -481,24 +525,37 @@ export function ListeningStage({ stage, onDone }: StageProps) {
         <Card>
           <div className="flex items-center gap-2"><Emo n="headset" size={22} /><h3 className="text-lg font-extrabold">{activity.title}</h3></div>
           <p className="mt-1 text-[13px] font-bold text-muted">{activity.situationUz}</p>
-          <div className="mt-3 space-y-1.5">
-            {lines.map((ln, i) => (
-              <div key={i} className={cx('rounded-2xl p-2.5', i <= lineIdx ? 'bg-surface2' : 'bg-surface2/40')}>
-                <p className={cx('text-[14px] font-bold', i > lineIdx && 'select-none opacity-35 blur-[3px]')}>{ln}</p>
-              </div>
-            ))}
-          </div>
+
           {canTts ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="md" icon="volume" onClick={() => playUpTo(Math.min(lineIdx + 1, lines.length - 1))}>{lineIdx + 1 >= lines.length ? 'Qayta eshitish' : 'Keyingi qatorni tinglash'}</Button>
-              {lineIdx + 1 >= lines.length && <Button size="md" variant="secondary" onClick={() => { stopSpeaking(); setPhase('quiz'); }}>Savollarga o‘tish</Button>}
+            <div className="mt-3 flex items-center gap-2">
+              <Button size="md" icon={playing ? 'x' : 'volume'} onClick={toggle}>{playing ? 'To‘xtatish' : 'Tinglash'}</Button>
+              <div className="flex gap-1.5">
+                {([['Sekin', 0.85], ['Oddiy', 1]] as const).map(([label, r]) => (
+                  <button
+                    key={label} type="button" onClick={() => { setRate(r); if (playing) { stopSpeaking(); setPlaying(false); } }}
+                    className={cx('rounded-full px-3 py-1.5 text-[12px] font-black transition', rate === r ? 'bg-sky-500 text-white' : 'bg-surface2 text-muted')}
+                  >{label}</button>
+                ))}
+              </div>
             </div>
           ) : (
-            <>
-              <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-[12.5px] font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">Ovoz qo‘llab-quvvatlanmaydi — transkriptni o‘qib chiqing va savollarga o‘ting.</p>
-              <Button className="mt-2" size="lg" full icon="right" onClick={() => setPhase('quiz')}>Savollarga o‘tish</Button>
-            </>
+            <p className="mt-3 rounded-2xl bg-amber-50 px-3 py-2 text-[12.5px] font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">Ovoz qo‘llab-quvvatlanmaydi — transkriptni o‘qib chiqing va savollarga o‘ting.</p>
           )}
+
+          <button type="button" className="mt-3 w-full text-left text-[12px] font-bold text-accent dark:text-[#7ee2a8]" onClick={() => setShowText((v) => !v)}>
+            {showText ? '▾ Transkriptni yashirish' : '▸ Transkriptni ko‘rsatish'}
+          </button>
+          {showText && (
+            <div className="mt-2 space-y-1.5">
+              {lines.map((l, i) => (
+                <div key={i} className={cx('rounded-2xl px-3 py-2.5 transition', i === active ? 'border-2 border-sky-400 bg-sky-50 dark:bg-sky-500/15' : 'bg-surface2')}>
+                  <p className={cx('text-[14px] font-bold leading-snug', i === active && 'text-sky-700 dark:text-sky-300')}>{l.display}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button className="mt-4" size="lg" full icon="right" onClick={() => { stopSpeaking(); setPhase('quiz'); }}>Savollarga o‘tish</Button>
         </Card>
       )}
       {phase === 'quiz' && (

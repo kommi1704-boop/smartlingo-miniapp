@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { navigate } from '../../lib/router';
 import { useApp } from '../../store/store';
 import { useJourneySession } from './useJourney';
-import { startJourney, addJourneyStageXp, saveJourneyAiText, markJourneyCelebrated } from '../../store/journeyActions';
+import { startJourney, addJourneyStageXp, saveJourneyAiText } from '../../store/journeyActions';
 import { themeById } from '../../lib/journey';
 import { aiLeftToday, aiPost } from '../../lib/aiUsage';
 import { refreshServerStats } from '../../lib/xpApi';
@@ -45,6 +45,7 @@ function RunnerInner({ session, j }: { session: JourneySession; j: JourneyState 
   const currentIdx = session.stages.findIndex((st) => !j.stages[st.id]?.done);
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [lastDone, setLastDone] = useState<{ stageId: string; score: number; total: number; xp: number } | null>(null);
+  const [celebrateNow, setCelebrateNow] = useState(false);
   const aiTried = useRef(false);
 
   // start timestamp (once per day)
@@ -74,6 +75,9 @@ function RunnerInner({ session, j }: { session: JourneySession; j: JourneyState 
     haptic('success');
     playSfx('correct');
     setLastDone({ stageId: stage.id, ...args });
+    // finishing the FINAL stage flows straight into the celebration (Duolingo-style linear run)
+    const remaining = session.stages.filter((st) => st.id !== stage.id && !j.stages[st.id]?.done);
+    if (remaining.length === 0) setCelebrateNow(true);
   }
 
   const xpEarned = session.stages.reduce((a, st) => a + (j.stages[st.id]?.xp ?? 0), 0);
@@ -130,17 +134,20 @@ function RunnerInner({ session, j }: { session: JourneySession; j: JourneyState 
                 </p>
               )}
               <p className="mt-2 text-[13px] font-semibold text-muted">Progress avtomatik saqlandi — xohlaganda chiqib, keyin davom etishingiz mumkin.</p>
-              <Button className="mt-4" size="lg" full icon="right" onClick={() => { setOpenIdx(null); setLastDone(null); }}>
-                {currentIdx === -1 ? 'Yakuniy natija' : 'Yo‘l xaritasiga qaytish'}
-              </Button>
+              {currentIdx === -1 || celebrateNow ? (
+                <Button className="mt-4" size="lg" full icon="sparkles" onClick={() => setCelebrateNow(true)}>🎉 Yakuniy natijani ko‘rish</Button>
+              ) : (
+                <Button className="mt-4" size="lg" full icon="right" onClick={() => { setOpenIdx(currentIdx); setLastDone(null); }}>
+                  Keyingi bosqich: {session.stages[currentIdx]?.title.split(':')[0] ?? ''}
+                </Button>
+              )}
             </div>
           ) : (
             <StageComp key={stageOpen.id} stage={stageOpen} session={session} onDone={(args) => handleStageDone(stageOpen, args)} />
           )
         ) : (
-          /* ---- the journey path ---- */
+          /* ---- the journey path (shown on entry/resume; the run itself is linear) ---- */
           <div className="mx-auto max-w-md">
-            {currentIdx === -1 && !j.celebrated && <CelebrationGate />}
             <div className="relative">
               <div className="absolute bottom-6 left-[27px] top-6 w-0.5 bg-line" aria-hidden />
               <ol className="space-y-3">
@@ -196,15 +203,14 @@ function RunnerInner({ session, j }: { session: JourneySession; j: JourneyState 
           </div>
         )}
       </div>
+
+      {/* ---- the completion celebration: plays exactly once per completed session ---- */}
+      {/* allDone && !celebrated covers re-entry after closing mid-celebration; celebrateNow
+          covers the moment the final stage finishes. markJourneyCelebrated() is called by
+          JourneyComplete itself when the learner finishes the sequence — never on mount. */}
+      {((allDone && !j.celebrated) || celebrateNow) && (
+        <JourneyComplete onFinish={() => { setCelebrateNow(false); navigate('/journey'); }} />
+      )}
     </div>
   );
-}
-
-/** When the learner re-enters a finished-but-uncelebrated session, the celebration plays once. */
-function CelebrationGate() {
-  useEffect(() => {
-    const t = setTimeout(() => markJourneyCelebrated(), 0);
-    return () => clearTimeout(t);
-  }, []);
-  return <JourneyComplete />;
 }

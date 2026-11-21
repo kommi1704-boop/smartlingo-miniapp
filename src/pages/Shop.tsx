@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useApp } from '../store/store';
-import { buyAvatar, buyBg, buyFrame, buyFreeze, buyNameStyle, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipNameColor, equipNameFx, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame } from '../store/actions';
+import { buyAvatar, buyBg, buyFrame, buyFreeze, buyNameStyle, buyTitle, buyXpBoost, claimQuest, equipAvatar, equipNameColor, equipNameFx, equipTitle, isOwnedActive, isXpBoosted, openChest, renewFrame, updateSettings } from '../store/actions';
 import {
   BG_ITEMS, CHEST_PRICE, FREEZE_PRICE, FRAME_DAYS, FRAMES, FREE_AVATARS, NAME_COLORS, NAME_FXS, NAME_STYLE_DAYS, PREMIUM_AVATARS, TITLES, XP_BOOST_HOURS, XP_BOOST_PRICE,
   chestRewardText, nameColorById, nameFxById, nameStyleClasses, questStateOf, todaysQuests,
   type ChestReward, type FrameItem, type NameColorItem, type NameFxItem,
 } from '../lib/shop';
-import { pct, cx, fmt } from '../lib/utils';
+import { pct, cx, fmt, fileToBgDataUrl } from '../lib/utils';
 import { haptic, isTelegram } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { Button, Card, Modal, PageHeader, Pill, ProgressBar, Section, Tabs } from '../components/ui';
@@ -68,6 +68,30 @@ export function Shop() {
   const s = useApp();
   const [tab, setTab] = useState<TabId>('frames');
   const [chest, setChest] = useState<{ phase: 'shake' | 'done'; reward: ChestReward } | null>(null);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  /** Upload the learner's own backdrop photo (bg-custom, already-owned shop item). */
+  async function onShopBgPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!isOwnedActive('bg-custom')) {
+      toast('Avval «Shaxsiy fon»ni sotib oling', 'warn');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast('Faqat rasm faylini tanlang', 'warn');
+      return;
+    }
+    try {
+      const dataUrl = await fileToBgDataUrl(file);
+      updateSettings({ bg: 'custom', customBg: dataUrl });
+      haptic('success');
+      toast('Shaxsiy fon o‘rnatildi! 🖼️', 'success');
+    } catch {
+      toast('Rasmni yuklab bo‘lmadi — kichikroq rasm tanlang', 'warn');
+    }
+  }
 
   const balance = s.coins.balance;
   const avatarEmoji = s.shop.equipped.avatar ?? '🙂';
@@ -408,26 +432,45 @@ export function Shop() {
               </div>
             </Card>
 
-            {/* Store 2.0: premium profile backgrounds */}
+            {/* Store 2.0: premium profile backgrounds (incl. your-own-photo custom bg) */}
             {BG_ITEMS.map((b) => {
               const owned = isOwnedActive(b.id);
               const active = s.settings.bg === b.style;
+              const isCustom = b.style === 'custom';
               return (
                 <Card key={b.id} className="flex items-center gap-3.5">
-                  <span className="h-12 w-12 shrink-0 rounded-2xl border border-line" style={{ background: b.style === 'aurora' ? 'linear-gradient(135deg,#a5f3fc,#818cf8 45%,#e879f9)' : 'linear-gradient(160deg,#c4b5fd,#818cf8 50%,#38bdf8)' }} />
+                  <span
+                    className={cx('h-12 w-12 shrink-0 rounded-2xl border border-line', isCustom && 'grid place-items-center text-xl')}
+                    style={isCustom
+                      ? (s.settings.customBg ? { backgroundImage: `url(${s.settings.customBg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: 'linear-gradient(135deg,#a78bfa,#38bdf8)' })
+                      : { background: b.style === 'aurora' ? 'linear-gradient(135deg,#a5f3fc,#818cf8 45%,#e879f9)' : 'linear-gradient(160deg,#c4b5fd,#818cf8 50%,#38bdf8)' }}
+                  >
+                    {isCustom && !s.settings.customBg ? '📷' : null}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold">{b.name} <Pill tone="violet" className="ml-1">premium</Pill></p>
-                    <p className="text-xs text-muted">{owned ? 'Sizniki — doimiy.' : 'Doimiy ochiladigan chiroyli orqa fon.'}</p>
+                    <p className="text-xs text-muted">
+                      {isCustom
+                        ? (owned ? 'Sizniki — o‘z rasmingizni yuklang.' : 'O‘z rasmingizni butun ilova foni qiling!')
+                        : owned ? 'Sizniki — doimiy.' : 'Doimiy ochiladigan chiroyli orqa fon.'}
+                    </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <CoinPill price={b.price} />
-                    <Button size="sm" className="mt-2" disabled={!owned && s.coins.balance < b.price} onClick={() => buyBg(b)}>
-                      {owned ? (active ? 'Tanlangan' : 'Tanlash') : 'Sotib olish'}
-                    </Button>
+                    {isCustom && owned ? (
+                      <Button size="sm" className="mt-2" icon="user" onClick={() => bgFileRef.current?.click()}>
+                        {s.settings.customBg ? 'Rasmni almashtirish' : 'Rasm yuklash'}
+                      </Button>
+                    ) : (
+                      <Button size="sm" className="mt-2" disabled={!owned && s.coins.balance < b.price} onClick={() => buyBg(b)}>
+                        {owned ? (active ? 'Tanlangan' : 'Tanlash') : 'Sotib olish'}
+                      </Button>
+                    )}
                   </div>
                 </Card>
               );
             })}
+            <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onShopBgPicked(e)} />
 
             {/* Streak freeze */}
             <Card className="flex items-center gap-3.5">

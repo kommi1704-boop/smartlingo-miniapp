@@ -26,6 +26,7 @@ import { WRITING } from '../data/writing';
 import { GAMES, seededRng, type GameId } from './games';
 import { dayOfYear, lastDays, today } from './dates';
 import { buildLearnerProfile, type LearnerProfile } from './learner';
+import { isKnownVideoId, videoForTheme } from '../data/videos';
 import type { EmoName } from '../components/Emo';
 
 const li = (l: Level) => LEVELS.indexOf(l);
@@ -45,6 +46,8 @@ export interface JourneyTheme {
   skills: Array<'vocabulary' | 'grammar' | 'reading' | 'listening' | 'speaking' | 'writing'>; // skill flavour
   keywords: string[]; // matched against vocab/reading/listening content
   facts: JourneyFact[];
+  /** Real comprehension question about the theme facts (asked in the DISCOVER stage). */
+  check: Quiz;
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +70,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Over half of face-to-face meaning comes from tone of voice and body language, not from words.', uz: 'Yuzma-yuz muloqotda ma‘noning yarmidan ko‘pini so‘zlar emas, ohang va tana harakatlari beradi.' },
       { en: 'There are about 7,000 living languages in the world today.', uz: 'Bugun dunyoda taxminan 7 000 tirik til bor — har biri o‘zining «so‘z dunyosi».' },
     ],
+    check: { id: 'jc-communication', q: 'How many living languages are there in the world today?', options: ['About 700', 'About 7,000', 'About 70,000', 'About 700,000'], answer: 1, explain: 'Faktlarda: dunyoda bugun taxminan 7 000 tirik til bor.' },
   },
   {
     id: 'animals',
@@ -83,6 +87,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Dogs can learn more than 1,000 words and understand simple grammar in tests.', uz: 'Itlar testlarda 1 000 dan ortiq so‘zni o‘rganib, oddiy grammatikani ham tushunadi.' },
       { en: 'Octopuses have three hearts and blue blood.', uz: 'Axtofodalarda uchta yurak va ko‘kimtir qon bor.' },
     ],
+    check: { id: 'jc-animals', q: 'How many hearts does an octopus have?', options: ['One', 'Two', 'Three', 'Eight'], answer: 2, explain: 'Faktlarda: axtofodalarda uchta yurak va ko‘kimtir qon bor.' },
   },
   {
     id: 'history',
@@ -99,6 +104,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'People started writing about 5,000 years ago in Mesopotamia.', uz: 'Yozuv taxminan 5 000 yil oldin Mesopotamiyada paydo bo‘lgan.' },
       { en: 'Samarkand’s Registan has been a centre of learning for centuries.', uz: 'Samarqanddagi Registon asrlar davomida ilm-fan markazi bo‘lgan.' },
     ],
+    check: { id: 'jc-history', q: 'The Great Pyramid of Giza was the tallest building on Earth for about…', options: ['38 years', '380 years', '3,800 years', '38,000 years'], answer: 2, explain: 'Faktlarda: piramida taxminan 3 800 yil davomida eng baland bo‘lgan.' },
   },
   {
     id: 'technology',
@@ -115,6 +121,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Modern chips can be smaller than a grain of rice yet hold billions of parts.', uz: 'Zamonaviy chiplar guruch donidan kichik bo‘lib, milliardlab elementni sig‘diradi.' },
       { en: 'About 5 billion people use the internet today.', uz: 'Bugun internetdan taxminan 5 milliard odam foydalanadi.' },
     ],
+    check: { id: 'jc-technology', q: 'The first computer “bug” in 1947 was…', options: ['a real moth', 'a virus', 'a broken cable', 'a wrong number'], answer: 0, explain: 'Faktlarda: birinchi «bug» — mashina ichidan topilgan haqiqiy kapalak.' },
   },
   {
     id: 'success',
@@ -131,6 +138,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Writing down your goals makes you noticeably more likely to reach them.', uz: 'Maqsadlaringizni yozib qo‘yish ularga erish ehtimolini sezilarli oshiradi.' },
       { en: 'Practice in short, regular sessions works better than one long session a week.', uz: 'Qisqa-qaqsa, muntazam mashqlar haftada bir marta uzun mashq qilishdan samaraliroq.' },
     ],
+    check: { id: 'jc-success', q: 'How long does a new daily habit take to feel automatic?', options: ['About 2 days', 'About 2 weeks', 'About two months', 'About two years'], answer: 2, explain: 'Faktlarda: yangi odat avtomatik bo‘lishi uchun taxminan ikki oy ketadi.' },
   },
   {
     id: 'cultures',
@@ -147,6 +155,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'In Japan, slurping noodles loudly shows the cook respect.', uz: 'Yaponiyada lapshani shovqin chiqarib ichish oshpazga hurmat belgisi hisoblanadi.' },
       { en: 'Navruz — the spring new year — is celebrated in many countries across Central Asia.', uz: 'Navruz — bahor yangi yili — Markaziy Osiyoning ko‘plab mamlakatlarida nishonlanadi.' },
     ],
+    check: { id: 'jc-cultures', q: 'In Japan, slurping noodles loudly shows…', options: ['you are rude', 'respect to the cook', 'you are finished', 'you are hungry'], answer: 1, explain: 'Faktlarda: Yaponiyada lapshani shovqin bilan ichish oshpazga hurmat belgisi.' },
   },
   {
     id: 'everyday',
@@ -163,6 +172,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: '“How are you?” is often just a greeting — the usual answer is short: “Fine, thanks!”', uz: '«How are you?» ko‘pincha oddiy salomlashish — odatiy javobi ham qisqa: «Fine, thanks!»' },
       { en: 'Small talk about weather is popular in Britain because it is a safe topic for everyone.', uz: 'Buyuk Britaniyada ob-havo haqida «small talk» mashhur — bu hamma uchun xavfsiz mavzu.' },
     ],
+    check: { id: 'jc-everyday', q: 'What is the usual short answer to “How are you?”', options: ['Fine, thanks!', 'My name is Ali.', 'I am twelve.', 'Goodbye!'], answer: 0, explain: 'Faktlarda: «How are you?» ko‘pincha oddiy salom — javobi qisqa: «Fine, thanks!»' },
   },
   {
     id: 'space',
@@ -179,6 +189,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Neutron stars can spin about 700 times per second.', uz: 'Neytron yulduzlari soniyasiga taxminan 700 marta aylanishi mumkin.' },
       { en: 'The first human in space, Yuri Gagarin, flew in 1961 — the flight lasted 108 minutes.', uz: 'Kosmosga birinchi uchgan odam Yuriy Gagarin — 1961-yil, parvoz 108 daqiqa davom etgan.' },
     ],
+    check: { id: 'jc-space', q: 'Who was the first human in space?', options: ['Neil Armstrong', 'Yuri Gagarin', 'Alexei Leonov', 'Buzz Aldrin'], answer: 1, explain: 'Faktlarda: birinchi odam — Yuriy Gagarin, 1961-yil, 108 daqiqalik parvoz.' },
   },
   {
     id: 'business',
@@ -195,6 +206,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'The word “salary” comes from “salt” — Roman soldiers were once paid in it.', uz: '«Salary» (maosh) so‘zi «tuz»dan chiqqan — rimlik askarlarga maosh tuz bilan berilgan.' },
       { en: 'A simple, clear name helps new shops grow faster than clever long names.', uz: 'Yangi do‘konlar uchun sodda va aniq nom aqlli-uzun nomlarga qaraganda tezroq o‘sishga yordam beradi.' },
     ],
+    check: { id: 'jc-business', q: 'The word “salary” comes from the word for…', options: ['sand', 'salt', 'silver', 'sale'], answer: 1, explain: 'Faktlarda: rimlik askarlarga maosh tuz bilan berilgan — «salary» «salt»dan.' },
   },
   {
     id: 'environment',
@@ -211,6 +223,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'About 71% of the Earth’s surface is ocean.', uz: 'Yer yuzining taxminan 71 foizi okean.' },
       { en: 'One large tree can give a day’s oxygen for up to four people.', uz: 'Bitta katta daraxt to‘rt kishiga bir kunlik kislorod berishi mumkin.' },
     ],
+    check: { id: 'jc-environment', q: 'About what part of the Earth’s surface is ocean?', options: ['31%', '51%', '71%', '91%'], answer: 2, explain: 'Faktlarda: Yer yuzining taxminan 71 foizi okean.' },
   },
   {
     id: 'food',
@@ -227,6 +240,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Honey found in ancient tombs is still safe to eat after thousands of years.', uz: 'Qadimiy maqbaralardan topilgan asal ming yillardan keyin ham yeyishga yaroqli.' },
       { en: 'Osh — Central Asia’s famous dish — has many regional recipes, each family keeps its own.', uz: 'Markaziy Osiyoning mashhur taami — osh — har xil hududiy retseptga ega; har oila o‘zinikini saqlaydi.' },
     ],
+    check: { id: 'jc-food', q: 'Why do apples float in water?', options: ['They are very light', 'About a quarter of an apple is air', 'Their skin is oily', 'They grow near water'], answer: 1, explain: 'Faktlarda: olmaning to‘rtdan bir qismi havo — shuning uchun suzadi.' },
   },
   {
     id: 'sport',
@@ -243,6 +257,7 @@ export const JOURNEY_THEMES: JourneyTheme[] = [
       { en: 'Regular exercise improves memory and focus — not just muscles.', uz: 'Muntazam mashq faqat mushkellarni emas, xotira va diqqatni ham yaxshilaydi.' },
       { en: 'A football player runs about 10 kilometres in one match.', uz: 'Futbolchi bitta o‘yinda taxminan 10 kilometr yuguradi.' },
     ],
+    check: { id: 'jc-sport', q: 'About how far does a football player run in one match?', options: ['1 kilometre', '5 kilometres', '10 kilometres', '20 kilometres'], answer: 2, explain: 'Faktlarda: futbolchi bitta o‘yinda taxminan 10 km yuguradi.' },
   },
 ];
 
@@ -457,17 +472,13 @@ export function buildJourney(s: PersistedState, date: string = today(), opts: Bu
     const meta = STAGE_META[kind];
     switch (kind) {
       case 'discover': {
+        const video = videoForTheme(theme.id);
         push({
           kind, ...meta, minutes: mins[kind],
-          reason: 'Har safar qiziqarli kirish bilan boshlanadi — mavzu «jonlanadi».',
+          reason: 'Har safar qiziqarli kirish bilan boshlanadi — video va faktlar mavzuni «jonlantiradi».',
           facts: theme.facts,
-          check: {
-            id: `jcheck-${theme.id}-${date}`,
-            q: theme.facts[0]?.en ?? 'Did you enjoy the facts?',
-            options: ['True', 'False', 'Not in the text', 'Maybe'],
-            answer: 0,
-            explain: 'Fakt matnda aynan shunday keltirilgan — qayta o‘qib chiqing!',
-          },
+          check: theme.check,
+          videoId: video?.videoId,
         });
         break;
       }
@@ -615,6 +626,7 @@ export function validateJourney(session: JourneySession, s?: PersistedState): bo
       case 'discover':
         if (!st.facts || st.facts.length < 2 || st.facts.length > 5) return false;
         if (!st.check || !quizOk(st.check)) return false;
+        if (st.videoId && !isKnownVideoId(st.videoId)) return false; // only verified, curated videos
         break;
       case 'vocab': {
         if (!st.words || st.words.length < 3 || st.words.length > 6) return false;
@@ -667,6 +679,93 @@ export function validateJourney(session: JourneySession, s?: PersistedState): bo
 }
 
 // ---------------------------------------------------------------------------
+// Vocabulary recall items (used by the VOCAB stage) — pure + deterministic.
+//
+// Two item kinds, safest first choice per word:
+//   'blank'  — the word's own example with the word blanked out. Built ONLY
+//              when the word appears EXACTLY ONCE as a whole word in the
+//              sentence AND no other option word also fits the sentence
+//              (no ambiguous "two correct answers" questions, ever).
+//   'meaning'— English word → correct Uzbek meaning among 3 same-level
+//              distractors. Always unambiguous; used whenever the blank
+//              rules cannot be satisfied.
+// ---------------------------------------------------------------------------
+
+export interface VocabRecallItem {
+  wordId: string;
+  kind: 'blank' | 'meaning';
+  prompt: string; // sentence with _____ (blank) or the English word (meaning)
+  options: string[];
+  answer: number;
+  word: string; // en
+  uz: string;
+}
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Deterministic rotation so option order is stable within a day (no Math.random). */
+function rotate<T>(arr: T[], k: number): T[] {
+  const n = arr.length;
+  const r = ((k % n) + n) % n;
+  return [...arr.slice(r), ...arr.slice(0, r)];
+}
+
+export function vocabRecallItems(wordIds: string[]): VocabRecallItem[] {
+  const words = wordIds
+    .map((id) => VOCAB.find((w) => w.id === id))
+    .filter((w): w is (typeof VOCAB)[number] => !!w);
+  if (!words.length) return [];
+
+  return words.map((w, i) => {
+    const others = words.filter((x) => x.id !== w.id);
+    // --- try fill-in-the-blank ---
+    const wordRe = new RegExp(`\\b${escapeRe(w.en)}\\b`, 'i');
+    const occurrences = w.exEn.match(new RegExp(wordRe.source, 'gi'))?.length ?? 0;
+    if (occurrences === 1) {
+      const safeOthers = others
+        .map((o) => o.en)
+        .filter((o) => o !== w.en && !new RegExp(`\\b${escapeRe(o)}\\b`, 'i').test(w.exEn));
+      if (safeOthers.length >= 3) {
+        const opts = rotate([w.en, ...safeOthers.slice(0, 3)], i + 1);
+        return {
+          wordId: w.id, kind: 'blank', prompt: w.exEn.replace(wordRe, '_____'),
+          options: opts, answer: opts.indexOf(w.en), word: w.en, uz: w.uz,
+        };
+      }
+    }
+    // --- meaning match (always safe) ---
+    const usedUz = new Set<string>([w.uz]);
+    const distractors: string[] = [];
+    for (const o of others) {
+      if (distractors.length >= 3) break;
+      if (o.uz && !usedUz.has(o.uz)) { usedUz.add(o.uz); distractors.push(o.uz); }
+    }
+    if (distractors.length < 3) {
+      // fill from the wider catalog at the same level
+      for (const v of VOCAB) {
+        if (distractors.length >= 3) break;
+        if (v.id === w.id || words.some((x) => x.id === v.id)) continue;
+        if (v.level !== w.level || !v.uz || usedUz.has(v.uz)) continue;
+        usedUz.add(v.uz); distractors.push(v.uz);
+      }
+    }
+    if (distractors.length < 3) {
+      // ultimate fallback: level-mismatched distractors (still unique meanings)
+      for (const v of VOCAB) {
+        if (distractors.length >= 3) break;
+        if (v.id === w.id || !v.uz || usedUz.has(v.uz)) continue;
+        usedUz.add(v.uz); distractors.push(v.uz);
+      }
+    }
+    const opts = rotate([w.uz, ...distractors.slice(0, 3)], i);
+    return {
+      wordId: w.id, kind: 'meaning', prompt: w.en,
+      options: opts, answer: opts.indexOf(w.uz), word: w.en, uz: w.uz,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Fallbacks — a learner must NEVER see an empty or broken session
 // ---------------------------------------------------------------------------
 
@@ -680,7 +779,7 @@ export function buildFallbackJourney(s: PersistedState, date: string = today(), 
   let idx = 0;
   const push = (st: Omit<JourneyStage, 'id'>) => stages.push({ ...st, id: `s${idx++}` });
 
-  push({ kind: 'discover', ...STAGE_META.discover, minutes: 3, facts: theme.facts, check: { id: `jcheck-fb-${date}`, q: theme.facts[0].en, options: ['True', 'False', 'Not in the text', 'Maybe'], answer: 0, explain: 'Fakt matnda keltirilgan.' } });
+  push({ kind: 'discover', ...STAGE_META.discover, minutes: 3, facts: theme.facts, check: theme.check, videoId: videoForTheme(theme.id)?.videoId });
 
   const words = VOCAB.filter((w) => li(w.level) <= li(est) && p && s.vocab[w.id]?.status !== 'learned').slice(0, 5).map((w) => w.id);
   push({ kind: 'vocab', ...STAGE_META.vocab, minutes: 5, words: words.length >= 3 ? words : VOCAB.slice(0, 5).map((w) => w.id) });
@@ -723,7 +822,7 @@ export function minimalJourney(date: string = today()): JourneySession {
   const theme = JOURNEY_THEMES[6];
   const words = VOCAB.filter((w) => li(w.level) <= 2).slice(0, 4).map((w) => w.id);
   const stages: JourneyStage[] = [
-    { id: 's0', kind: 'discover', ...STAGE_META.discover, minutes: 3, facts: theme.facts, check: { id: `jcheck-min-${date}`, q: theme.facts[0].en, options: ['True', 'False', 'Not in the text', 'Maybe'], answer: 0, explain: 'Fakt matnda keltirilgan.' } },
+    { id: 's0', kind: 'discover', ...STAGE_META.discover, minutes: 3, facts: theme.facts, check: theme.check, videoId: videoForTheme(theme.id)?.videoId },
     { id: 's1', kind: 'vocab', ...STAGE_META.vocab, minutes: 5, words: words.length ? words : VOCAB.slice(0, 4).map((w) => w.id) },
     { id: 's2', kind: 'game', ...STAGE_META.game, minutes: 4, gameId: 'memory' },
   ];

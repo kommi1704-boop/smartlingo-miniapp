@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LEVELS } from '../types';
 import { useApp } from '../store/store';
 import { isOwnedActive, resetAll, updateProfile, updateSettings } from '../store/actions';
@@ -12,7 +12,7 @@ import { ACCENTS, BACKGROUNDS } from '../lib/theme';
 import { VoicePicker } from '../components/VoicePicker';
 import { MINUTES } from '../data/options';
 import { toast } from '../store/ui';
-import { cx } from '../lib/utils';
+import { cx, fileToBgDataUrl } from '../lib/utils';
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
@@ -75,6 +75,25 @@ export function Settings() {
   const [name, setName] = useState(p.name);
   const [live, setLive] = useState<boolean | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
+
+  /** Pick + downscale the learner's own backdrop photo (bg-custom shop item). */
+  async function onBgPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast('Faqat rasm faylini tanlang', 'warn');
+      return;
+    }
+    try {
+      const dataUrl = await fileToBgDataUrl(file);
+      updateSettings({ bg: 'custom', customBg: dataUrl });
+      toast('Shaxsiy fon o‘rnatildi! 🖼️', 'success');
+    } catch {
+      toast('Rasmni yuklab bo‘lmadi — kichikroq rasm tanlang', 'warn');
+    }
+  }
 
   useEffect(() => {
     tutorIsLive().then(setLive);
@@ -174,9 +193,13 @@ export function Settings() {
                   key={b.id}
                   type="button"
                   onClick={() => {
-                    if ((b.id === 'aurora' || b.id === 'nebula') && !isOwnedActive(`bg-${b.id}`)) {
+                    if ((b.id === 'aurora' || b.id === 'nebula' || b.id === 'custom') && !isOwnedActive(`bg-${b.id}`)) {
                       toast('Bu premium fon — Do‘kondan ochib oling! 🎨', 'warn');
                       navigate('/shop');
+                      return;
+                    }
+                    if (b.id === 'custom' && !s.settings.customBg) {
+                      bgFileRef.current?.click();
                       return;
                     }
                     updateSettings({ bg: b.id });
@@ -188,11 +211,21 @@ export function Settings() {
                     s.settings.bg === b.id ? 'border-sky-500 bg-sky-50 dark:bg-sky-500/10' : 'border-line hover:border-sky-300',
                   )}
                 >
-                  <span className="h-10 w-full rounded-xl border border-line" style={{ background: b.preview }} />
+                  <span
+                    className="h-10 w-full rounded-xl border border-line bg-cover bg-center"
+                    style={b.id === 'custom' && s.settings.customBg ? { backgroundImage: `url(${s.settings.customBg})` } : { background: b.preview }}
+                  />
                   <span className="text-xs font-semibold">{b.name}</span>
                 </button>
               ))}
             </div>
+            {s.settings.bg === 'custom' && (
+              <div className="mt-2 flex items-center gap-2">
+                <Button size="sm" icon="user" onClick={() => bgFileRef.current?.click()}>Boshqa rasm yuklash</Button>
+                <p className="text-xs text-muted">Rasm faqat sizning qurilmangizda saqlanadi.</p>
+              </div>
+            )}
+            <input ref={bgFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onBgPicked(e)} />
           </div>
           <Row title="Tarjima doim ko‘rinsin" hint="Kartochkalarda o‘zbekcha ma’no darhol ochiladi">
             <Switch checked={s.settings.showTranslation} onChange={(v) => updateSettings({ showTranslation: v })} label="Tarjima doim ko‘rinsin" />

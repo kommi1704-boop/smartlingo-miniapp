@@ -6,6 +6,7 @@ import { FRAMES, RANK_TIERS } from '../lib/shop';
 import { Button, Card, Empty, Notice, PageHeader, Pill, Section, Tabs } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { A, navigate } from '../lib/router';
+import { AvatarGlyph } from '../components/Avatar';
 import { cx, fmt } from '../lib/utils';
 
 type BoardId = 'global' | 'week' | 'month';
@@ -34,7 +35,7 @@ function RowView({ r, i, meId, board }: { r: LeaderRow; i: number; meId: string;
     >
       <span className={cx('w-8 shrink-0 text-center text-lg font-extrabold', i >= 3 && 'text-sm text-muted')}>{i < 3 ? MEDALS[i] : i + 1}</span>
       <div className="flex shrink-0 items-center justify-center rounded-full bg-surface2 p-1">
-        <span className={cx('flex h-9 w-9 items-center justify-center rounded-full text-xl', ringFor(r.frame))}>{r.avatar ?? '🙂'}</span>
+        <AvatarGlyph value={r.avatar ?? '🙂'} size={36} className={cx('ring-2', ringFor(r.frame))} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">
@@ -119,7 +120,7 @@ export function Leaderboard() {
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-violet-600 to-sky-600 p-4 text-white shadow-lg shadow-violet-500/25">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-white/15 p-1">
-            <span className="text-3xl">{myAvatar}</span>
+            <AvatarGlyph value={myAvatar} size={40} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-extrabold">{myName}</p>

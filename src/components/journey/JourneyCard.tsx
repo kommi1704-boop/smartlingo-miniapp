@@ -31,10 +31,10 @@ export function JourneyCard() {
     >
       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/15"><Emo n={theme.emo} size={26} /></span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[10.5px] font-black uppercase tracking-widest text-white/80">Bugungi learning journey</span>
+        <span className="block text-[10.5px] font-black uppercase tracking-widest text-white/80">Bugungi reja · learning journey</span>
         <span className="block truncate text-[15.5px] font-black leading-snug">{session.titleEn}</span>
         <span className="mt-1 block text-[11.5px] font-bold text-white/85">
-          {allDone ? '✓ Bajarildi — ertaga yangi mavzu!' : `${session.minutes} daqiqa · ${session.stages.length} bosqich`}
+          {allDone ? '✓ Bugungi sessiya bajarildi — ertaga yangi mavzu!' : `${session.minutes} daqiqa · ${session.stages.length} bosqich`}
         </span>
         {!allDone && (
           <span className="mt-1.5 block h-2 w-full overflow-hidden rounded-full bg-white/25">
