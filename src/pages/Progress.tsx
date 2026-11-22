@@ -275,9 +275,9 @@ export function Progress() {
       <PageHeader emo="chart" title="Progress" subtitle={`Tajriba darajasi ${xp.level} · ${fmt(s.xp)} XP`} />
 
       <div className="grid grid-cols-3 gap-2">
-        <StatTile icon="flame" tone="amber" label="Seriya" value={`${streak} 🔥`} />
-        <StatTile icon="star" tone="violet" label="XP" value={fmt(s.xp)} />
-        <StatTile icon="trophy" tone="emerald" label="Darslar" value={lessonsDone} />
+        <StatTile stacked icon="flame" tone="amber" label="Seriya" value={`${streak} 🔥`} />
+        <StatTile stacked icon="star" tone="violet" label="XP" value={fmt(s.xp)} />
+        <StatTile stacked icon="trophy" tone="emerald" label="Darslar" value={lessonsDone} />
       </div>
 
       <Section title="🗺️ O‘quv yo‘li" action={<Pill tone="indigo">Qadam-baqadam</Pill>}>

@@ -4,7 +4,7 @@
 // applies what the server granted. When the API is unreachable or not
 // configured (no Supabase env), callers fall back to the legacy offline
 // behavior — XpUnavailable makes that explicit instead of hiding errors.
-import { tg } from './telegram';
+import { isTelegram, tg } from './telegram';
 
 const BASE = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE ?? '';
 
@@ -57,13 +57,17 @@ function headers(): Record<string, string> {
   return { 'content-type': 'application/json', 'X-Telegram-Init-Data': tg()?.initData ?? '' };
 }
 
-async function post<T>(body: Record<string, unknown>, timeoutMs = 20_000): Promise<T> {
-  const r = await fetch(`${BASE}/api/xp`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+/** One place for transport + error mapping, so every caller can rely on `XpUnavailable` meaning "no ledger right now". */
+async function request<T>(url: string, init: RequestInit, timeoutMs: number): Promise<T> {
+  // Outside Telegram the server can only answer 401 — skip the doomed request (and its console error).
+  if (!isTelegram()) throw new XpUnavailable('unauthorized');
+  let r: Response;
+  try {
+    r = await fetch(url, { ...init, headers: headers(), signal: AbortSignal.timeout(timeoutMs) });
+  } catch {
+    // offline, DNS failure, timeout, aborted: the ledger is simply unreachable (not a bug worth a console warning)
+    throw new XpUnavailable('network');
+  }
   if (!r.ok) {
     const j = (await r.json().catch(() => ({}))) as { error?: string };
     if (r.status === 503 || j.error === 'not_configured') throw new XpUnavailable('xp_not_configured');
@@ -73,16 +77,10 @@ async function post<T>(body: Record<string, unknown>, timeoutMs = 20_000): Promi
   return (await r.json()) as T;
 }
 
-async function get<T>(k: string, timeoutMs = 20_000): Promise<T> {
-  const r = await fetch(`${BASE}/api/xp?k=${encodeURIComponent(k)}`, { headers: headers(), signal: AbortSignal.timeout(timeoutMs) });
-  if (!r.ok) {
-    const j = (await r.json().catch(() => ({}))) as { error?: string };
-    if (r.status === 503 || j.error === 'not_configured') throw new XpUnavailable('xp_not_configured');
-    if (r.status === 401) throw new XpUnavailable('unauthorized');
-    throw new Error(j.error ?? `http_${r.status}`);
-  }
-  return (await r.json()) as T;
-}
+const post = <T>(body: Record<string, unknown>, timeoutMs = 20_000): Promise<T> =>
+  request<T>(`${BASE}/api/xp`, { method: 'POST', body: JSON.stringify(body) }, timeoutMs);
+
+const get = <T>(k: string, timeoutMs = 20_000): Promise<T> => request<T>(`${BASE}/api/xp?k=${encodeURIComponent(k)}`, {}, timeoutMs);
 
 let availableCache: { value: boolean; until: number } | null = null;
 

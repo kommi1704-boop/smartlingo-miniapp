@@ -8,6 +8,7 @@ import { checkPendingCredits } from './lib/billing';
 import { isTelegram } from './lib/telegram';
 import { Shell, TAB_ROOTS } from './components/Shell';
 import { Overlays } from './components/Overlays';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Button, Empty } from './components/ui';
 import { Landing } from './pages/Landing';
 import { Onboarding, Assessment, SkillProbes, Result } from './pages/Start';
@@ -88,7 +89,7 @@ export function App() {
   if (page) {
     return (
       <>
-        {page}
+        <ErrorBoundary key={path}>{page}</ErrorBoundary>
         <Overlays />
       </>
     );
@@ -145,7 +146,9 @@ export function App() {
 
   return (
     <>
-      <Shell>{body}</Shell>
+      <Shell>
+        <ErrorBoundary key={path}>{body}</ErrorBoundary>
+      </Shell>
       <Overlays />
     </>
   );

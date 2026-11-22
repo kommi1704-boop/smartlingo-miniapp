@@ -43,7 +43,11 @@ export const notifNotConfigured = (e: unknown): boolean =>
   e instanceof Error && (e.message === 'not_configured' || e.message === 'http_503' || e.message === 'http_404');
 
 export async function fetchNotifySettings(): Promise<NotifySettings> {
-  return json(await fetch(`${BASE}/api/notifications`, { headers: headers() }));
+  const d = await json<Partial<NotifySettings>>(await fetch(`${BASE}/api/notifications`, { headers: headers() }));
+  // Outside Telegram the server answers a bare `{ enabled }` probe instead of the settings. Rendering that
+  // used to crash the screen (and, with no error boundary, blank the whole app) — report it as what it is.
+  if (!d || !d.categories || !Array.isArray(d.kinds)) throw new Error(d?.enabled === false ? 'not_configured' : 'unauthorized');
+  return d as NotifySettings;
 }
 
 export async function saveNotifyPrefs(patch: {

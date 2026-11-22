@@ -222,24 +222,29 @@ export function DiscoverStage({ stage, onDone }: StageProps) {
       <div className="mt-2 space-y-2">
         {facts.map((f, i) => {
           const open = opened.includes(i);
-          return (
+          const head = (
+            <span className="flex items-center gap-2 text-[13px] font-black text-muted">
+              <Emo n="sparkle" size={14} /> Fakt {i + 1}
+            </span>
+          );
+          const base = 'block w-full rounded-3xl border-2 p-4 text-left transition';
+          // An opened card holds the audio button, so it must not itself be a <button> (invalid nested
+          // buttons made React log a DOM-nesting error). Only the still-closed card is tappable.
+          return open ? (
+            <div key={i} className={cx(base, 'border-sky-300 bg-sky-50 dark:border-sky-500/40 dark:bg-sky-500/10')}>
+              {head}
+              <p className="mt-1.5 text-[15px] font-extrabold leading-snug">{f.en}</p>
+              <p className="mt-1 text-[13px] font-semibold text-muted">{f.uz}</p>
+              <span className="mt-2 inline-flex"><SpeakButton text={f.en} /></span>
+            </div>
+          ) : (
             <button
               key={i} type="button"
-              onClick={() => { if (!open) { setOpened((o) => [...o, i]); haptic('light'); playSfx('pop'); } }}
-              className={cx('block w-full rounded-3xl border-2 p-4 text-left transition active:scale-[0.99]', open ? 'border-sky-300 bg-sky-50 dark:border-sky-500/40 dark:bg-sky-500/10' : 'border-dashed border-line bg-surface')}
+              onClick={() => { setOpened((o) => (o.includes(i) ? o : [...o, i])); haptic('light'); playSfx('pop'); }}
+              className={cx(base, 'border-dashed border-line bg-surface active:scale-[0.99]')}
             >
-              <span className="flex items-center gap-2 text-[13px] font-black text-muted">
-                <Emo n="sparkle" size={14} /> Fakt {i + 1}
-              </span>
-              {open ? (
-                <>
-                  <p className="mt-1.5 text-[15px] font-extrabold leading-snug">{f.en}</p>
-                  <p className="mt-1 text-[13px] font-semibold text-muted">{f.uz}</p>
-                  <span className="mt-2 inline-flex"><SpeakButton text={f.en} /></span>
-                </>
-              ) : (
-                <p className="mt-1.5 text-[14px] font-bold text-muted">Bosing va oching 👆</p>
-              )}
+              {head}
+              <p className="mt-1.5 text-[14px] font-bold text-muted">Bosing va oching 👆</p>
             </button>
           );
         })}

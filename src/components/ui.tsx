@@ -237,7 +237,8 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
   );
 }
 
-export function StatTile({ icon, label, value, hint, tone = 'indigo' }: { icon: IconName; label: string; value: ReactNode; hint?: string; tone?: 'indigo' | 'amber' | 'emerald' | 'violet' }) {
+/** `stacked` puts the icon above the number — use it in 3-up rows where a side-by-side tile would truncate its label. */
+export function StatTile({ icon, label, value, hint, tone = 'indigo', stacked }: { icon: IconName; label: string; value: ReactNode; hint?: string; tone?: 'indigo' | 'amber' | 'emerald' | 'violet'; stacked?: boolean }) {
   const t = {
     indigo: 'bg-sky-500/15 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300',
     amber: 'bg-sun/25 text-amber-600 dark:bg-sun/15 dark:text-[#ffd27d]',
@@ -246,14 +247,14 @@ export function StatTile({ icon, label, value, hint, tone = 'indigo' }: { icon: 
   }[tone];
   return (
     <Card className="!p-3.5">
-      <div className="flex items-center gap-3">
+      <div className={cx('flex gap-3', stacked ? 'flex-col items-start gap-2.5' : 'items-center')}>
         <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl', t)}>
           <Icon name={icon} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full">
           <div className="text-xl font-extrabold leading-none">{value}</div>
-          <div className="mt-1 truncate text-xs text-muted">{label}</div>
-          {hint && <div className="truncate text-[11px] text-muted">{hint}</div>}
+          <div className="mt-1 line-clamp-2 text-xs leading-tight text-muted">{label}</div>
+          {hint && <div className="mt-0.5 line-clamp-2 text-[11px] leading-tight text-muted">{hint}</div>}
         </div>
       </div>
     </Card>

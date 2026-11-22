@@ -239,5 +239,9 @@ export interface Leaderboards {
 }
 
 export async function fetchLeaderboard(): Promise<Leaderboards> {
-  return json(await fetchT(`${BASE}/api/leaderboard`, { headers: headers() }, 10_000));
+  const j = await json<Partial<Leaderboards>>(await fetchT(`${BASE}/api/leaderboard`, { headers: headers() }, 10_000));
+  // Outside Telegram (or on an unconfigured server) the endpoint answers a bare `{ enabled }` probe. Treat that as
+  // "online board unavailable" — the screen then shows the offline card instead of crashing on missing arrays.
+  if (!Array.isArray(j.list)) throw new Error('not_configured');
+  return { me: j.me ?? '', list: j.list, weekly: j.weekly ?? [], monthly: j.monthly ?? [] };
 }
