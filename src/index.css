@@ -500,6 +500,67 @@ html.dark[data-bg='grid'] body {
   background-size: 28px 28px, 28px 28px, 100% 100%;
   background-attachment: fixed;
 }
+/* ===== Premium shop backdrops (Do'kon → Sovg'alar: aurora / nebula / shaxsiy fon) ===== */
+/* Aurora — icy cyan → indigo → magenta wash (light) / deep-space variant (dark) */
+html[data-bg='aurora'] body {
+  background-color: #dfe9ff;
+  background-image:
+    radial-gradient(46rem 32rem at 8% 0%, rgba(165, 243, 252, 0.85), transparent 60%),
+    radial-gradient(44rem 30rem at 92% 18%, rgba(129, 140, 248, 0.55), transparent 62%),
+    radial-gradient(48rem 34rem at 78% 92%, rgba(232, 121, 249, 0.4), transparent 60%),
+    linear-gradient(160deg, #e0f2fe 0%, #c7d2fe 48%, #ddd6fe 100%);
+  background-attachment: fixed;
+}
+html.dark[data-bg='aurora'] body {
+  background-color: #0a0d24;
+  background-image:
+    radial-gradient(46rem 32rem at 8% 0%, rgba(34, 211, 238, 0.22), transparent 60%),
+    radial-gradient(44rem 30rem at 92% 18%, rgba(99, 102, 241, 0.3), transparent 62%),
+    radial-gradient(48rem 34rem at 78% 92%, rgba(217, 70, 239, 0.2), transparent 60%),
+    linear-gradient(160deg, #0a0d24 0%, #131a3d 48%, #241536 100%);
+  background-attachment: fixed;
+}
+
+/* Nebula — violet → indigo → sky (light) / midnight variant (dark) */
+html[data-bg='nebula'] body {
+  background-color: #e5e0ff;
+  background-image:
+    radial-gradient(42rem 30rem at 85% 8%, rgba(196, 181, 253, 0.9), transparent 60%),
+    radial-gradient(46rem 32rem at 10% 85%, rgba(56, 189, 248, 0.4), transparent 62%),
+    radial-gradient(30rem 22rem at 55% 40%, rgba(255, 255, 255, 0.5), transparent 65%),
+    linear-gradient(160deg, #ddd6fe 0%, #c7d2fe 50%, #bae6fd 100%);
+  background-attachment: fixed;
+}
+html.dark[data-bg='nebula'] body {
+  background-color: #0c0a26;
+  background-image:
+    radial-gradient(42rem 30rem at 85% 8%, rgba(139, 124, 243, 0.32), transparent 60%),
+    radial-gradient(46rem 32rem at 10% 85%, rgba(56, 189, 248, 0.2), transparent 62%),
+    radial-gradient(24rem 18rem at 55% 35%, rgba(255, 255, 255, 0.14), transparent 65%),
+    linear-gradient(160deg, #0c0a26 0%, #171238 50%, #0b1e33 100%);
+  background-attachment: fixed;
+}
+
+/* Shaxsiy fon — the learner's own photo (bg-custom shop item). The data URL is
+   injected as --bg-custom by applyTheme(); a soft veil keeps cards readable. */
+html[data-bg='custom'] body {
+  background-color: #1c2138;
+  background-image:
+    linear-gradient(180deg, rgba(10, 13, 30, 0.34) 0%, rgba(10, 13, 30, 0.5) 100%),
+    var(--bg-custom, linear-gradient(135deg, #a78bfa, #38bdf8));
+  background-size: cover, cover;
+  background-position: center, center;
+  background-attachment: fixed;
+}
+html.dark[data-bg='custom'] body {
+  background-image:
+    linear-gradient(180deg, rgba(4, 6, 18, 0.55) 0%, rgba(4, 6, 18, 0.72) 100%),
+    var(--bg-custom, linear-gradient(135deg, #4c3a8f, #1d4e6b));
+  background-size: cover, cover;
+  background-position: center, center;
+  background-attachment: fixed;
+}
+
 /* the Shell no longer paints its own background */
 .app-bg {
   background: transparent;
@@ -863,6 +924,29 @@ html.dark[data-bg='grid'] body {
 @keyframes hex-pulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 170, 60, 0)); } 50% { transform: scale(1.12); filter: drop-shadow(0 0 8px rgba(255, 170, 60, 0.85)); } }
 @keyframes flame-dance { 0%, 100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(5deg) scale(1.12); } }
 .flame-dance { display: inline-block; transform-origin: 50% 90%; animation: flame-dance 1.2s ease-in-out infinite; }
+
+/* Streak-up celebration (journey completion): the flame pops big, then keeps
+   breathing while spark particles float up around it. */
+@keyframes streak-pop {
+  0% { transform: scale(0.2) rotate(-14deg); opacity: 0; }
+  55% { transform: scale(1.35) rotate(6deg); opacity: 1; }
+  75% { transform: scale(0.94) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes streak-breathe {
+  0%, 100% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 6px rgba(255, 150, 0, 0.55)); }
+  50% { transform: scale(1.14) rotate(4deg); filter: drop-shadow(0 0 16px rgba(255, 150, 0, 0.9)); }
+}
+@keyframes spark-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: translateY(-64px) scale(0.35); opacity: 0; }
+}
+.streak-flame-pop { display: inline-block; transform-origin: 50% 90%; animation: streak-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) both, streak-breathe 1.6s 0.7s ease-in-out infinite; }
+.streak-spark { position: absolute; left: 50%; bottom: 38%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 999px; background: #ffd23f; animation: spark-rise 1.4s ease-out infinite; }
+.streak-spark.s2 { background: #ff9600; animation-delay: 0.35s; animation-duration: 1.6s; margin-left: 14px; }
+.streak-spark.s3 { background: #ff5b5b; animation-delay: 0.7s; animation-duration: 1.3s; margin-left: -22px; }
+.streak-spark.s4 { background: #fff3c2; animation-delay: 1s; animation-duration: 1.7s; margin-left: 26px; }
 
 /* Dot-matrix weekly chart */
 .dot-on { background: radial-gradient(circle at 35% 30%, var(--c-leaf-soft), var(--c-leaf-lo)); box-shadow: 0 0 6px rgba(var(--tint-leaf), 0.6); }

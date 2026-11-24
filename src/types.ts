@@ -418,6 +418,10 @@ export interface Settings {
   haptics: boolean;
   sound: boolean; // short feedback sounds (correct / wrong / level-up)
   showTranslation: boolean; // flashcards: show Uzbek by default
+  /** Last app version whose "what's new" card was seen (lib/version.ts APP_VERSION). */
+  seenVersion?: string;
+  /** True once the first-run Lingo intro tour (components/IntroTour.tsx) finished. */
+  introDone?: boolean;
 }
 
 export type HlColor = 'yellow' | 'green' | 'pink' | 'blue';

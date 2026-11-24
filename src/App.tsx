@@ -53,10 +53,12 @@ export function App() {
   const hasProfile = !!s.profile;
 
   // theme (re-apply when the setting changes; follow Telegram/OS in "auto")
+  // customBg is passed explicitly: without it the --bg-custom variable is never set
+  // and the purchased "Shaxsiy fon" photo silently never becomes the backdrop.
   useEffect(() => {
-    applyTheme(s.settings.theme, s.settings.bg, s.settings.accent);
+    applyTheme(s.settings.theme, s.settings.bg, s.settings.accent, s.settings.customBg);
     return watchTheme(() => getState().settings);
-  }, [s.settings.theme, s.settings.bg, s.settings.accent]);
+  }, [s.settings.theme, s.settings.bg, s.settings.accent, s.settings.customBg]);
 
   // daily upkeep: streak freeze auto-use, weekly streak bonus (safe to call any number of times)
   useEffect(() => {

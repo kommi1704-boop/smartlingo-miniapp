@@ -9,7 +9,7 @@ import { initSync } from './lib/sync';
 
 initTelegram();
 const st = getState();
-applyTheme(st.settings.theme, st.settings.bg, st.settings.accent);
+applyTheme(st.settings.theme, st.settings.bg, st.settings.accent, st.settings.customBg);
 setHapticsEnabled(st.settings.haptics);
 
 void initSync();
