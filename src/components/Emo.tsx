@@ -15,7 +15,7 @@ export type EmoName =
   | 'star' | 'coin' | 'flame' | 'target' | 'bolt' | 'cal' | 'trophy' | 'brain' | 'gem'
   | 'gift' | 'game' | 'chart' | 'sparkle' | 'bell' | 'grad' | 'headset' | 'puzzle'
   | 'toolbox' | 'rocket' | 'book' | 'mic' | 'cart' | 'gear' | 'cards' | 'shoe' | 'abc' | 'medal' | 'search'
-  | 'signal' | 'flag' | 'globe' | 'pen' | 'map' | 'crown' | 'clock';
+  | 'signal' | 'flag' | 'globe' | 'pen' | 'map' | 'crown' | 'clock' | 'ice' | 'chest' | 'camera';
 
 export type MedalTone = 'gold' | 'silver' | 'bronze';
 
@@ -350,6 +350,33 @@ function art(n: EmoName, tone?: MedalTone): ReactElement {
           <circle cx="12" cy="12" r="1.1" fill={D} />
         </>
       );
+    case 'ice':
+      return (
+        <>
+          <path d="M12 2.8v18.4M12 2.8l-2.6 2M12 2.8l2.6 2M12 21.2l-2.6-2M12 21.2l2.6-2M4 7l16 10M4 7l.6 3.2M4 7l3.2-.6M20 17l-.6-3.2M20 17l-3.2.6M20 7L4 17M20 7l-3.2-.6M20 7l-.6 3.2M4 17l.6-3.2" fill="none" stroke={S2} strokeWidth="1.5" strokeLinecap="round" />
+          <rect x="7.6" y="7.6" width="8.8" height="8.8" rx="2" transform="rotate(45 12 12)" fill="#bfe6ff" fillOpacity=".55" stroke={S2} strokeWidth="1.5" />
+        </>
+      );
+    case 'chest':
+      return (
+        <>
+          <path d="M4.4 9.4v8.2a2.4 2.4 0 0 0 2.4 2.4h10.4a2.4 2.4 0 0 0 2.4-2.4V9.4z" fill={A2} {...STROKE} />
+          <path d="M4.4 9.4C4.4 6 7 4 12 4s7.6 2 7.6 5.4v0H4.4z" fill={A} {...STROKE} />
+          <rect x="10.2" y="8.2" width="3.6" height="4.6" rx="1" fill="#ffd23f" stroke={D} strokeWidth="1.2" />
+          <circle cx="12" cy="10.4" r="0.9" fill={D} />
+          <path d="M7 14.6h10" stroke="#8a5a1d" strokeWidth="1.2" strokeLinecap="round" opacity=".6" />
+        </>
+      );
+    case 'camera':
+      return (
+        <>
+          <rect x="3" y="7" width="18" height="12.6" rx="2.6" fill={T} {...STROKE} />
+          <path d="M9 7l1-2.2h4L15 7" fill={T} {...STROKE} />
+          <circle cx="12" cy="13.2" r="4" fill={W} stroke={D} strokeWidth="1.5" />
+          <circle cx="12" cy="13.2" r="1.7" fill={S} />
+          <circle cx="18.2" cy="9.8" r="0.9" fill={R} />
+        </>
+      );
     default:
       return art('sparkle');
   }
@@ -362,4 +389,25 @@ export function Emo({ n, size, tone, className, style }: { n: EmoName; size?: nu
       {art(n, tone)}
     </svg>
   );
+}
+
+/** Raw emoji → brand art, where a drawing exists. Falls back to the original glyph. */
+export const EMOJI_ART: Record<string, EmoName> = {
+  '⭐': 'star', '🌟': 'star', '✨': 'sparkle', '🪙': 'coin', '💰': 'coin', '🧧': 'gift',
+  '🔥': 'flame', '🏆': 'trophy', '🥇': 'medal', '🥈': 'medal', '🥉': 'medal', '🏅': 'medal',
+  '🎯': 'target', '⚡': 'bolt', '🧠': 'brain', '💎': 'gem', '🎁': 'chest', '🎀': 'gift',
+  '🎮': 'game', '🕹️': 'game', '📊': 'chart', '📈': 'chart', '🔔': 'bell', '🎓': 'grad',
+  '🎧': 'headset', '🎵': 'headset', '🧩': 'puzzle', '🧰': 'toolbox', '🚀': 'rocket',
+  '📖': 'book', '📚': 'book', '🎤': 'mic', '🗣️': 'mic', '🛒': 'cart', '⚙️': 'gear',
+  '🃏': 'cards', '🎴': 'cards', '🏃': 'shoe', '🔤': 'abc', '🔍': 'search', '📶': 'signal',
+  '🚩': 'flag', '🏁': 'flag', '🌐': 'globe', '🌍': 'globe', '✏️': 'pen', '🖊️': 'pen', '📝': 'pen',
+  '🗺️': 'map', '👑': 'crown', '🕐': 'clock', '⏰': 'clock', '🧊': 'ice', '📷': 'camera', '📸': 'camera',
+  '📅': 'cal', '🗓️': 'cal',
+};
+
+/** Drop-in replacement for a raw emoji in text/rows: brand art when we have it. */
+export function Glyph({ emoji, size, className, style }: { emoji: string; size?: number | string; className?: string; style?: CSSProperties }) {
+  const n = EMOJI_ART[emoji];
+  if (!n) return <span className={className} style={style}>{emoji}</span>;
+  return <Emo n={n} size={size} className={className} style={style} />;
 }

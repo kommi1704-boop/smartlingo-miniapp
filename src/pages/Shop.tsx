@@ -11,13 +11,14 @@ import { haptic, isTelegram } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { Button, Card, Modal, PageHeader, Pill, ProgressBar, Section, Tabs } from '../components/ui';
 import { FramedEmoji } from '../components/Avatar';
+import { Glyph } from '../components/Emo';
 import { Icon } from '../components/Icon';
 import { Confetti } from '../components/Mascot';
 import { navigate } from '../lib/router';
 
 type TabId = 'frames' | 'avatars' | 'names' | 'titles' | 'gifts';
 
-const REWARD_EMOJI: Record<ChestReward['kind'], string> = { coins: '🪙', xp: '⭐', freeze: '🧊' };
+const REWARD_EMOJI: Record<ChestReward['kind'], string> = { coins: '🪙', xp: '⭐', freeze: '🧊', boost: '⚡', avatar: '🎭', title: '📛', nameColor: '🎨', nameFx: '✨', frame: '🖼️' };
 
 function CoinPill({ price }: { price: number }) {
   return (
@@ -148,7 +149,7 @@ export function Shop() {
             return (
               <Card key={q.id} className={cx('!p-3.5', claimed && 'opacity-70')}>
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-2xl dark:bg-amber-500/20">{q.emoji}</span>
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-2xl dark:bg-amber-500/20"><Glyph emoji={q.emoji} size={26} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold">{q.title}</p>
                     <ProgressBar
@@ -244,7 +245,7 @@ export function Shop() {
                   const affordable = s.coins.balance >= a.price;
                   return (
                     <Card key={a.id} className="!p-3.5 text-center">
-                      <div className="flex justify-center"><FramedEmoji emoji={a.emoji} frameCls="frame-none" size={60} /></div>
+                      <div className="flex justify-center"><FramedEmoji emoji={a.emoji} frameCls="frame-none" size={60} mine={false} /></div>
                       <p className="mt-2 truncate text-sm font-bold">{a.name}</p>
                       <div className="mt-1.5 flex justify-center"><CoinPill price={a.price} /></div>
                       <div className="mt-3">
@@ -405,7 +406,7 @@ export function Shop() {
                 <div className="bounce-soft text-6xl">🎁</div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-lg font-extrabold">Sirli quti</h3>
-                  <p className="text-sm text-purple-100">Ichida nima bor? Coin, XP yoki muzlatgich chiqishi mumkin!</p>
+                  <p className="text-sm text-purple-100">Coin, XP, muzlatgich — hatto do‘kondagi tasodifiy buyumlar: avatar, titul, ramka va ism uslublari chiqishi mumkin!</p>
                   <div className="mt-2 flex items-center gap-2">
                     <CoinPill price={CHEST_PRICE} />
                     <Button size="sm" variant="secondary" className="!bg-white/20 !text-white border-0 hover:!bg-white/30" disabled={s.coins.balance < CHEST_PRICE} onClick={handleOpenChest}>
@@ -497,7 +498,7 @@ export function Shop() {
             ) : (
               <>
                 <Confetti />
-                <div className="pop-in mx-auto text-8xl">{REWARD_EMOJI[chest.reward.kind]}</div>
+                <div className="pop-in mx-auto text-8xl"><Glyph emoji={REWARD_EMOJI[chest.reward.kind]} size={92} /></div>
                 <p className="mt-3 text-2xl font-black">{chestRewardText(chest.reward)}</p>
                 <p className="mt-1 text-sm text-muted">Omadingiz keldi! Ertaga yana bir quti ochingiz bo‘ladi 😉</p>
                 <Button className="mt-5" full onClick={() => setChest(null)}>Ajoyib!</Button>

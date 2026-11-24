@@ -124,7 +124,10 @@ export function record(c: Counters): void {
 }
 
 export function saveProfile(p: Profile): void {
-  setState((s) => ({ ...s, profile: p }));
+  // a brand-new profile gets the first-run Lingo intro tour (IntroTour.tsx);
+  // returning learners keep their settings.introDone untouched
+  const isNew = !getState().profile;
+  setState((s) => ({ ...s, profile: p, settings: isNew ? { ...s.settings, introDone: false } : s.settings }));
 }
 
 export function updateProfile(patch: Partial<Profile>): void {
@@ -785,11 +788,37 @@ export function openChest(): ChestReward | null {
   const reward = rollChest();
   setState((st) => ({ ...st, shop: { ...st.shop, chestsOpened: st.shop.chestsOpened + 1 } }));
   haptic('success');
-  if (reward.kind === 'coins') addCoins(reward.amount);
-  else if (reward.kind === 'xp') record({ xp: reward.amount });
-  else if (reward.kind === 'freeze') {
-    setState((st) => ({ ...st, shop: { ...st.shop, streakFreezes: st.shop.streakFreezes + 1 } }));
-    toast('🧊 Muzlatgich omborga qo‘shildi — seriya himoyada!', 'success');
+  switch (reward.kind) {
+    case 'coins':
+      addCoins(reward.amount);
+      break;
+    case 'xp':
+      record({ xp: reward.amount });
+      break;
+    case 'freeze':
+      setState((st) => ({ ...st, shop: { ...st.shop, streakFreezes: st.shop.streakFreezes + 1 } }));
+      toast('🧊 Muzlatgich omborga qo‘shildi — seriya himoyada!', 'success');
+      break;
+    case 'boost': {
+      // extend the active boost window (or start a fresh one) — never shortens it
+      const cur = getState().shop.xpBoostUntil ? new Date(getState().shop.xpBoostUntil!).getTime() : 0;
+      const until = new Date(Math.max(Date.now(), cur) + reward.hours * 3600_000).toISOString();
+      setState((st) => ({ ...st, shop: { ...st.shop, xpBoostUntil: until } }));
+      break;
+    }
+    case 'avatar':
+      // a won avatar is permanent and goes straight onto the profile
+      markOwned(reward.id);
+      equipAvatar(reward.emoji);
+      break;
+    case 'title':
+      markOwned(reward.id); // titles never expire
+      break;
+    case 'nameColor':
+    case 'nameFx':
+    case 'frame':
+      markOwned(reward.id, reward.days); // 7-day rental
+      break;
   }
   return reward;
 }

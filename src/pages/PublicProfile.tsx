@@ -124,7 +124,7 @@ export function PublicProfile({ uid }: { uid: string }) {
         <div className="pointer-events-none absolute -right-3 -top-5 text-[6.5rem] opacity-15 select-none">{p.avatar ?? '🙂'}</div>
         <div className="flex items-center gap-4">
           <div className="rounded-3xl bg-white/15 p-1.5">
-            <FramedEmoji emoji={p.avatar ?? '🙂'} frameCls={ringFor(p.frame)} size={84} />
+            <FramedEmoji emoji={p.avatar ?? '🙂'} frameCls={ringFor(p.frame)} size={84} mine={false} />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className={cx('truncate text-2xl font-extrabold leading-tight', publicNameStyle(p) || undefined)}>{p.name}</h1>

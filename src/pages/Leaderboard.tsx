@@ -35,7 +35,7 @@ function RowView({ r, i, meId, board }: { r: LeaderRow; i: number; meId: string;
     >
       <span className={cx('w-8 shrink-0 text-center text-lg font-extrabold', i >= 3 && 'text-sm text-muted')}>{i < 3 ? MEDALS[i] : i + 1}</span>
       <div className="flex shrink-0 items-center justify-center rounded-full bg-surface2 p-1">
-        <AvatarGlyph value={r.avatar ?? '🙂'} size={36} className={cx('ring-2', ringFor(r.frame))} />
+        <AvatarGlyph value={r.avatar ?? '🙂'} size={36} mine={mine} className={cx('ring-2', ringFor(r.frame))} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">
@@ -120,7 +120,7 @@ export function Leaderboard() {
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-violet-600 to-sky-600 p-4 text-white shadow-lg shadow-violet-500/25">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-white/15 p-1">
-            <AvatarGlyph value={myAvatar} size={40} />
+            <AvatarGlyph value={myAvatar} size={40} mine />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-extrabold">{myName}</p>

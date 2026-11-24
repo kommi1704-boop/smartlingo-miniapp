@@ -17,7 +17,10 @@ import { LingoBubble, Mascot, type Mood } from '../components/Mascot';
 import { CountUp, DotChart, StreakWeek } from '../components/Alive';
 import { ChampionshipCard } from '../components/DailyExtras';
 import { JourneyCard } from '../components/journey/JourneyCard';
-import { Emo } from '../components/Emo';
+import { Emo, Glyph } from '../components/Emo';
+import { WhatsNew } from '../components/WhatsNew';
+import { IntroTour } from '../components/IntroTour';
+import { APP_VERSION } from '../lib/version';
 import { cx, fmt } from '../lib/utils';
 import { LEVEL_DESC } from '../data/options';
 import { dailyGameId, gameInfo, DAILY_BONUS_XP } from '../lib/games';
@@ -72,6 +75,10 @@ export function Dashboard() {
   const lingoLine = useMemo(() => {
     const day = dayOfYear(today());
     const pick = (arr: readonly string[]): string => arr[day % arr.length];
+    // update hook: after an update Lingo himself points at the news card before anything else
+    if (s.settings.seenVersion !== APP_VERSION && s.settings.introDone !== false) {
+      return pick(['Psst… yangiliklar bor! 🎉 Pastdagi kartani ochib ko‘r — siz uchun nima o‘zgarganini aytaman', 'Kutilma! Avval yangi xabarni o‘qiydik — shunchaki bosing, men batafsil aytaman']);
+    }
     if (lingoMood === 'sleep') return pick(['Zzz… kech bo‘ldi-da. Bitta qisqa mashq, keyin dam — kelishdikmi?', 'Uyquda ham lug‘at yodlayman 😴 Bitami, keyin bo’shamiz?']);
     if (lingoMood === 'sad') return pick(['Kechagi kun o‘tib ketdi… mayli, bo‘ldi qilib qo‘yamiz. Bugun bitta mashq bilan seriyani qaytaramiz', 'Seriyani yo‘qotdik, chidiydir. Bugungi mashq bilan qayta boshlaymizmi?']);
     if (lingoMood === 'proud') return pick(['Bugungisi ham tugadi — zo‘r ketyapsiz! Xohlasangiz o‘yin yoki jang bilan yakunlaymiz', 'Reja bitdi! Endi dam olish ham mumkin, o‘yin ham 😄']);
@@ -80,7 +87,7 @@ export function Dashboard() {
     if (streak >= 3) return pick([`${streak} kunlik seriya bor. O‘chirmaymiz!`, `Seriya ${streak} kunda — davomi bor-ku!`]);
     return next ? pick([`Bugun «${next.title}» dan boshlaymizmi? Men tayyorman`, `«${next.title}» sizni kutmoqda. Boshlaymizmi?`]) : pick(['Bugun yangi so‘zlar o‘rganamizmi?', 'Keling, bugun ham bir-ikki so‘z qo‘shamiz']);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lingoMood, streak, next?.title]);
+  }, [lingoMood, streak, next?.title, s.settings.seenVersion, s.settings.introDone]);
 
   const totalLessons = Object.values(s.lessons).filter((l) => l.completed).length;
   const totalReviews = Object.values(s.vocab).reduce((a, v) => a + v.reviews, 0);
@@ -229,7 +236,7 @@ export function Dashboard() {
         <Card className="!p-2">
           {missions.map((m) => (
             <div key={m.quest.id} className="flex items-center gap-3 px-2 py-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-base">{m.quest.emoji}</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface2 text-base"><Glyph emoji={m.quest.emoji} size={22} /></span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 truncate text-sm font-bold">{m.quest.title}</p>
@@ -253,7 +260,7 @@ export function Dashboard() {
           ))}
           {/* daily game row */}
           <A to="/games/daily" className="mt-1 flex items-center gap-3 rounded-xl border border-line bg-surface2/60 px-3 py-2.5 transition hover:border-accent/40">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-base">{daily?.emoji ?? '🎮'}</span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-base"><Glyph emoji={daily?.emoji ?? '🎮'} size={22} /></span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-bold">{daily?.title ?? 'Kunlik o‘yin'}</span>
               <span className="block text-[11px] text-muted">{dailyDone ? 'Bugun bajarildi ✓' : `Hozir o‘ynang: +${DAILY_BONUS_XP} XP bonus`}</span>
@@ -268,7 +275,7 @@ export function Dashboard() {
         <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
           {quick.map((q, i) => (
             <A key={q.path} to={q.path} style={{ animationDelay: `${i * 60}ms` }} className={cx('tile rise-in flex flex-col items-center gap-0.5 rounded-[22px] px-2 py-3 text-center', q.tile)}>
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/35 text-2xl">{q.emoji}</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/35 text-2xl"><Glyph emoji={q.emoji} size={28} /></span>
               <span className="text-xs font-black">{q.label}</span>
               <span className="text-[10px] font-bold opacity-85">{q.count}</span>
             </A>
@@ -304,7 +311,7 @@ export function Dashboard() {
                 return (
                   <div key={q.id} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{meta ? `${meta.emoji} ` : ''}{q.title}</p>
+                      <p className="flex items-center gap-1 truncate text-sm font-semibold">{meta ? <Glyph emoji={meta.emoji} /> : null}{q.title}</p>
                       <p className="text-[11px] text-muted">{new Date(q.date).toLocaleDateString('uz-UZ')}</p>
                     </div>
                     <span className={cx('shrink-0 text-xs font-extrabold', q.score / Math.max(1, q.total) >= 0.6 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500')}>
@@ -320,6 +327,10 @@ export function Dashboard() {
           </div>
         </Card>
       </Section>
+
+      {/* first-run Lingo tour + post-update "what's new" card */}
+      <IntroTour />
+      <WhatsNew />
     </div>
   );
 }

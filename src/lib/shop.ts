@@ -115,18 +115,37 @@ export const XP_BOOST_PRICE = 150; // 2x XP for 24 hours
 export const FREEZE_PRICE = 80; // protects the streak for one missed day
 export const XP_BOOST_HOURS = 24;
 
-export interface ChestReward {
-  kind: 'coins' | 'xp' | 'freeze';
-  amount: number;
-}
+/** What the 100-coin mystery chest can hold — resources plus random STORE ITEMS. */
+export type ChestReward =
+  | { kind: 'coins'; amount: number }
+  | { kind: 'xp'; amount: number }
+  | { kind: 'freeze'; amount: number }
+  | { kind: 'boost'; hours: number } // 2x XP time
+  | { kind: 'avatar'; id: string; emoji: string; name: string } // premium avatar, permanent
+  | { kind: 'title'; id: string; name: string } // permanent title
+  | { kind: 'nameColor'; id: string; name: string; days: number } // 7-day rental
+  | { kind: 'nameFx'; id: string; name: string; days: number } // 7-day rental
+  | { kind: 'frame'; id: string; name: string; days: number }; // 7-day rental
 
 const CHEST_TABLE: { w: number; r: ChestReward }[] = [
-  { w: 28, r: { kind: 'coins', amount: 40 } },
-  { w: 20, r: { kind: 'coins', amount: 80 } },
-  { w: 7, r: { kind: 'coins', amount: 150 } },
-  { w: 20, r: { kind: 'xp', amount: 40 } },
-  { w: 12, r: { kind: 'xp', amount: 90 } },
-  { w: 13, r: { kind: 'freeze', amount: 1 } },
+  { w: 26, r: { kind: 'coins', amount: 40 } },
+  { w: 17, r: { kind: 'coins', amount: 80 } },
+  { w: 6, r: { kind: 'coins', amount: 150 } },
+  { w: 15, r: { kind: 'xp', amount: 40 } },
+  { w: 9, r: { kind: 'xp', amount: 90 } },
+  { w: 10, r: { kind: 'freeze', amount: 1 } },
+  { w: 5, r: { kind: 'boost', hours: 6 } },
+  { w: 4, r: { kind: 'avatar', id: 'av-owl', emoji: '🦉', name: 'Bilim burgusi' } },
+  { w: 3, r: { kind: 'avatar', id: 'av-robot', emoji: '🤖', name: 'Robot' } },
+  { w: 2, r: { kind: 'avatar', id: 'av-dragon', emoji: '🐉', name: 'Ajdar' } },
+  { w: 3, r: { kind: 'title', id: 'title-stargazer', name: '⭐ Yulduz ovchisi' } },
+  { w: 2, r: { kind: 'title', id: 'title-explorer', name: '🧭 Kashfiyotchi' } },
+  { w: 3, r: { kind: 'nameColor', id: 'nc-fire', name: 'Olov', days: 7 } },
+  { w: 3, r: { kind: 'nameColor', id: 'nc-ocean', name: 'Okean', days: 7 } },
+  { w: 2, r: { kind: 'nameFx', id: 'nfx-glow', name: 'Nur halosi', days: 7 } },
+  { w: 2, r: { kind: 'nameFx', id: 'nfx-neon', name: 'Neon nur', days: 7 } },
+  { w: 3, r: { kind: 'frame', id: 'frame-neon-blue', name: 'Neon moviy', days: 7 } },
+  { w: 2, r: { kind: 'frame', id: 'frame-frost', name: 'Ayoz', days: 7 } },
 ];
 
 export function rollChest(rnd: () => number = Math.random): ChestReward {
@@ -140,9 +159,17 @@ export function rollChest(rnd: () => number = Math.random): ChestReward {
 }
 
 export function chestRewardText(r: ChestReward): string {
-  if (r.kind === 'coins') return `+${r.amount} 🪙 Coin`;
-  if (r.kind === 'xp') return `+${r.amount} ⭐ XP`;
-  return '🧊 1 ta muzlatgich';
+  switch (r.kind) {
+    case 'coins': return `+${r.amount} 🪙 Coin`;
+    case 'xp': return `+${r.amount} ⭐ XP`;
+    case 'freeze': return '🧊 1 ta muzlatgich';
+    case 'boost': return `⚡ 2x XP — ${r.hours} soat`;
+    case 'avatar': return `${r.emoji} ${r.name} — avataringizga taqildi!`;
+    case 'title': return `${r.name} tituli ochildi!`;
+    case 'nameColor': return `🎨 «${r.name}» ism rangi — ${r.days} kun`;
+    case 'nameFx': return `✨ «${r.name}» ism effekti — ${r.days} kun`;
+    case 'frame': return `🖼️ «${r.name}» ramkasi — ${r.days} kun`;
+  }
 }
 
 // ===== Daily quests ("Kunlik vazifalar") =====

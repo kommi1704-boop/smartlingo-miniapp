@@ -16,7 +16,7 @@ import { streakOf } from '../../lib/gamification';
 import { VOCAB } from '../../data/vocab';
 import { haptic } from '../../lib/telegram';
 import { playSfx } from '../../lib/sfx';
-import { Emo } from '../Emo';
+import { Emo, Glyph } from '../Emo';
 import { Mascot, Confetti } from '../Mascot';
 import { CountUp } from '../Alive';
 import { Button } from '../ui';
@@ -129,21 +129,30 @@ export function JourneyComplete({ onFinish }: { onFinish?: () => void }) {
         </div>
       ),
     });
-    if (streakAfter !== null && streakAfter >= 2) {
+    if (streakAfter !== null && streakAfter >= 1) {
+      const fresh = streakAfter === 1;
       list.push({
         key: 'streak',
-        title: 'Seriya davom etdi!',
+        title: fresh ? 'Yangi seriya boshlandi!' : 'Seriya davom etdi!',
         sfx: 'levelup',
         body: (
           <>
-            <div className="flex items-center justify-center gap-3">
-              <span className="flame-dance inline-flex scale-[1.8]"><Emo n="flame" size={44} /></span>
-              <span className="text-4xl font-black text-muted">{streakBefore}</span>
-              <span className="text-3xl font-black text-muted">→</span>
-              <span className="text-6xl font-black text-[#d6523f]"><CountUp value={streakAfter} /></span>
+            {/* streak-up moment: the flame pops with sparks — this is THE payoff of the daily safari */}
+            <div className="relative flex items-center justify-center gap-3 py-2">
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-24" aria-hidden>
+                <span className="streak-spark" /><span className="streak-spark s2" /><span className="streak-spark s3" /><span className="streak-spark s4" />
+              </span>
+              <span className="streak-flame-pop relative inline-flex scale-[1.9]"><Emo n="flame" size={46} /></span>
+              <span className="relative text-4xl font-black text-muted">{streakBefore}</span>
+              <span className="relative text-3xl font-black text-muted">→</span>
+              <span className="relative text-6xl font-black text-[#d6523f]"><CountUp value={streakAfter} /></span>
             </div>
-            <p className="mt-3 text-[15px] font-extrabold">🔥 SERIYA DAVOM ETDI!</p>
-            <p className="mt-1 text-[13px] font-semibold text-muted">Server tasdiqladi — seriyangiz endi {streakAfter} kun. Olovni o‘chirmaysiz-ku!</p>
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-[15px] font-extrabold"><Glyph emoji="🔥" size={18} /> {fresh ? 'ILK SERIYA — 1 KUN!' : `SERIYA ${streakAfter} KUNGA YETDI!`}</p>
+            <p className="mt-1 text-[13px] font-semibold text-muted">
+              {fresh
+                ? 'Bugunki safari bilan yangi seriya boshlandingiz. Ertaga yana keling — olov o‘sadi!'
+                : `Server tasdiqladi — seriyangiz endi ${streakAfter} kun. Olovni o‘chirmaysiz-ku!`}
+            </p>
           </>
         ),
       });

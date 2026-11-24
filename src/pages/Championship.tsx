@@ -118,7 +118,7 @@ export function Championship() {
                   )}
                 >
                   <span className="flex w-8 shrink-0 items-center justify-center text-center text-sm font-black text-muted">{MEDAL_TONE(row.rank) ? <Emo n="medal" tone={MEDAL_TONE(row.rank)!} size={20} /> : row.rank}</span>
-                  <AvatarGlyph value={row.avatar} size={32} />
+                  <AvatarGlyph value={row.avatar} size={32} mine={row.me} />
                   <span className="min-w-0 flex-1 truncate text-[15px] font-bold">
                     {row.name}
                     {row.me && <Pill tone="violet">Siz</Pill>}
