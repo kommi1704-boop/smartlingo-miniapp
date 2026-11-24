@@ -23,7 +23,7 @@
 //                    SUPABASE_SERVICE_ROLE_KEY, ADMIN_TELEGRAM_IDS.
 import crypto from 'node:crypto';
 import { adminIdsFromEnv } from './bot.js';
-import { NOTIFY_KINDS, dispatch, fetchPrefsMap, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify.js';
+import { NOTIFY_KINDS, dispatch, fetchPrefsMap, logCronRun, sbHeaders, uztHour, type DbCtx, type NotifyKind } from './_lib/notify.js';
 import { champSettle, events, grantXp, shiftDay, tashkentDay, weekMonday, type ChampWinner, type Ledger } from './_lib/xpcore.js';
 import { uztDay } from './progress.js';
 
@@ -622,14 +622,39 @@ function champText(w: ChampWinner): string {
  *    practice; it is also excluded from championship windows via the source).
  * Runs on EVERY daily cron for the previous week — idempotent, so a missed
  * Monday settles on Tuesday. The new week's XP is a fresh ledger window.
+ *
+ * ROBUSTNESS: the award loop below runs for EVERY winner listed in the
+ * champions table, not only for the winners the RPC inserted THIS call. Before
+ * this change, a cron that crashed after the RPC but before the coin grants
+ * permanently lost the prizes (the table said "settled", so no retry ever
+ * awarded them). Every grant here is idempotent by design:
+ *   - coin_grants PK  gr_champ_<week>_<place>
+ *   - xp_ledger event cp:<week>:<place>
+ *   - notification_history PK n_achievements_<uid>_champ:<week>:<place>
  */
 async function settleChampionship(db: DbCtx, token: string, appUrl: string): Promise<Record<string, unknown>> {
   const lastWeek = shiftDay(weekMonday(tashkentDay()), -7);
   const settle = await champSettle(db, lastWeek);
   if (!settle) return { week: lastWeek, error: 'storage' };
-  if (!settle.settled) return { week: lastWeek, settled: false };
+
+  // winners inserted right now — OR the already-settled rows of a previous run
+  // whose awarding may have been interrupted (crash/timeout mid-loop).
+  let winners = settle.winners;
+  if (!winners.length) {
+    const r = await sb<{ week_start: string; place: number; telegram_user_id: number; xp: number; prizes: { coins?: number; xp?: number; frame?: string | null } }>(
+      `${db.url}/rest/v1/champions?week_start=eq.${lastWeek}&select=week_start,place,telegram_user_id,xp,prizes&order=place.asc&limit=3`,
+    );
+    winners = r.rows.map((w) => ({
+      place: w.place,
+      uid: Number(w.telegram_user_id),
+      xp: Number(w.xp) || 0,
+      prizes: { coins: Number(w.prizes?.coins) || 0, xp: Number(w.prizes?.xp) || 0, frame: w.prizes?.frame ?? null },
+    }));
+    if (!winners.length) return { week: lastWeek, settled: false };
+  }
+
   const awarded: number[] = [];
-  for (const w of settle.winners) {
+  for (const w of winners) {
     const coins = w.prizes?.coins ?? 0;
     await fetch(`${db.url}/rest/v1/coin_grants?on_conflict=id`, {
       method: 'POST',
@@ -647,7 +672,7 @@ async function settleChampionship(db: DbCtx, token: string, appUrl: string): Pro
     });
     awarded.push(w.uid);
   }
-  return { week: lastWeek, settled: true, winners: settle.winners.map((w) => ({ place: w.place, uid: w.uid, xp: w.xp })), awarded };
+  return { week: lastWeek, settled: true, recovered: !settle.settled, winners: winners.map((w) => ({ place: w.place, uid: w.uid, xp: w.xp })), awarded };
 }
 
 async function weeklyHandler(req: Req, res: Res): Promise<void> {
@@ -751,6 +776,8 @@ async function weeklyHandler(req: Req, res: Res): Promise<void> {
       campaignResults.push({ id: c.id, ...run });
     }
     out.campaigns = campaignResults;
+    // diagnostics row — settlement results, weekly broadcast counts, campaigns
+    await logCronRun(db, 'weekly', out);
     res.status(200).json(out);
   } catch (e) {
     console.error('weekly failure', e instanceof Error ? e.message : String(e));

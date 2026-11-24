@@ -151,6 +151,8 @@ export interface NotifyInput {
   imageUrl?: string;
   /** Disable the "Sozlamalar" footer button (default: attached). */
   noSettingsFooter?: boolean;
+  /** Preloaded preferences (crons load them in bulk) — skips the per-user fetch. */
+  prefs?: NotifyPrefs;
 }
 
 const okEventKey = (k: string): string => k.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 80);
@@ -193,7 +195,7 @@ export interface DispatchResult {
 export async function dispatch(db: DbCtx, token: string, appUrl: string, input: NotifyInput): Promise<DispatchResult> {
   const id = historyIdOf(input.kind, input.uid, input.eventKey);
   try {
-    const prefs = await fetchPrefs(db, input.uid);
+    const prefs = input.prefs ?? (await fetchPrefs(db, input.uid));
     const g = gate(prefs, input.kind);
     if (g !== 'ok') return { status: g, id };
 
@@ -306,5 +308,28 @@ export async function recordSkip(db: DbCtx, uid: number, kind: NotifyKind, event
     });
   } catch {
     /* best-effort */
+  }
+}
+
+/**
+ * Diagnostics: every cron run writes one row to cron_runs (schema-2.0.sql) with its
+ * summary, so "notifications are not working" can be answered from the database
+ * (last run, targets, sent/failed/skipped) instead of guessing.
+ */
+export async function logCronRun(db: DbCtx, name: string, result: Record<string, unknown>): Promise<void> {
+  try {
+    await fetch(`${db.url}/rest/v1/cron_runs`, {
+      method: 'POST',
+      headers: { ...sbHeaders(db.key), prefer: 'return=minimal' },
+      body: JSON.stringify({
+        name,
+        day: new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10), // Asia/Tashkent day
+        result,
+        ran_at: new Date().toISOString(),
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    /* diagnostics only — never break a cron because logging failed */
   }
 }

@@ -20,5 +20,9 @@
       "path": "/api/weekly",
       "schedule": "5 13 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/reminders.ts": { "maxDuration": 60 },
+    "api/admin-notify.ts": { "maxDuration": 60 }
+  }
 }

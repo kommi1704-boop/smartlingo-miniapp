@@ -247,7 +247,7 @@ declare
 begin
   select coalesce(sum(amount), 0) into v_total from public.xp_ledger where telegram_user_id = p_uid;
   select coalesce(sum(amount), 0) into v_week from public.xp_ledger
-    where telegram_user_id = p_uid and week_start = v_week_start and source <> 'legacy';
+    where telegram_user_id = p_uid and week_start = v_week_start and source not in ('legacy','champ_prize');
   select current, longest, last_day, freezes into s from public.streaks where telegram_user_id = p_uid;
   return jsonb_build_object(
     'xpTotal', v_total, 'xpWeek', v_week, 'weekStart', v_week_start,
@@ -263,7 +263,7 @@ returns table (uid bigint, xp bigint)
 language sql security definer set search_path = '' as $$
   select telegram_user_id, sum(amount)::bigint as xp
     from public.xp_ledger
-    where day between p_from and p_to and source <> 'legacy'
+    where day between p_from and p_to and source not in ('legacy','champ_prize')
     group by telegram_user_id
     order by xp desc, telegram_user_id asc
     limit least(greatest(p_limit, 1), 500);
@@ -277,7 +277,7 @@ returns table (uid bigint, xp bigint)
 language sql security definer set search_path = '' as $$
   select telegram_user_id, sum(amount)::bigint as xp
     from public.xp_ledger
-    where week_start = p_week and source <> 'legacy'
+    where week_start = p_week and source not in ('legacy','champ_prize')
     group by telegram_user_id
     order by xp desc, telegram_user_id asc
     limit least(greatest(p_limit, 1), 500);
@@ -295,7 +295,7 @@ begin
   with top as (
     select telegram_user_id, sum(amount)::bigint as xp
       from public.xp_ledger
-      where week_start = p_week and source <> 'legacy'
+      where week_start = p_week and source not in ('legacy','champ_prize')
       group by telegram_user_id
       order by xp desc, telegram_user_id asc
       limit 3
@@ -397,3 +397,17 @@ begin
   return found;
 end $$;
 revoke execute on function public.record_purchase(bigint, text, int, text) from anon, authenticated;
+
+-- ---- cron diagnostics --------------------------------------------------------
+-- Every Vercel cron (reminders / weekly) writes one row per run with its summary.
+-- "Notifications are not working" becomes a query: select * from cron_runs order by id desc limit 10;
+
+create table if not exists public.cron_runs (
+  id         bigint generated always as identity primary key,
+  name       text not null,               -- 'reminders' | 'weekly'
+  day        date not null,               -- Asia/Tashkent day of the run
+  result     jsonb not null default '{}'::jsonb,
+  ran_at     timestamptz not null default now()
+);
+create index if not exists cron_runs_name_idx on public.cron_runs (name, id desc);
+alter table public.cron_runs enable row level security;

@@ -30,7 +30,7 @@
 //
 // Env (server only): TELEGRAM_BOT_TOKEN, WEBAPP_URL, SUPABASE_URL,
 //                    SUPABASE_SERVICE_ROLE_KEY, optional CRON_SECRET.
-import { dispatch, fetchPrefsMap, recordSkip, type DbCtx } from './_lib/notify.js';
+import { defaultPrefs, dispatch, fetchPrefsMap, logCronRun, recordSkip, type DbCtx, type NotifyPrefs } from './_lib/notify.js';
 import { tashkentDay, shiftDay } from './_lib/xpcore.js';
 
 interface Req {
@@ -151,15 +151,24 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     let failed = 0;
     let skipped = 0;
 
+    // The prefs map is loaded ONCE above and handed to every dispatch — without this,
+    // each message costs an extra per-user round trip and big user bases blow the
+    // serverless time budget, which silently truncated reminder runs.
     const runBatch = async (targets: number[], eventKey: string, text: string, buttonLabel: string): Promise<void> => {
       for (let i = 0; i < targets.length; i += 15) {
         const chunk = targets.slice(i, i + 15);
         const results = await Promise.all(
           chunk.map(async (uid) => {
-            const r = await dispatch(db, token, url, { uid, kind: 'streak', eventKey, text, button: { label: buttonLabel, webApp: true } });
+            // users without a prefs row have the defaults — don't waste a fetch on them
+            const userPrefs: NotifyPrefs = prefs.get(uid) ?? defaultPrefs();
+            const r = await dispatch(db, token, url, { uid, kind: 'streak', eventKey, text, button: { label: buttonLabel, webApp: true }, prefs: userPrefs });
             if (r.status === 'sent') sent++;
             else if (r.status === 'failed') failed++;
-            else skipped++;
+            else {
+              skipped++;
+              // honesty: a gated user sees WHY nothing arrived (Settings → history)
+              if (r.status !== 'duplicate') await recordSkip(db, uid, 'streak', eventKey, r.status);
+            }
             return r.status;
           }),
         );
@@ -171,7 +180,7 @@ export default async function handler(req: Req, res: Res): Promise<void> {
     await runBatch(invite, `streak_invite:${day}`, texts.invite, '🚀 Safarni boshlash');
     await runBatch(restart.map((r) => r.telegram_user_id), `streak_restart:${day}`, texts.restart, '🌱 Yana boshlash');
 
-    res.status(200).json({
+    const summary = {
       ok: true,
       day,
       streakUsers: streaks.length,
@@ -182,7 +191,10 @@ export default async function handler(req: Req, res: Res): Promise<void> {
       sent,
       failed,
       skipped,
-    });
+    };
+    // diagnostics row — "reminders are not working" becomes a DB query, not a guess
+    await logCronRun(db, 'reminders', summary);
+    res.status(200).json(summary);
   } catch (e) {
     console.error('reminders failure', e instanceof Error ? e.message : String(e));
     res.status(502).json({ error: 'storage_error' });
