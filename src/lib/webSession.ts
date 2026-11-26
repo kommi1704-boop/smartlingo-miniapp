@@ -15,7 +15,7 @@ export type WidgetUser = {
   hash: string;
 };
 
-async function call(body: unknown): Promise<WebSession> {
+async function callRaw(body: unknown): Promise<Record<string, unknown>> {
   const r = await fetch(`${BASE}/api/web-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,9 +32,32 @@ async function call(body: unknown): Promise<WebSession> {
     }
     throw new Error(code);
   }
-  const j = (await r.json()) as { initData: string; user: WebSession['user'] };
+  return (await r.json()) as Record<string, unknown>;
+}
+
+async function call(body: unknown): Promise<WebSession> {
+  const j = (await callRaw(body)) as { initData?: string; user?: WebSession['user'] };
   if (!j?.initData || !j.user) throw new Error('bad_response');
   return { initData: j.initData, user: j.user, issuedAt: Date.now() };
+}
+
+/** Bot deep-link login, step 1: a one-time token. Open `botLoginLink(token)` in Telegram. */
+export async function startBotLogin(): Promise<string> {
+  const j = await callRaw({ action: 'start' });
+  if (typeof j.token !== 'string') throw new Error('bad_response');
+  return j.token;
+}
+
+export const botLoginLink = (token: string): string => `https://t.me/${BOT_USERNAME}?start=wl_${token}`;
+
+/** Step 2 (poll every ~2 s): 'pending' | 'expired' | 'ok' (session stored). */
+export async function pollBotLogin(token: string): Promise<'pending' | 'expired' | 'ok'> {
+  const j = (await callRaw({ action: 'poll', token })) as { status?: string; initData?: string; user?: WebSession['user'] };
+  if (j.status === 'ok' && j.initData && j.user) {
+    setWebSession({ initData: j.initData, user: j.user, issuedAt: Date.now() });
+    return 'ok';
+  }
+  return j.status === 'expired' ? 'expired' : 'pending';
 }
 
 /** Exchanges the Telegram Login Widget payload for a session and stores it. */
