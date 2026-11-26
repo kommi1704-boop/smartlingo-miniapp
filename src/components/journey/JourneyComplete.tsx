@@ -56,7 +56,7 @@ export function JourneyComplete({ onFinish }: { onFinish?: () => void }) {
     bonusTried.current = true;
     void claimJourneyBonus().then((g) => { setBonus(g); playSfx('levelup'); haptic('success'); });
     void refreshServerStats().then((stats) => {
-      setStreakAfter(stats?.summary.streak.current ?? streakOf(getState().activity));
+      setStreakAfter(stats?.summary?.streak?.current ?? streakOf(getState().activity));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -4,7 +4,7 @@
 // applies what the server granted. When the API is unreachable or not
 // configured (no Supabase env), callers fall back to the legacy offline
 // behavior — XpUnavailable makes that explicit instead of hiding errors.
-import { hasSession, tg } from './telegram';
+import { hasSession, tgInitData } from './telegram';
 
 const BASE = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE ?? '';
 
@@ -54,7 +54,7 @@ export interface DiscoveryItemDto {
 }
 
 function headers(): Record<string, string> {
-  return { 'content-type': 'application/json', 'X-Telegram-Init-Data': tg()?.initData ?? '' };
+  return { 'content-type': 'application/json', 'X-Telegram-Init-Data': tgInitData() };
 }
 
 /** One place for transport + error mapping, so every caller can rely on `XpUnavailable` meaning "no ledger right now". */
@@ -167,6 +167,8 @@ export function subscribeServerStats(fn: () => void): () => void {
 export async function refreshServerStats(): Promise<ServerStats | null> {
   try {
     const data = await xpApi.me();
+    // server answers summary:null when the ledger RPC is unavailable — treat that as "no stats", never cache it
+    if (!data?.summary || !data.week) return null;
     statsCache = { summary: data.summary, week: data.week, isChampion: data.isChampion, at: Date.now() };
     listeners.forEach((fn) => fn());
     return statsCache;

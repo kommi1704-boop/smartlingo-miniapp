@@ -150,8 +150,8 @@ export function ChampionshipCard() {
     };
   }, []);
 
-  const xpWeek = stats?.summary.xpWeek ?? null;
-  const daysLeft = stats?.week.daysLeft;
+  const xpWeek = stats?.summary?.xpWeek ?? null;
+  const daysLeft = stats?.week?.daysLeft;
 
   return (
     <A

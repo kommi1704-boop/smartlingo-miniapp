@@ -36,7 +36,8 @@ export function Championship() {
       .championship()
       .then((d) => {
         if (!live) return;
-        setData(d as ChampionshipData);
+        if (!d?.week || !d.me || !Array.isArray(d.standings)) throw new Error('bad_payload');
+        setData({ ...(d as ChampionshipData), champions: Array.isArray(d.champions) ? d.champions : [] });
         void refreshServerStats();
       })
       .catch(() => {
