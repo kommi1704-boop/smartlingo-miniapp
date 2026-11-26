@@ -495,3 +495,19 @@ create index if not exists notification_campaigns_status_idx
 drop trigger if exists notification_campaigns_touch on public.notification_campaigns;
 create trigger notification_campaigns_touch before update on public.notification_campaigns
   for each row execute function public.touch_updated_at();
+
+-- ============================================================================
+-- Browser sign-in through the bot deep link (t.me/<bot>?start=wl_<token>).
+-- Only SHA-256(token) is stored; rows live ~10 minutes; a confirmed row is deleted when redeemed.
+-- RLS ON, no policies: only the server (service-role key) can touch it. Idempotent.
+create table if not exists public.web_login_tokens (
+  token_hash       text primary key,
+  status           text        not null default 'pending',   -- pending | confirmed
+  telegram_user_id bigint,
+  first_name       text,
+  last_name        text,
+  username         text,
+  created_at       timestamptz not null default now()
+);
+alter table public.web_login_tokens enable row level security;
+create index if not exists web_login_tokens_created_idx on public.web_login_tokens (created_at);

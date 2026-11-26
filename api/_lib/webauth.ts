@@ -44,6 +44,11 @@ export interface WebUser {
 const WIDGET_MAX_AGE_SEC = 24 * 3600;
 const SESSION_MAX_AGE_SEC = 7 * 24 * 3600;
 
+function body_isPoll(req: Req): boolean {
+  const b = req.body as { action?: string } | undefined;
+  return b?.action === 'poll';
+}
+
 const hits = new Map<string, { n: number; reset: number }>();
 function rateLimited(key: string, limit = 20, windowMs = 60_000): boolean {
   const now = Date.now();
@@ -140,6 +145,120 @@ export function verifyWebSession(initData: string, botToken: string, nowSec: num
   }
 }
 
+// ---- Bot deep-link login ("Telegram orqali kirish") ------------------------------------------------------
+// The Login Widget depends on a phone-number form + a confirmation push that sometimes never arrives.
+// This flow needs neither: the browser asks for a one-time token, the user opens
+// t.me/<bot>?start=wl_<token>, the bot (api/bot.ts) marks the token as confirmed with the sender's Telegram id,
+// and the browser — polling — exchanges the confirmed token for the same server-signed session.
+// Only the SHA-256 of the token is stored. A confirmed token can be redeemed exactly once.
+const LOGIN_TOKEN_TTL_MS = 10 * 60_000;
+const TOKEN_RE = /^[0-9a-f]{32}$/;
+
+interface Db {
+  url: string;
+  key: string;
+}
+function db(): Db | null {
+  const url = process.env.SUPABASE_URL?.trim().replace(/\/+$/, '');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return url && key ? { url, key } : null;
+}
+const H = (key: string, extra: Record<string, string> = {}) => ({ apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', ...extra });
+
+export const hashLoginToken = (token: string): string => crypto.createHash('sha256').update(token).digest('hex');
+export const newLoginToken = (): string => crypto.randomBytes(16).toString('hex');
+export const isLoginToken = (t: unknown): t is string => typeof t === 'string' && TOKEN_RE.test(t);
+
+/** Parses "/start wl_<token>" (the bot's deep link) -> token, or null. */
+export function parseLoginPayload(text: string): string | null {
+  const m = /^\/start(?:@\w{1,32})?\s+wl_([0-9a-f]{32})\s*$/.exec(text.trim());
+  return m ? m[1]! : null;
+}
+
+/** Called by the bot when a user opens the deep link. Returns true when a pending, unexpired token was confirmed. */
+export async function confirmWebLogin(
+  d: Db,
+  token: string,
+  from: { id: number; first_name?: string; last_name?: string; username?: string },
+  nowMs: number = Date.now(),
+): Promise<boolean> {
+  try {
+    const since = new Date(nowMs - LOGIN_TOKEN_TTL_MS).toISOString();
+    const r = await fetch(`${d.url}/rest/v1/web_login_tokens?token_hash=eq.${hashLoginToken(token)}&status=eq.pending&created_at=gte.${encodeURIComponent(since)}`, {
+      method: 'PATCH',
+      headers: H(d.key, { Prefer: 'return=representation' }),
+      body: JSON.stringify({
+        status: 'confirmed',
+        telegram_user_id: from.id,
+        first_name: from.first_name?.slice(0, 64) ?? null,
+        last_name: from.last_name?.slice(0, 64) ?? null,
+        username: from.username?.slice(0, 64) ?? null,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!r.ok) return false;
+    const rows = (await r.json()) as unknown[];
+    return Array.isArray(rows) && rows.length === 1;
+  } catch {
+    return false;
+  }
+}
+
+async function startLogin(d: Db): Promise<string | null> {
+  const token = newLoginToken();
+  try {
+    // opportunistic cleanup of expired rows keeps the table tiny without a cron
+    void fetch(`${d.url}/rest/v1/web_login_tokens?created_at=lt.${encodeURIComponent(new Date(Date.now() - 2 * LOGIN_TOKEN_TTL_MS).toISOString())}`, {
+      method: 'DELETE',
+      headers: H(d.key),
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => {});
+    const r = await fetch(`${d.url}/rest/v1/web_login_tokens`, {
+      method: 'POST',
+      headers: H(d.key),
+      body: JSON.stringify({ token_hash: hashLoginToken(token) }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    return r.ok ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+type PollResult = { status: 'pending' } | { status: 'expired' } | { status: 'ok'; user: WebUser };
+
+async function pollLogin(d: Db, token: string, nowMs: number = Date.now()): Promise<PollResult | null> {
+  const th = hashLoginToken(token);
+  try {
+    // DELETE ... RETURNING is atomic: a confirmed token is handed to exactly one poller.
+    const del = await fetch(`${d.url}/rest/v1/web_login_tokens?token_hash=eq.${th}&status=eq.confirmed`, {
+      method: 'DELETE',
+      headers: H(d.key, { Prefer: 'return=representation' }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!del.ok) return null;
+    const rows = (await del.json()) as { telegram_user_id: number; first_name?: string | null; last_name?: string | null; username?: string | null; created_at: string }[];
+    const row = rows[0];
+    if (row && nowMs - Date.parse(row.created_at) <= LOGIN_TOKEN_TTL_MS + 60_000) {
+      return {
+        status: 'ok',
+        user: {
+          id: Number(row.telegram_user_id),
+          first_name: row.first_name ?? undefined,
+          last_name: row.last_name ?? undefined,
+          username: row.username ?? undefined,
+        },
+      };
+    }
+    const chk = await fetch(`${d.url}/rest/v1/web_login_tokens?token_hash=eq.${th}&select=created_at`, { headers: H(d.key), signal: AbortSignal.timeout(15_000) });
+    if (!chk.ok) return null;
+    const pend = (await chk.json()) as { created_at: string }[];
+    return pend[0] && nowMs - Date.parse(pend[0].created_at) <= LOGIN_TOKEN_TTL_MS ? { status: 'pending' } : { status: 'expired' };
+  } catch {
+    return null;
+  }
+}
+
 /**
  *  GET  /api/web-auth                              -> { enabled }
  *  POST /api/web-auth { action:'login', user }     -> { initData, user }   (user = Telegram Login Widget payload)
@@ -160,12 +279,48 @@ export async function webAuthHandler(req: Req, res: Res): Promise<void> {
     return;
   }
   const ip = header(req, 'x-forwarded-for').split(',')[0]?.trim() || 'anon';
-  if (rateLimited(`wa:${ip}`)) {
+  if (rateLimited(`wa:${ip}`, body_isPoll(req) ? 90 : 20)) {
     res.status(429).json({ error: 'rate_limited' });
     return;
   }
   const body = (req.body && typeof req.body === 'object' ? req.body : {}) as { action?: string; user?: unknown; initData?: unknown };
 
+  if (body.action === 'start' || body.action === 'poll') {
+    const d = db();
+    if (!d) {
+      res.status(503).json({ error: 'not_configured' });
+      return;
+    }
+    if (body.action === 'start') {
+      if (rateLimited(`ws:${ip}`, 10)) {
+        res.status(429).json({ error: 'rate_limited' });
+        return;
+      }
+      const token = await startLogin(d);
+      if (!token) {
+        res.status(502).json({ error: 'storage_error' });
+        return;
+      }
+      res.status(200).json({ token, expiresIn: LOGIN_TOKEN_TTL_MS / 1000 });
+      return;
+    }
+    const tok = (body as { token?: unknown }).token;
+    if (!isLoginToken(tok)) {
+      res.status(400).json({ error: 'bad_request' });
+      return;
+    }
+    const pr = await pollLogin(d, tok);
+    if (!pr) {
+      res.status(502).json({ error: 'storage_error' });
+      return;
+    }
+    if (pr.status === 'ok') {
+      res.status(200).json({ status: 'ok', initData: signInitData(pr.user, botToken), user: pr.user });
+      return;
+    }
+    res.status(200).json({ status: pr.status });
+    return;
+  }
   if (body.action === 'login') {
     const u = verifyWidgetLogin(body.user, botToken);
     if (!u) {

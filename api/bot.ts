@@ -38,7 +38,7 @@
 //                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments, referrals),
 //                    ADMIN_TELEGRAM_IDS (optional — enables /news).
 
-import { webAuthHandler } from './_lib/webauth.js';
+import { confirmWebLogin, parseLoginPayload, webAuthHandler } from './_lib/webauth.js';
 
 export const maxDuration = 60; // broadcast run fits well inside this budget
 
@@ -632,6 +632,23 @@ export default async function handler(req: Req, res: Res): Promise<void> {
           broadcasting = false;
         }
       }
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ---- b2) Browser sign-in deep link: /start wl_<token> (private chats only) ----
+    const loginTok = parseLoginPayload(text);
+    if (loginTok) {
+      let ok = false;
+      if (db && msg.from && msg.chat.id === msg.from.id) {
+        ok = await confirmWebLogin(db, loginTok, { id: msg.from.id, first_name: msg.from.first_name, last_name: (msg.from as { last_name?: string }).last_name, username: (msg.from as { username?: string }).username });
+      }
+      await tg(token, 'sendMessage', {
+        chat_id: msg.chat.id,
+        text: ok
+          ? '✅ Kirish tasdiqlandi!\n\nEndi brauzerga qayting — SmartLingo avtomatik ochiladi.'
+          : '⚠️ Havola eskirgan yoki yaroqsiz.\n\nBrauzerda “Telegram orqali kirish” tugmasini qayta bosing.',
+      });
       res.status(200).json({ ok: true });
       return;
     }
