@@ -38,10 +38,13 @@
 //                    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (payments, referrals),
 //                    ADMIN_TELEGRAM_IDS (optional — enables /news).
 
+import { webAuthHandler } from './_lib/webauth.js';
+
 export const maxDuration = 60; // broadcast run fits well inside this budget
 
 interface Req {
   method?: string;
+  url?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 }
@@ -419,6 +422,12 @@ async function handleReferral(db: { url: string; key: string }, token: string, a
 }
 
 export default async function handler(req: Req, res: Res): Promise<void> {
+  // Browser sign-in (rewritten from /api/web-auth) shares this function to stay within the Hobby function limit.
+  try {
+    if (new URL(req.url ?? '', 'http://local').searchParams.get('k') === 'webauth') return webAuthHandler(req, res);
+  } catch {
+    /* fall through to the webhook */
+  }
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const url = process.env.WEBAPP_URL;
   const secret = process.env.WEBHOOK_SECRET;

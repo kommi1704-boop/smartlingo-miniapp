@@ -240,7 +240,7 @@ function buildKeyboard(input: NotifyInput, appUrl: string) {
   const rows: ({ text: string; url: string } | { text: string; web_app: { url: string } })[][] = [];
   if (input.button?.url) rows.push([{ text: input.button.label, url: input.button.url }]);
   else if (input.button?.webApp) rows.push([{ text: input.button.label, web_app: { url: appUrl } }]);
-  if (!input.noSettingsFooter) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}#/notify` } }]);
+  if (!input.noSettingsFooter) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}/notify` } }]);
   return rows.length ? { inline_keyboard: rows } : null;
 }
 

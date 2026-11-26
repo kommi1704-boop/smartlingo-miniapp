@@ -48,7 +48,7 @@ async function main() {
   let failed = '';
   try {
     // 1. Dashboard: JourneyCard present, old plan section + free-XP Discovery gone
-    await page.goto(`${BASE}/#/`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await wait(1200);
     const card = await page.locator('[data-testid="home-journey"]').count();
     if (!card) failed = 'journey card missing on dashboard';
@@ -59,19 +59,19 @@ async function main() {
     await page.screenshot({ path: '/tmp/journey-smoke/1-dashboard.png' });
 
     // 2. /plan redirects to /journey (the journey IS today's plan)
-    await page.goto(`${BASE}/#/plan`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/plan`, { waitUntil: 'networkidle' });
     await wait(900);
-    if (!page.url().includes('#/journey')) failed = failed || '/plan does not redirect to /journey';
+    if (!page.url().includes("/journey")) failed = failed || '/plan does not redirect to /journey';
 
     // 3. Journey preview
-    await page.goto(`${BASE}/#/journey`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/journey`, { waitUntil: 'networkidle' });
     await wait(1200);
     const hero = await page.getByText(/Today's learning journey|learning journey/i).count();
     if (!hero) failed = failed || 'preview hero missing';
     await page.screenshot({ path: '/tmp/journey-smoke/2-preview.png', fullPage: true });
 
     // 4. Runner path
-    await page.goto(`${BASE}/#/journey/run`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/journey/run`, { waitUntil: 'networkidle' });
     await wait(1500);
     const lock = await page.getByText(/Oldingi bosqichdan keyin ochiladi/i).count();
     if (!lock) failed = failed || 'runner path/locking missing';
@@ -86,18 +86,18 @@ async function main() {
     await page.screenshot({ path: '/tmp/journey-smoke/4-discover-stage.png' });
 
     // 6. Equipped premium avatar renders as ART (the seeded 🤖 maps to robot.webp)
-    await page.goto(`${BASE}/#/shop`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/shop`, { waitUntil: 'networkidle' });
     await wait(1200);
     const shopArt = await page.locator('img[src*=".webp"]').count();
     if (!shopArt) failed = failed || 'premium avatar art missing in shop';
 
     // 7. Leaderboard renders avatar glyphs without crashing
-    await page.goto(`${BASE}/#/leaderboard`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/leaderboard`, { waitUntil: 'networkidle' });
     await wait(1200);
     await page.screenshot({ path: '/tmp/journey-smoke/6-leaderboard.png' });
 
     // 8. Exit back to preview (progress preserved)
-    await page.goto(`${BASE}/#/journey/run`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/journey/run`, { waitUntil: 'networkidle' });
     await wait(900);
     await page.getByLabel(/Safardan chiqish/i).click();
     await wait(900);

@@ -250,7 +250,7 @@ function buildKeyboard(input: NotifyInput, appUrl: string) {
   const appOk = /^https:\/\/\S+$/.test(appUrl);
   if (input.button?.url) rows.push([{ text: input.button.label, url: input.button.url }]);
   else if (input.button?.webApp && appOk) rows.push([{ text: input.button.label, web_app: { url: appUrl } }]);
-  if (!input.noSettingsFooter && appOk) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}#/notify` } }]);
+  if (!input.noSettingsFooter && appOk) rows.push([{ text: '🔕 Bildirishnoma sozlamalari', web_app: { url: `${appUrl}/notify` } }]);
   return rows.length ? { inline_keyboard: rows } : null;
 }
 
