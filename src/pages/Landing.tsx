@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { navigate } from '../lib/router';
 import { WebLogin } from '../components/WebLogin';
-import { hasSession } from '../lib/telegram';
+import { hasSession, isTelegram } from '../lib/telegram';
 import { useApp } from '../store/store';
-import { Button, Card, LevelBadge } from '../components/ui';
+import { Button, Card, LevelBadge, Modal } from '../components/ui';
 import { Icon, type IconName } from '../components/Icon';
 import { Mascot, Sparkles } from '../components/Mascot';
 import { LEVELS } from '../types';
@@ -34,6 +35,15 @@ const BENEFITS = [
   'Hammasi telefoningizda, Telegram ichida',
 ];
 
+const TONES = [
+  'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
+  'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
+  'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+  'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+  'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300',
+  'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300',
+];
+
 const FAQ: { q: string; a: string }[] = [
   { q: 'Bu rasmiy CEFR imtihonimi?', a: 'Yo‘q. Daraja testi — qisqa dastlabki baho, rasmiy imtihon emas. Aniq daraja uchun rasmiy imtihonlardan o‘ting.' },
   { q: 'Lingo haqiqiy sun’iy intellektmi?', a: 'Server sozlangan bo‘lsa — ha, jonli AI. Aks holda Lingo “Demo rejim”da ishlaydi: tayyor javoblar va oddiy qoidalar. Ilova buni doim aniq ko‘rsatib turadi.' },
@@ -43,154 +53,185 @@ const FAQ: { q: string; a: string }[] = [
   { q: 'Bepulmi?', a: 'Ha, demo tajriba to‘liq bepul va hech qanday obuna talab qilmaydi.' },
 ];
 
+function SectionTitle({ id, title, sub }: { id: string; title: string; sub?: string }) {
+  return (
+    <div className="mb-5 text-center">
+      <h2 id={id} className="text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h2>
+      {sub && <p className="mx-auto mt-1.5 max-w-xl text-sm text-muted">{sub}</p>}
+    </div>
+  );
+}
+
 export function Landing() {
   const s = useApp();
+  const [loginOpen, setLoginOpen] = useState(false);
   const start = () => navigate(s.profile ? '/' : '/onboarding');
+  const canLogin = !isTelegram() && !hasSession();
+  const cta = s.profile ? 'Davom etish' : 'O‘rganishni boshlash';
   return (
-    <div className="mx-auto min-h-dvh max-w-3xl px-4 pb-16 pt-6 sm:px-6">
-      {/* Hero */}
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="" className="h-9 w-9" />
-          <span className="text-lg font-extrabold">SmartLingo AI</span>
+    <div className="min-h-dvh pb-16">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <img src="/favicon.svg" alt="" className="h-8 w-8" />
+            <span className="text-lg font-extrabold">SmartLingo AI</span>
+          </div>
+          {s.profile ? (
+            <Button variant="secondary" size="sm" onClick={() => navigate('/')}>Ilovaga qaytish</Button>
+          ) : (
+            canLogin && <Button variant="secondary" size="sm" onClick={() => setLoginOpen(true)}>Kirish</Button>
+          )}
         </div>
-        {s.profile && (
-          <Button variant="secondary" size="sm" onClick={() => navigate('/')}>
-            Ilovaga qaytish
-          </Button>
-        )}
       </header>
 
-      {/* Browser / laptop / tablet: restore progress from the Telegram account */}
-      {!hasSession() && (
-        <Card className="mt-4">
-          <WebLogin />
-        </Card>
-      )}
+      <main className="mx-auto max-w-5xl px-4 sm:px-6">
+        {/* Hero */}
+        <section className="relative mt-6 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-600 via-sky-600 to-violet-600 p-6 text-white shadow-xl shadow-sky-500/25 sm:p-10">
+          <Sparkles />
+          <div className="relative z-10 grid items-center gap-6 md:grid-cols-[1.25fr_1fr]">
+            <div className="order-2 text-center md:order-1 md:text-left">
+              <p className="inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">8–17 yoshli o‘zbek o‘quvchilari uchun</p>
+              <h1 className="mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Ingliz tilini o‘rganishning shaxsiy yo‘ldoshi</h1>
+              <p className="mx-auto mt-3 max-w-xl text-[15px] text-sky-100 md:mx-0">
+                Darajangizni aniqlang, shaxsiy reja oling va har kuni kichik qadamlar bilan oldinga yuring.
+              </p>
+              <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center md:justify-start">
+                <button
+                  type="button"
+                  onClick={start}
+                  className="rounded-2xl bg-white px-7 py-3.5 text-base font-extrabold text-sky-700 shadow-lg transition hover:bg-sky-50 active:scale-[0.98]"
+                >
+                  {cta} →
+                </button>
+                {canLogin && !s.profile && (
+                  <button
+                    type="button"
+                    onClick={() => setLoginOpen(true)}
+                    className="rounded-2xl border-2 border-white/60 px-7 py-3.5 text-base font-bold text-white transition hover:bg-white/10 active:scale-[0.98]"
+                  >
+                    Menda hisob bor
+                  </button>
+                )}
+              </div>
+              <p className="mt-3 text-xs text-sky-100">Ro‘yxatdan o‘tish shart emas · bepul demo</p>
+            </div>
+            <div className="order-1 flex justify-center md:order-2">
+              <div className="rounded-[2.5rem] bg-white/15 p-5"><Mascot mood="cheer" size={170} /></div>
+            </div>
+          </div>
+        </section>
 
-      <section className="relative mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-600 via-sky-600 to-violet-600 p-6 text-white shadow-xl shadow-sky-500/25 sm:p-9">
-        <Sparkles />
-        <div className="relative z-10 mb-2 flex justify-center sm:absolute sm:right-8 sm:top-8 sm:mb-0">
-          <div className="rounded-[2rem] bg-white/15 p-3"><Mascot mood="cheer" size={118} /></div>
-        </div>
-        <p className="relative inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">8–17 yoshli o‘zbek o‘quvchilari uchun</p>
-        <h1 className="relative mt-4 text-3xl font-extrabold leading-tight tracking-tight sm:max-w-[62%] sm:text-4xl">Ingliz tilini o‘rganishning shaxsiy yo‘ldoshi</h1>
-        <p className="mt-3 max-w-xl text-[15px] text-sky-100">
-          Your personal English-learning companion. Darajangizni aniqlang, shaxsiy reja oling va har kuni kichik qadamlar bilan oldinga yuring.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={start}
-            className="rounded-2xl bg-white px-6 py-3.5 text-base font-extrabold text-sky-700 shadow-lg transition hover:bg-sky-50 active:scale-[0.98]"
-          >
-            {s.profile ? 'Davom etish' : 'O‘rganishni boshlash'} →
+        {/* Stats */}
+        <section className="-mt-5 px-3 sm:px-8" aria-label="Raqamlarda">
+          <div className="relative z-10 grid grid-cols-3 divide-x divide-line rounded-3xl border border-line bg-surface p-4 text-center shadow-lg">
+            {[
+              [`${VOCAB.length}`, 'ta so‘z'],
+              [`${GRAMMAR.length}`, 'ta grammatika darsi'],
+              ['7', 'ta CEFR darajasi'],
+            ].map(([n, l]) => (
+              <div key={l} className="px-2">
+                <div className="text-2xl font-extrabold text-sky-600 dark:text-sky-300 sm:text-3xl">{n}</div>
+                <div className="text-[11px] text-muted sm:text-xs">{l}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="mt-14" aria-labelledby="h-title">
+          <SectionTitle id="h-title" title="Qanday ishlaydi?" sub="To‘rt oddiy qadam — va siz o‘rganishni boshlaysiz." />
+          <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((st) => (
+              <li key={st.n} className="rounded-3xl border border-line bg-surface p-4">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-600 to-violet-600 text-base font-extrabold text-white">{st.n}</span>
+                <h3 className="mt-3 font-bold">{st.title}</h3>
+                <p className="mt-1 text-sm text-muted">{st.text}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* Features */}
+        <section className="mt-14" aria-labelledby="f-title">
+          <SectionTitle id="f-title" title="Imkoniyatlar" sub="Ingliz tilini o‘rganish uchun kerak bo‘lgan hamma narsa bir joyda." />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f, i) => (
+              <Card key={f.title} className="h-full">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${TONES[i % TONES.length]}`}>
+                  <Icon name={f.icon} />
+                </div>
+                <h3 className="mt-3 font-bold">{f.title}</h3>
+                <p className="mt-1 text-sm text-muted">{f.text}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Levels */}
+        <section className="mt-14" aria-labelledby="l-title">
+          <SectionTitle id="l-title" title="Darajalar" sub="Xalqaro CEFR shkalasi asosida (taxminiy yo‘nalish, rasmiy baho emas)." />
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {LEVELS.map((l) => (
+              <div key={l} className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5">
+                <LevelBadge level={l} className="mt-0.5 min-w-[3.25rem] justify-center" />
+                <div>
+                  <div className="text-sm font-bold">{LEVEL_DESC[l].title}</div>
+                  <div className="text-xs text-muted">{LEVEL_DESC[l].desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Benefits */}
+        <section className="mt-14" aria-labelledby="b-title">
+          <SectionTitle id="b-title" title="Nega SmartLingo?" />
+          <ul className="mx-auto grid max-w-3xl gap-2.5 sm:grid-cols-2">
+            {BENEFITS.map((b) => (
+              <li key={b} className="flex items-start gap-2.5 rounded-2xl bg-surface2 px-4 py-3 text-sm font-medium">
+                <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* FAQ */}
+        <section className="mt-14" aria-labelledby="q-title">
+          <SectionTitle id="q-title" title="Ko‘p beriladigan savollar" />
+          <div className="mx-auto max-w-3xl space-y-2">
+            {FAQ.map((f) => (
+              <details key={f.q} className="group rounded-2xl border border-line bg-surface px-4 py-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold">
+                  {f.q}
+                  <Icon name="down" className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
+                </summary>
+                <p className="mt-2 text-sm text-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="mt-14 rounded-[2rem] bg-gradient-to-br from-violet-600 to-sky-600 p-8 text-center text-white">
+          <h2 className="text-2xl font-extrabold sm:text-3xl">Bugun boshlang — 5 daqiqadan</h2>
+          <p className="mt-2 text-sm text-sky-100">Qisqa test, shaxsiy reja va birinchi mashq tayyor.</p>
+          <button type="button" onClick={start} className="mt-5 rounded-2xl bg-white px-7 py-3.5 text-base font-extrabold text-sky-700 shadow-lg transition hover:bg-sky-50 active:scale-[0.98]">
+            {cta} →
           </button>
-          <span className="text-xs text-sky-100">Ro‘yxatdan o‘tish shart emas · bepul demo</span>
-        </div>
-        <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-          {[
-            [`${VOCAB.length}`, 'ta so‘z'],
-            [`${GRAMMAR.length}`, 'ta grammatika darsi'],
-            ['7', 'ta CEFR darajasi'],
-          ].map(([n, l]) => (
-            <div key={l} className="rounded-2xl bg-white/10 px-2 py-3">
-              <div className="text-2xl font-extrabold">{n}</div>
-              <div className="text-[11px] text-sky-100">{l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section className="mt-10" aria-labelledby="f-title">
-        <h2 id="f-title" className="text-xl font-extrabold">Imkoniyatlar</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {FEATURES.map((f) => (
-            <Card key={f.title} className="flex gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300">
-                <Icon name={f.icon} />
-              </div>
-              <div>
-                <h3 className="font-bold">{f.title}</h3>
-                <p className="mt-0.5 text-sm text-muted">{f.text}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
+        <footer className="mt-12 border-t border-line pt-6 text-center text-xs text-muted">
+          <p className="font-bold text-ink">SmartLingo AI</p>
+          <p className="mt-1">Your personal English-learning companion.</p>
+          <p className="mt-3">Demo versiya · natijalar faqat sizning qurilmangizda saqlanadi · CEFR darajasi taxminiy baho.</p>
+        </footer>
+      </main>
 
-      {/* How it works */}
-      <section className="mt-10" aria-labelledby="h-title">
-        <h2 id="h-title" className="text-xl font-extrabold">Qanday ishlaydi?</h2>
-        <ol className="mt-3 space-y-3">
-          {STEPS.map((st) => (
-            <li key={st.n} className="flex gap-3 rounded-3xl border border-line bg-surface p-4">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-600 to-violet-600 text-sm font-extrabold text-white">{st.n}</span>
-              <div>
-                <h3 className="font-bold">{st.title}</h3>
-                <p className="text-sm text-muted">{st.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Levels */}
-      <section className="mt-10" aria-labelledby="l-title">
-        <h2 id="l-title" className="text-xl font-extrabold">Darajalar</h2>
-        <p className="mt-1 text-sm text-muted">Xalqaro CEFR shkalasi asosida (taxminiy yo‘nalish, rasmiy baho emas).</p>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-          {LEVELS.map((l) => (
-            <div key={l} className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-3.5">
-              <LevelBadge level={l} className="mt-0.5 min-w-[3.25rem] justify-center" />
-              <div>
-                <div className="text-sm font-bold">{LEVEL_DESC[l].title}</div>
-                <div className="text-xs text-muted">{LEVEL_DESC[l].desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Benefits */}
-      <section className="mt-10" aria-labelledby="b-title">
-        <h2 id="b-title" className="text-xl font-extrabold">O‘quvchilar uchun foydasi</h2>
-        <ul className="mt-3 space-y-2">
-          {BENEFITS.map((b) => (
-            <li key={b} className="flex items-start gap-2.5 rounded-2xl bg-surface2 px-4 py-3 text-sm font-medium">
-              <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-              {b}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* FAQ */}
-      <section className="mt-10" aria-labelledby="q-title">
-        <h2 id="q-title" className="text-xl font-extrabold">Ko‘p beriladigan savollar</h2>
-        <div className="mt-3 space-y-2">
-          {FAQ.map((f) => (
-            <details key={f.q} className="group rounded-2xl border border-line bg-surface px-4 py-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-bold">
-                {f.q}
-                <Icon name="down" className="h-4 w-4 shrink-0 transition group-open:rotate-180" />
-              </summary>
-              <p className="mt-2 text-sm text-muted">{f.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <div className="mt-10 text-center">
-        <Button size="lg" onClick={start}>{s.profile ? 'Davom etish' : 'O‘rganishni boshlash'}</Button>
-      </div>
-
-      <footer className="mt-12 border-t border-line pt-6 text-center text-xs text-muted">
-        <p className="font-bold text-ink">SmartLingo AI</p>
-        <p className="mt-1">Your personal English-learning companion.</p>
-        <p className="mt-3">Demo versiya · natijalar faqat sizning qurilmangizda saqlanadi · CEFR darajasi taxminiy baho.</p>
-      </footer>
+      <Modal open={loginOpen} onClose={() => setLoginOpen(false)} title="Kirish">
+        {loginOpen && <WebLogin compact />}
+      </Modal>
     </div>
   );
 }
