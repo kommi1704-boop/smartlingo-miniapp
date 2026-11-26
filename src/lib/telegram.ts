@@ -70,12 +70,53 @@ export function initTelegram(): void {
   }
 }
 
+// ---- Browser (laptop/tablet) session -------------------------------------------------------------------
+// Outside Telegram the user signs in with the Telegram Login Widget; the server (api/_lib/webauth.ts) answers
+// with an initData-format string that every endpoint already understands. It lives in localStorage.
+const WEB_KEY = 'sl_web_session_v1';
+
+export interface WebSession {
+  initData: string;
+  user: TgUser & { photo_url?: string };
+  issuedAt: number; // ms
+}
+
+export function getWebSession(): WebSession | null {
+  try {
+    const raw = localStorage.getItem(WEB_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as WebSession;
+    return j && typeof j.initData === 'string' && j.initData && j.user && typeof j.user.id === 'number' ? j : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setWebSession(sess: WebSession | null): void {
+  try {
+    if (sess) localStorage.setItem(WEB_KEY, JSON.stringify(sess));
+    else localStorage.removeItem(WEB_KEY);
+  } catch {
+    /* private mode / blocked storage: the user simply stays signed out */
+  }
+}
+
+/** Signed in either inside Telegram or in the browser via Telegram Login. */
+export function hasSession(): boolean {
+  return isTelegram() || !!getWebSession();
+}
+
+/** True when running in a normal browser with a Telegram Login session (no Mini App). */
+export function isWebSession(): boolean {
+  return !isTelegram() && !!getWebSession();
+}
+
 export function tgUser(): TgUser | undefined {
-  return tg()?.initDataUnsafe?.user;
+  return tg()?.initDataUnsafe?.user ?? getWebSession()?.user;
 }
 
 export function tgInitData(): string {
-  return tg()?.initData ?? '';
+  return tg()?.initData || getWebSession()?.initData || '';
 }
 
 export function tgColorScheme(): 'light' | 'dark' | undefined {

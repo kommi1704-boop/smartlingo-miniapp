@@ -9,7 +9,7 @@
 //
 // Everything degrades gracefully outside Telegram: the store page shows a notice.
 import { BASE } from './api';
-import { isTelegram, onTgEvent, tg, tgInitData } from './telegram';
+import { hasSession, isTelegram, onTgEvent, tg, tgInitData } from './telegram';
 import { addCoins } from '../store/actions';
 import { toast } from '../store/ui';
 
@@ -112,7 +112,7 @@ export async function fetchBilling(): Promise<BillingInfo> {
  * then acks the server. Returns the total coins credited by THIS call.
  */
 export async function applyPendingCredits(info: BillingInfo, opts: { notify?: boolean } = {}): Promise<number> {
-  if (!isTelegram()) return 0;
+  if (!hasSession()) return 0;
   const pending = info.pending ?? [];
   const grants = info.grants ?? [];
   if (pending.length === 0 && grants.length === 0) return 0;
@@ -171,7 +171,7 @@ async function ackGrantIds(ids: string[]): Promise<void> {
 
 /** One-shot check used at app start and when the store page opens. Returns credited coins. */
 export async function checkPendingCredits(): Promise<number> {
-  if (!isTelegram()) return 0;
+  if (!hasSession()) return 0;
   try {
     const info = await fetchBilling();
     return await applyPendingCredits(info);
@@ -181,9 +181,9 @@ export async function checkPendingCredits(): Promise<number> {
 }
 
 /** Best-effort poll for ONE payment id (after a paid invoice closes). Returns true when it showed up. */
-async function pollCredits(payId: string): Promise<boolean> {
-  for (let i = 0; i < 10; i++) {
-    await new Promise((res) => setTimeout(res, 700));
+async function pollCredits(payId: string, tries = 10, delayMs = 700): Promise<boolean> {
+  for (let i = 0; i < tries; i++) {
+    await new Promise((res) => setTimeout(res, delayMs));
     try {
       const info = await fetchBilling();
       const hit = (info.pending ?? []).some((p) => p.id === payId);
@@ -213,7 +213,9 @@ interface InvoiceClosedEvent {
  * is closed. Credits are applied by the ledger check (poll) right after 'paid'.
  */
 export async function buyPackage(packageId: string): Promise<BuyResult> {
-  if (!isTelegram() || !tg()?.openInvoice) throw new Error('no_telegram');
+  const inTelegram = isTelegram() && !!tg()?.openInvoice;
+  // Browser (laptop/tablet) with a Telegram Login session: the Stars invoice opens in Telegram itself.
+  if (!inTelegram && !hasSession()) throw new Error('no_telegram');
   const r = await fetch(`${BASE}/api/payments`, {
     method: 'POST',
     headers: headers(),
@@ -230,6 +232,15 @@ export async function buyPackage(packageId: string): Promise<BuyResult> {
     throw new Error(code);
   }
   const { id: payId, url } = (await r.json()) as { id: string; url: string };
+
+  if (!inTelegram) {
+    // Telegram invoice links (t.me/$...) open the Telegram app / Telegram Web; there is no invoiceClosed event in a
+    // normal browser, so we wait for the payment to land in the ledger (the bot webhook confirms it).
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) throw new Error('invoice_open_failed');
+    const credited = await pollCredits(payId, 45, 2000);
+    return credited ? 'paid' : 'maybe_paid';
+  }
 
   const closed = new Promise<InvoiceClosedEvent>((resolve) => {
     const w = tg();

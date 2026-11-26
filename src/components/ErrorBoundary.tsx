@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { failed: 
         action={
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={() => this.setState({ failed: false })}>Qayta urinish</Button>
-            <Button variant="secondary" onClick={() => { window.location.hash = '#/'; }}>Bosh sahifa</Button>
+            <Button variant="secondary" onClick={() => { window.location.assign('/'); }}>Bosh sahifa</Button>
           </div>
         }
       />

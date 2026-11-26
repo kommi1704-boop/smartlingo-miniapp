@@ -4,7 +4,7 @@
 // - Chat history and writing texts are never uploaded.
 import { useSyncExternalStore } from 'react';
 import { BASE } from './api';
-import { isTelegram, tgInitData } from './telegram';
+import { hasSession, tgInitData } from './telegram';
 import { defaultState, getState, setState, subscribeState } from '../store/store';
 import { toast } from '../store/ui';
 import type { PersistedState } from '../types';
@@ -118,7 +118,7 @@ function adopt(remote: Partial<PersistedState>) {
 export async function initSync(): Promise<void> {
   if (started) return;
   started = true;
-  if (!isTelegram()) return set('off');
+  if (!hasSession()) return set('off');
   if (syncUserDisabled()) return set('off');
   set('connecting');
   try {
@@ -157,7 +157,7 @@ export async function initSync(): Promise<void> {
 
 /** Removes the server copy. Returns true on success. */
 export async function deleteOnline(): Promise<boolean> {
-  if (!isTelegram()) return true;
+  if (!hasSession()) return true;
   try {
     const r = await fetch(`${BASE}/api/progress`, { method: 'DELETE', headers: headers() });
     lastJson = '';

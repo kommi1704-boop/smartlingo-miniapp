@@ -4,7 +4,7 @@
 // applies what the server granted. When the API is unreachable or not
 // configured (no Supabase env), callers fall back to the legacy offline
 // behavior — XpUnavailable makes that explicit instead of hiding errors.
-import { isTelegram, tg } from './telegram';
+import { hasSession, tg } from './telegram';
 
 const BASE = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE ?? '';
 
@@ -60,7 +60,7 @@ function headers(): Record<string, string> {
 /** One place for transport + error mapping, so every caller can rely on `XpUnavailable` meaning "no ledger right now". */
 async function request<T>(url: string, init: RequestInit, timeoutMs: number): Promise<T> {
   // Outside Telegram the server can only answer 401 — skip the doomed request (and its console error).
-  if (!isTelegram()) throw new XpUnavailable('unauthorized');
+  if (!hasSession()) throw new XpUnavailable('unauthorized');
   let r: Response;
   try {
     r = await fetch(url, { ...init, headers: headers(), signal: AbortSignal.timeout(timeoutMs) });

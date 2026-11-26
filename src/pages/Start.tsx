@@ -48,7 +48,7 @@ function Frame({ step, total, title, subtitle, children, onBack }: { step?: numb
             <Icon name="left" />
           </button>
         ) : (
-          <img src="./favicon.svg" alt="" className="h-9 w-9" />
+          <img src="/favicon.svg" alt="" className="h-9 w-9" />
         )}
         {step && total && <ProgressBar value={(step / total) * 100} className="flex-1" label="Jarayon" />}
         {step && total && <span className="text-xs font-semibold text-muted">{step}/{total}</span>}

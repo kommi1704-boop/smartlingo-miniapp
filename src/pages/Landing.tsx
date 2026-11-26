@@ -1,4 +1,6 @@
 import { navigate } from '../lib/router';
+import { WebLogin } from '../components/WebLogin';
+import { hasSession } from '../lib/telegram';
 import { useApp } from '../store/store';
 import { Button, Card, LevelBadge } from '../components/ui';
 import { Icon, type IconName } from '../components/Icon';
@@ -49,7 +51,7 @@ export function Landing() {
       {/* Hero */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <img src="./favicon.svg" alt="" className="h-9 w-9" />
+          <img src="/favicon.svg" alt="" className="h-9 w-9" />
           <span className="text-lg font-extrabold">SmartLingo AI</span>
         </div>
         {s.profile && (
@@ -58,6 +60,13 @@ export function Landing() {
           </Button>
         )}
       </header>
+
+      {/* Browser / laptop / tablet: restore progress from the Telegram account */}
+      {!hasSession() && (
+        <Card className="mt-4">
+          <WebLogin />
+        </Card>
+      )}
 
       <section className="relative mt-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-sky-600 via-sky-600 to-violet-600 p-6 text-white shadow-xl shadow-sky-500/25 sm:p-9">
         <Sparkles />

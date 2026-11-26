@@ -87,11 +87,11 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [path]);
 
   return (
-    <div className="app-bg mx-auto flex h-dvh max-w-[1200px] md:gap-0">
+    <div className="app-bg mx-auto flex h-dvh max-w-[1200px] md:gap-0 xl:max-w-[1360px]">
       {/* Desktop sidebar — grouped navigation */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-app2/70 p-4 backdrop-blur-md md:flex">
         <A to="/" className="mb-5 flex items-center gap-2.5 px-2">
-          <img src="./favicon.svg" alt="" className="h-9 w-9" />
+          <img src="/favicon.svg" alt="" className="h-9 w-9" />
           <div>
             <div className="text-base font-extrabold leading-none">SmartLingo AI</div>
             <div className="mt-1 text-[11px] text-muted">Shaxsiy ingliz tili yo‘ldoshi</div>
@@ -139,7 +139,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="glass safe-top shrink-0 border-b border-line md:hidden">
           <div className="flex items-center justify-between gap-2 px-4 py-2.5">
             <A to="/" className="flex items-center gap-2" aria-label="Bosh sahifa">
-              <img src="./favicon.svg" alt="" className="h-7 w-7" />
+              <img src="/favicon.svg" alt="" className="h-7 w-7" />
               <span className="text-[15px] font-extrabold tracking-tight">SmartLingo</span>
             </A>
             <div className="flex items-center gap-1.5">
@@ -157,7 +157,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
 
         <main ref={scroller} className="min-h-0 flex-1 overflow-y-auto" id="main">
-          <div className="mx-auto h-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6">{children}</div>
+          <div className="mx-auto h-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6 lg:max-w-4xl">{children}</div>
         </main>
 
         {/* Mobile bottom navigation — floating pill, active tab expands with its label */}

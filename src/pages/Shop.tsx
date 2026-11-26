@@ -7,7 +7,7 @@ import {
   type ChestReward, type FrameItem, type NameColorItem, type NameFxItem,
 } from '../lib/shop';
 import { pct, cx, fmt, fileToBgDataUrl } from '../lib/utils';
-import { haptic, isTelegram } from '../lib/telegram';
+import { haptic, hasSession } from '../lib/telegram';
 import { toast } from '../store/ui';
 import { Button, Card, Modal, PageHeader, Pill, ProgressBar, Section, Tabs } from '../components/ui';
 import { FramedEmoji } from '../components/Avatar';
@@ -122,7 +122,7 @@ export function Shop() {
             <div className="text-xs font-bold uppercase tracking-wide text-amber-100">Sizning hisobingiz</div>
             <div className="mt-1 text-4xl font-black leading-none">{fmt(balance)} 🪙</div>
             <div className="mt-1 text-sm text-amber-100">Coin · vazifalar va o‘yinlarda yig‘iladi</div>
-            {!isTelegram() && <div className="mt-1 text-[11px] font-semibold text-amber-100">Stars bilan olish Telegram ichida ishlaydi</div>}
+            {!hasSession() && <div className="mt-1 text-[11px] font-semibold text-amber-100">Stars bilan olish uchun Telegram bilan kiring</div>}
           </div>
           <div className="text-right text-xs font-semibold text-amber-100">
             <div>🎁 {s.shop.chestsOpened} quti ochilgan</div>

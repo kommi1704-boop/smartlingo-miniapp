@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from '../store/store';
 import { buyPackage, fetchBilling, PACKAGES, type BillingInfo, type PaymentStatus } from '../lib/billing';
-import { isTelegram } from '../lib/telegram';
+import { hasSession } from '../lib/telegram';
 import { cx, fmt } from '../lib/utils';
 import { prettyDateTime } from '../lib/dates';
 import { haptic } from '../lib/telegram';
@@ -75,7 +75,7 @@ export function Stars() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
       if (msg === 'tiny_limit') toast('Tiny Pack limiti tugagan (3 marta). Boshqa paketni tanlang.', 'warn');
-      else if (msg === 'no_telegram') toast('Coin olish faqat Telegram ichida ishlaydi', 'warn');
+      else if (msg === 'no_telegram') toast('Coin olish uchun avval Telegram bilan kiring (Sozlamalar)', 'warn');
       else toast('Hisob-faktura yaratilmadi — keyinroq urinib ko‘ring', 'warn');
       setPhase('idle');
     } finally {
@@ -130,9 +130,9 @@ export function Stars() {
         </div>
       )}
 
-      {state === 'ok' && !isTelegram() && (
+      {state === 'ok' && !hasSession() && (
         <div className="mt-4">
-          <Notice tone="warn">Telegram Stars to‘lovlari faqat Telegram ilovasi ichidan amalga oshiriladi. Ilovani bot orqali oching.</Notice>
+          <Notice tone="warn">Coin sotib olish uchun Telegram bilan kiring (Sozlamalar → Hisob). To‘lov Telegram Stars orqali Telegramning o‘zida tasdiqlanadi.</Notice>
         </div>
       )}
 
@@ -171,7 +171,7 @@ export function Stars() {
                         size="sm"
                         full
                         variant={p.popular ? 'primary' : 'secondary'}
-                        disabled={soldOut || !isTelegram()}
+                        disabled={soldOut || !hasSession()}
                         onClick={() => openConfirm(p.id)}
                       >
                         {soldOut ? 'Tugagan' : 'Sotib olish'}

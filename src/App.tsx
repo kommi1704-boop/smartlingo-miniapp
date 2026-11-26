@@ -5,7 +5,8 @@ import { applyTheme, watchTheme } from './lib/theme';
 import { getState, useApp } from './store/store';
 import { dayStart } from './store/actions';
 import { checkPendingCredits } from './lib/billing';
-import { isTelegram } from './lib/telegram';
+import { hasSession } from './lib/telegram';
+import { startSessionKeepAlive } from './lib/webSession';
 import { Shell, TAB_ROOTS } from './components/Shell';
 import { Overlays } from './components/Overlays';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -65,9 +66,12 @@ export function App() {
     dayStart();
   }, []);
 
+  // Browser sign-in (Telegram Login): keep the signed session fresh while the user is active
+  useEffect(() => startSessionKeepAlive(), []);
+
   // Coin Store ledger: apply any paid-but-unapplied Stars purchases exactly once at start
   useEffect(() => {
-    if (isTelegram() && s.profile) void checkPendingCredits();
+    if (hasSession() && s.profile) void checkPendingCredits();
   }, [s.profile]);
 
   // Telegram native Back button

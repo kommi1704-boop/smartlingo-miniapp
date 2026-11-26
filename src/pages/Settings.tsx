@@ -5,7 +5,8 @@ import { isOwnedActive, resetAll, updateProfile, updateSettings } from '../store
 import { navigate } from '../lib/router';
 import { tutorIsLive } from '../lib/api';
 import { deleteOnline, setSyncEnabled, syncUserDisabled, useSync } from '../lib/sync';
-import { isTelegram, shareToTelegram } from '../lib/telegram';
+import { hasSession, isTelegram, isWebSession, shareToTelegram } from '../lib/telegram';
+import { WebLogin } from '../components/WebLogin';
 import { Button, Card, Chip, Modal, Notice, PageHeader, Pill, Section } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { ACCENTS, BACKGROUNDS } from '../lib/theme';
@@ -32,8 +33,13 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function SyncBlock() {
   const sy = useSync();
   const off = syncUserDisabled();
-  if (!isTelegram()) {
-    return <p className="text-sm text-muted">Natijalaringiz shu qurilmadagi brauzer xotirasida saqlanadi. Onlayn saqlash faqat Telegram ichida ishlaydi.</p>;
+  if (!isTelegram() && !hasSession()) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted">Natijalaringiz hozircha shu brauzer xotirasida saqlanadi.</p>
+        <WebLogin />
+      </div>
+    );
   }
   if (sy.status === 'unavailable') {
     return <p className="text-sm text-muted">Natijalaringiz shu qurilmada saqlanadi. Onlayn saqlash serverda hali yoqilmagan.</p>;
@@ -277,6 +283,11 @@ export function Settings() {
 
       <Section title="Ma’lumotlar">
         <Card>
+          {isWebSession() && (
+            <div className="mb-3 border-b border-line pb-3">
+              <WebLogin />
+            </div>
+          )}
           <SyncBlock />
           <p className="mt-3 text-sm text-muted">Suhbatlar va yozgan matnlaringiz faqat shu qurilmada qoladi.</p>
           <div className="mt-3 flex flex-wrap gap-2">
